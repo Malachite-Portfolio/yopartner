@@ -26,6 +26,7 @@ Repository: [https://github.com/Malachite-Portfolio/yopartner.git](https://githu
 Set these in Vercel Project Settings -> Environment Variables:
 
 ### Firebase Public (Client)
+- `NEXT_PUBLIC_APP_MODE=production`
 - `NEXT_PUBLIC_FIREBASE_API_KEY`
 - `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
 - `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
@@ -53,6 +54,8 @@ Set these in Vercel Project Settings -> Environment Variables:
 After first deployment, open Firebase Console -> Authentication -> Settings -> Authorized domains and add:
 - your Vercel production domain (for example `your-project.vercel.app`)
 - any custom production domain you connect
+- `yopartner.com`
+- `www.yopartner.com`
 
 Keep existing local entries (`localhost`, `127.0.0.1`) for development.
 
@@ -61,6 +64,7 @@ Keep existing local entries (`localhost`, `127.0.0.1`) for development.
 - Never expose `FIREBASE_ADMIN_PRIVATE_KEY` in frontend code.
 - Never expose `AGORA_APP_CERTIFICATE` in frontend code.
 - Keep server-only secrets only in Vercel server env vars.
+- Do not rely on demo/localStorage data when `NEXT_PUBLIC_APP_MODE=production`.
 
 ## 6) Local Validation Before Deploy
 Run:

@@ -8,7 +8,6 @@
   Sparkles,
   Users,
   Video,
-  House,
   Activity,
   Smile,
 } from "lucide-react";
@@ -49,11 +48,6 @@ const offerings = [
     icon: Video,
   },
   {
-    title: "Home Visits",
-    description: "Planned in-person companionship with safety protocols.",
-    icon: House,
-  },
-  {
     title: "Activity Companions",
     description: "Shared time for walks, errands, and simple activities.",
     icon: Activity,
@@ -83,7 +77,7 @@ const whyItems = [
   },
   {
     title: "Flexible support",
-    description: "Choose chat, calls, activities, or home visits based on your comfort.",
+    description: "Choose chat, calls, or activities based on your comfort.",
     icon: Sparkles,
   },
 ];
@@ -105,8 +99,8 @@ export default function AboutPage() {
             We&apos;re building a safer way to feel connected.
           </h1>
           <p className="mt-5 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">
-            YoPartner helps people find verified human companionship for conversations, emotional support, everyday
-            activities, and safe in-person visits.
+            YoPartner helps people find verified human companionship for conversations, emotional support, and
+            everyday activities.
           </p>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -139,7 +133,7 @@ export default function AboutPage() {
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white p-4">
               <p className="text-sm font-semibold text-[#111827]">Flexible companionship formats</p>
-              <p className="mt-1 text-sm text-slate-600">From quick chats to home visits, based on comfort.</p>
+              <p className="mt-1 text-sm text-slate-600">From quick chats to calls and activities, based on comfort.</p>
             </div>
           </div>
         </div>
@@ -149,7 +143,7 @@ export default function AboutPage() {
         <h2 className="text-3xl font-semibold text-[#111827]">Our Mission</h2>
         <p className="mt-3 max-w-4xl text-base leading-7 text-slate-600">
           To make real human companionship accessible, safe, and judgment-free for people who need someone to talk to,
-          walk with, visit, or simply share time with.
+          walk with, or simply share time with.
         </p>
 
         <div className="mt-6 grid gap-4 md:grid-cols-3">
@@ -240,7 +234,7 @@ export default function AboutPage() {
         <div className="rounded-3xl border border-slate-200 bg-white px-6 py-8 text-center shadow-sm sm:px-10 sm:py-10">
           <h2 className="text-3xl font-semibold text-[#111827]">You don&apos;t have to go through it alone.</h2>
           <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-slate-600">
-            Find a verified YoPartner companion for chat, calls, activities, or home visits.
+            Find a verified YoPartner companion for chat, calls, and activities.
           </p>
           <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link
@@ -248,12 +242,6 @@ export default function AboutPage() {
               className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-[#00A6B2] to-[#9B5DE5] px-6 py-3 text-sm font-semibold text-white transition hover:opacity-90"
             >
               Connect Now
-            </Link>
-            <Link
-              href="/home-visit"
-              className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-[#111827] transition hover:border-[#00A6B2]/40"
-            >
-              Home Visit
             </Link>
           </div>
         </div>

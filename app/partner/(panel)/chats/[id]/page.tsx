@@ -3,6 +3,7 @@
 import { Phone, SendHorizontal, Video } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { getPartnerMessages, savePartnerMessages, type PartnerMessage } from "@/lib/partnerData";
 
 export default function PartnerChatDetailPage() {
@@ -18,6 +19,15 @@ export default function PartnerChatDetailPage() {
     if (chatId === "demo-user-3") return "+91******2231";
     return "+91******0000";
   }, [chatId]);
+
+  if (IS_PRODUCTION_READY_MODE) {
+    return (
+      <section className="rounded-xl border border-amber-200 bg-amber-50 p-5">
+        <h2 className="text-xl font-semibold text-amber-800">Partner chat is unavailable</h2>
+        <p className="mt-2 text-sm text-amber-700">Partner chat service is not connected yet.</p>
+      </section>
+    );
+  }
 
   const handleSend = () => {
     const text = input.trim();

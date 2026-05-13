@@ -22,6 +22,12 @@ import {
   subscribeWalletUpdates,
   type WalletTransaction,
 } from "@/lib/wallet";
+import {
+  createRechargeOrder,
+  getWallet,
+  getWalletTransactions as getWalletTransactionsFromApi,
+} from "@/lib/api/wallet";
+import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 
 type WalletTab = "overview" | "transactions" | "recharge";
 
@@ -147,6 +153,37 @@ export default function WalletPage() {
   const [bellMessage, setBellMessage] = useState("");
 
   useEffect(() => {
+    if (IS_PRODUCTION_READY_MODE) {
+      void (async () => {
+        const [walletResponse, transactionResponse] = await Promise.all([
+          getWallet(),
+          getWalletTransactionsFromApi(),
+        ]);
+        if (walletResponse.data) {
+          setBalance(walletResponse.data.balance);
+        }
+        if (transactionResponse.data) {
+          const mapped = transactionResponse.data.map((tx) => ({
+            id: tx.id,
+            type: tx.type === "Booking" ? "booking" : "recharge",
+            amountAdded: tx.amount,
+            paidAmount: Math.abs(tx.amount),
+            bonus: 0,
+            createdAt: tx.createdAt,
+            description: tx.description ?? tx.type,
+            status: tx.status === "Success" ? "success" : "success",
+          })) as WalletTransaction[];
+          setTransactions(mapped);
+          setTotalSpent(
+            mapped
+              .filter((tx) => tx.type === "booking")
+              .reduce((sum, tx) => sum + Math.abs(tx.amountAdded), 0),
+          );
+        }
+      })();
+      return () => undefined;
+    }
+
     const sync = () => {
       const summary = getWalletSummary();
       setBalance(summary.balance);
@@ -185,6 +222,28 @@ export default function WalletPage() {
   };
 
   const handleProceed = () => {
+    if (IS_PRODUCTION_READY_MODE) {
+      if (!canProceed) {
+        setRechargeError("Select a recharge plan or enter a custom amount between ₹1 and ₹50,000.");
+        return;
+      }
+      const amount = selectedPlan ? selectedPlan.pay : validCustom ? parsedCustom : 0;
+      if (!amount) {
+        setRechargeError("Invalid recharge amount.");
+        return;
+      }
+      void (async () => {
+        const response = await createRechargeOrder(amount);
+        if (response.error) {
+          setRechargeError("Payments are not live yet. Please try later.");
+          return;
+        }
+        setRechargeError("");
+        setSuccessMessage("Recharge order created. Complete payment after gateway integration.");
+      })();
+      return;
+    }
+
     if (!canProceed) {
       setRechargeError("Select a recharge plan or enter a custom amount between ₹1 and ₹50,000.");
       return;
@@ -227,6 +286,35 @@ export default function WalletPage() {
               <button
                 type="button"
                 onClick={() => {
+                  if (IS_PRODUCTION_READY_MODE) {
+                    void (async () => {
+                      const [walletResponse, txResponse] = await Promise.all([
+                        getWallet(),
+                        getWalletTransactionsFromApi(),
+                      ]);
+                      if (walletResponse.data) setBalance(walletResponse.data.balance);
+                      if (txResponse.data) {
+                        const mapped = txResponse.data.map((tx) => ({
+                          id: tx.id,
+                          type: tx.type === "Booking" ? "booking" : "recharge",
+                          amountAdded: tx.amount,
+                          paidAmount: Math.abs(tx.amount),
+                          bonus: 0,
+                          createdAt: tx.createdAt,
+                          description: tx.description ?? tx.type,
+                          status: tx.status === "Success" ? "success" : "success",
+                        })) as WalletTransaction[];
+                        setTransactions(mapped);
+                        setTotalSpent(
+                          mapped
+                            .filter((tx) => tx.type === "booking")
+                            .reduce((sum, tx) => sum + Math.abs(tx.amountAdded), 0),
+                        );
+                      }
+                      setSuccessMessage("Wallet summary refreshed.");
+                    })();
+                    return;
+                  }
                   const summary = getWalletSummary();
                   setBalance(summary.balance);
                   setTransactions(summary.transactions);
@@ -322,6 +410,11 @@ export default function WalletPage() {
             {successMessage}
           </p>
         )}
+        {IS_PRODUCTION_READY_MODE ? (
+          <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700">
+            Payments are not live yet. Please try later.
+          </p>
+        ) : null}
 
         <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
           <div className="flex flex-wrap items-center gap-2">

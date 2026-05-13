@@ -3,6 +3,8 @@
 import { Wallet } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { getWallet } from "@/lib/api/wallet";
+import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { formatINR, getWalletBalance, subscribeWalletUpdates } from "@/lib/wallet";
 
 type WalletPillProps = {
@@ -18,6 +20,16 @@ export function WalletPill({ className, iconSize = 15, iconClassName, onClick }:
   );
 
   useEffect(() => {
+    if (IS_PRODUCTION_READY_MODE) {
+      void (async () => {
+        const response = await getWallet();
+        if (response.data) {
+          setBalance(response.data.balance);
+        }
+      })();
+      return () => undefined;
+    }
+
     const sync = () => {
       setBalance(getWalletBalance());
     };

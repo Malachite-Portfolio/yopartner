@@ -6,6 +6,7 @@ import { ProfileHeroCard } from "@/components/ProfileHeroCard";
 import { ProfileInfoSection } from "@/components/ProfileInfoSection";
 import { ProfileReviews } from "@/components/ProfileReviews";
 import { ProfileVerification } from "@/components/ProfileVerification";
+import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { connectCompanions } from "@/lib/data";
 
 type ConnectProfilePageProps = {
@@ -14,6 +15,21 @@ type ConnectProfilePageProps = {
 };
 
 export default async function ConnectProfilePage({ params, searchParams }: ConnectProfilePageProps) {
+  if (IS_PRODUCTION_READY_MODE) {
+    return (
+      <main className="min-h-screen bg-[#f4f7fb]">
+        <ConnectAppHeader />
+        <div className="mx-auto flex min-h-[calc(100vh-72px)] w-full max-w-3xl items-center justify-center px-4 py-8">
+          <div className="w-full rounded-2xl border border-amber-200 bg-amber-50 p-6 text-center">
+            <p className="text-base font-semibold text-amber-800">
+              Companions are currently unavailable. Please try again later.
+            </p>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   const { id } = await params;
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const preferredType = resolvedSearchParams?.type;
@@ -39,10 +55,8 @@ export default async function ConnectProfilePage({ params, searchParams }: Conne
 
           <ProfileBookingPanel
             companion={companion}
-            mode="chat"
-            routeSource="connect-now"
             initialType={
-              preferredType === "chat" || preferredType === "audio" || preferredType === "video" || preferredType === "visit"
+              preferredType === "chat" || preferredType === "audio" || preferredType === "video"
                 ? preferredType
                 : "chat"
             }

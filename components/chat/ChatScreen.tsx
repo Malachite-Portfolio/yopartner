@@ -3,6 +3,7 @@
 import { ArrowLeft, Paperclip, Phone, SendHorizontal, Video } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import type { CompanionRouteProfile } from "@/lib/companionRoutes";
 
 type ChatMessage = {
@@ -104,6 +105,25 @@ export function ChatScreen({ companion }: { companion: CompanionRouteProfile }) 
     }
     router.push(`/connect-now/${companion.id}`);
   };
+
+  if (IS_PRODUCTION_READY_MODE) {
+    return (
+      <section className="flex h-screen min-h-screen w-full items-center justify-center bg-[#f2f7fb] p-4">
+        <div className="w-full max-w-md rounded-2xl border border-amber-200 bg-amber-50 p-6 text-center">
+          <p className="text-base font-semibold text-amber-800">
+            Chat service is not configured.
+          </p>
+          <button
+            type="button"
+            onClick={handleBack}
+            className="mt-4 rounded-xl bg-[#2563eb] px-4 py-2 text-sm font-semibold text-white"
+          >
+            Back to Profile
+          </button>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="flex h-screen min-h-screen w-full flex-col overflow-hidden bg-[#f2f7fb]">

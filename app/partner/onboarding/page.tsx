@@ -4,6 +4,8 @@ import { CheckCircle2, ChevronLeft, ChevronRight, ShieldCheck } from "lucide-rea
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { submitPartnerApplication } from "@/lib/api/partner";
+import { IS_DEMO_MODE, IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import {
   getPartnerDraft,
   getPartnerPhone,
@@ -68,6 +70,9 @@ export default function PartnerOnboardingPage() {
   const [step, setStep] = useState(0);
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [profile, setProfile] = useState<PartnerProfile>(() => {
+    if (IS_PRODUCTION_READY_MODE) {
+      return { ...defaultPartnerProfile };
+    }
     const saved = getPartnerProfile<PartnerProfile>(defaultPartnerProfile);
     const draft = getPartnerDraft<PartnerProfile>(defaultPartnerProfile);
     if (isEditMode) return { ...defaultPartnerProfile, ...saved };
@@ -83,6 +88,7 @@ export default function PartnerOnboardingPage() {
   }, [router]);
 
   useEffect(() => {
+    if (!IS_DEMO_MODE) return;
     savePartnerDraft(profile);
   }, [profile]);
 
@@ -183,6 +189,18 @@ export default function PartnerOnboardingPage() {
       ...profile,
       reviewStatus: "under_review",
     };
+
+    if (IS_PRODUCTION_READY_MODE) {
+      void (async () => {
+        const response = await submitPartnerApplication(finalProfile as unknown as Record<string, unknown>);
+        if (response.error) {
+          setErrors({ base: "Partner onboarding service is not connected yet." });
+          return;
+        }
+        router.push("/partner/dashboard");
+      })();
+      return;
+    }
 
     savePartnerProfile(finalProfile);
     savePartnerDraft(finalProfile);
@@ -633,10 +651,12 @@ export default function PartnerOnboardingPage() {
           </div>
         </div>
 
-        <p className="mt-3 inline-flex items-center gap-1 text-xs text-slate-500">
-          <CheckCircle2 size={13} />
-          Frontend demo onboarding only. Verification and approvals will be connected to backend later.
-        </p>
+        {IS_DEMO_MODE ? (
+          <p className="mt-3 inline-flex items-center gap-1 text-xs text-slate-500">
+            <CheckCircle2 size={13} />
+            Frontend demo onboarding only. Verification and approvals will be connected to backend later.
+          </p>
+        ) : null}
       </div>
     </section>
   );

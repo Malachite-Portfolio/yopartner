@@ -25,7 +25,7 @@ export const connectCategoryGroups: ConnectCategoryGroup[] = [
   },
   {
     title: "Lifestyle & Daily Support",
-    items: ["Home visit", "Shopping companion", "Meal companion", "Event companion"],
+    items: ["Shopping companion", "Meal companion", "Event companion", "Travel companion"],
   },
 ];
 

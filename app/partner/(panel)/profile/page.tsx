@@ -1,10 +1,20 @@
 "use client";
 
 import Link from "next/link";
+import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { getPartnerProfile } from "@/lib/partnerAuth";
 import { defaultPartnerProfile, type PartnerProfile } from "@/lib/partnerData";
 
 export default function PartnerProfilePage() {
+  if (IS_PRODUCTION_READY_MODE) {
+    return (
+      <section className="rounded-xl border border-amber-200 bg-amber-50 p-5">
+        <h2 className="text-xl font-semibold text-amber-800">Partner profile is unavailable</h2>
+        <p className="mt-2 text-sm text-amber-700">Partner profile service is not connected yet.</p>
+      </section>
+    );
+  }
+
   const profile = getPartnerProfile<PartnerProfile>(defaultPartnerProfile);
 
   const rows = [

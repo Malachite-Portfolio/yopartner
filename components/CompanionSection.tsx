@@ -5,9 +5,10 @@ import { useMemo, useState } from "react";
 import { CompanionCard } from "@/components/CompanionCard";
 import { ConnectCompanionCard } from "@/components/ConnectCompanionCard";
 import { SectionHeader } from "@/components/SectionHeader";
+import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { companions, connectCompanions, type CompanionFilter } from "@/lib/data";
 
-const filters: ("All" | CompanionFilter)[] = ["All", "Chat", "Calls", "In-Person", "Activities"];
+const filters: ("All" | CompanionFilter)[] = ["All", "Chat", "Calls", "Activities"];
 
 type CompanionSectionProps = {
   showHeader?: boolean;
@@ -21,10 +22,10 @@ export function CompanionSection({ showHeader = true, note, variant = "classic" 
   const [activeFilter, setActiveFilter] = useState<"All" | CompanionFilter>("All");
 
   const filteredConnectCompanions = useMemo(() => {
+    if (IS_PRODUCTION_READY_MODE) return [];
     const term = searchTerm.trim().toLowerCase();
     return connectCompanions.filter((companion) => {
       if (activeFilter === "Calls" && !(companion.voicePrice > 0 || companion.videoPrice)) return false;
-      if (activeFilter === "In-Person" && !(companion.visitPrice > 0)) return false;
       if (activeFilter === "Activities") {
         const activitySignals = ["activity", "event", "walk", "travel", "shopping"];
         const text = `${companion.category} ${companion.servicesOffered.join(" ")}`.toLowerCase();
@@ -97,7 +98,9 @@ export function CompanionSection({ showHeader = true, note, variant = "classic" 
 
       {isCompact && filteredConnectCompanions.length === 0 ? (
         <p className="mt-6 rounded-xl border border-line bg-surface px-4 py-6 text-center text-sm text-muted">
-          No companions matched your search.
+          {IS_PRODUCTION_READY_MODE
+            ? "Companions are currently unavailable. Please try again later."
+            : "No companions matched your search."}
         </p>
       ) : null}
     </section>

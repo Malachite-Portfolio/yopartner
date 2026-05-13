@@ -13,6 +13,7 @@ import {
   setAuthMode,
   setupRecaptcha,
 } from "@/lib/auth/firebasePhoneAuth";
+import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { PARTNER_PHONE_KEY } from "@/lib/partnerAuth";
 
 const features = [
@@ -56,6 +57,11 @@ export default function PartnerLoginPage() {
 
     if (typeof window !== "undefined") {
       window.localStorage.setItem(PARTNER_PHONE_KEY, normalizedPhone);
+    }
+
+    if (IS_PRODUCTION_READY_MODE && !firebaseEnabled) {
+      setError("Authentication is not configured. Please contact support.");
+      return;
     }
 
     if (!firebaseEnabled) {
@@ -189,13 +195,24 @@ export default function PartnerLoginPage() {
               {isSubmitting ? "Sending OTP..." : "Continue"}
             </button>
             <p className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
-              {firebaseEnabled ? (firebaseTestMode ? "Firebase Test Numbers Mode" : "Firebase OTP") : "Demo OTP"}
+              {firebaseEnabled
+                ? firebaseTestMode
+                  ? "Firebase Test Numbers Mode"
+                  : "Firebase OTP"
+                : IS_PRODUCTION_READY_MODE
+                  ? "OTP Unavailable"
+                  : "Demo OTP"}
             </p>
             {firebaseEnabled ? (
               <>
                 <p className="text-xs text-slate-500">Complete the verification to receive OTP.</p>
                 <div id="partner-recaptcha-container" className="mt-2" />
               </>
+            ) : null}
+            {!firebaseEnabled && IS_PRODUCTION_READY_MODE ? (
+              <p className="text-xs font-medium text-rose-600">
+                Authentication is not configured. Please contact support.
+              </p>
             ) : null}
           </form>
         </div>

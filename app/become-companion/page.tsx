@@ -1,5 +1,6 @@
-﻿import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import { PageHero } from "@/components/PageHero";
+import { IS_DEMO_MODE } from "@/lib/config/runtime";
 
 const benefits = ["Flexible work", "Meaningful conversations", "Safe platform", "Verified community"];
 
@@ -44,7 +45,9 @@ export default function BecomeCompanionPage() {
 
         <article className="rounded-2xl border border-line bg-surface p-6 shadow-[0_6px_20px_rgba(24,86,115,0.08)]">
           <h2 className="text-2xl font-semibold text-foreground">Application form</h2>
-          <p className="mt-2 text-sm text-muted">Application form is frontend-only demo for now.</p>
+          <p className="mt-2 text-sm text-muted">
+            {IS_DEMO_MODE ? "Application form is frontend-only demo for now." : "Application form is currently unavailable."}
+          </p>
 
           <form className="mt-6 space-y-4" action="#">
             <div>
@@ -131,6 +134,3 @@ export default function BecomeCompanionPage() {
     </>
   );
 }
-
-
-

@@ -1,10 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { listCompanions } from "@/lib/api/companions";
 import { ConnectAppHeader } from "@/components/ConnectAppHeader";
 import { ConnectCompanionCard } from "@/components/ConnectCompanionCard";
 import { connectCategoryGroups, ConnectFilters } from "@/components/ConnectFilters";
 import { ConnectTabs, type ConnectServiceTab } from "@/components/ConnectTabs";
+import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { connectCompanions } from "@/lib/data";
 
 const allCategoryItems = connectCategoryGroups.flatMap((group) => group.items);
@@ -14,10 +16,26 @@ export default function ConnectNowPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [availability, setAvailability] = useState<"all" | "online">("all");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [companions, setCompanions] = useState(connectCompanions);
+  const [apiError, setApiError] = useState("");
+
+  useEffect(() => {
+    if (!IS_PRODUCTION_READY_MODE) return;
+    void (async () => {
+      const response = await listCompanions();
+      if (response.error) {
+        setApiError("Companions are currently unavailable. Please try again later.");
+        setCompanions([]);
+        return;
+      }
+      setCompanions(response.data as typeof connectCompanions);
+      setApiError("");
+    })();
+  }, []);
 
   const filteredCompanions = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
-    return connectCompanions.filter((companion) => {
+    return companions.filter((companion) => {
       if (availability === "online" && !companion.online) return false;
 
       if (selectedTab === "Video Call" && typeof companion.videoPrice !== "number") return false;
@@ -33,7 +51,7 @@ export default function ConnectNowPage() {
       const haystack = `${companion.name} ${companion.tagline} ${companion.category}`.toLowerCase();
       return haystack.includes(term);
     });
-  }, [availability, searchTerm, selectedCategory, selectedTab]);
+  }, [availability, companions, searchTerm, selectedCategory, selectedTab]);
 
   const handleClearAll = () => {
     setSelectedTab("Chat");
@@ -99,6 +117,12 @@ export default function ConnectNowPage() {
                 <ConnectCompanionCard key={companion.id} companion={companion} />
               ))}
             </div>
+
+            {apiError ? (
+              <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-8 text-center text-sm text-amber-700">
+                {apiError}
+              </div>
+            ) : null}
 
             {filteredCompanions.length === 0 ? (
               <div className="mt-6 rounded-xl border border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-600">

@@ -4,6 +4,7 @@ import { MessageCircle, Mic, PhoneOff, Volume2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { PartnerGuard } from "@/components/partner/PartnerGuard";
+import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 
 function formatTimer(seconds: number) {
   const mins = Math.floor(seconds / 60)
@@ -33,6 +34,25 @@ export default function PartnerAudioCallPage() {
     const timer = window.setInterval(() => setElapsed((current) => current + 1), 1000);
     return () => window.clearInterval(timer);
   }, []);
+
+  if (IS_PRODUCTION_READY_MODE) {
+    return (
+      <PartnerGuard requireOnboarding>
+        <section className="flex h-screen min-h-screen items-center justify-center bg-[#0f1f4d] px-4 py-6">
+          <div className="w-full max-w-md rounded-2xl border border-amber-200/50 bg-amber-100/10 p-6 text-center text-white">
+            <p className="text-lg font-semibold">Calling service is not configured.</p>
+            <button
+              type="button"
+              onClick={() => router.push("/partner/dashboard")}
+              className="mt-4 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white"
+            >
+              Back to Dashboard
+            </button>
+          </div>
+        </section>
+      </PartnerGuard>
+    );
+  }
 
   return (
     <PartnerGuard requireOnboarding>

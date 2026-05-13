@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { logoutPartnerAuthSession } from "@/lib/auth/logout";
+import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import {
   getPartnerOnlineStatus,
   setPartnerOnlineStatus,
@@ -48,6 +49,15 @@ export default function PartnerSettingsPage() {
     await logoutPartnerAuthSession();
     router.replace("/partner/login");
   };
+
+  if (IS_PRODUCTION_READY_MODE) {
+    return (
+      <section className="rounded-xl border border-amber-200 bg-amber-50 p-5">
+        <h2 className="text-xl font-semibold text-amber-800">Partner settings are unavailable</h2>
+        <p className="mt-2 text-sm text-amber-700">Partner settings service is not connected yet.</p>
+      </section>
+    );
+  }
 
   return (
     <section className="space-y-4">

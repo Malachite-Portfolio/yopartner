@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { getPartnerBookings } from "@/lib/partnerData";
 
 type BookingFilter = "All" | "Upcoming" | "Completed" | "Cancelled";
@@ -17,6 +18,15 @@ export default function PartnerBookingsPage() {
     if (filter === "All") return bookings;
     return bookings.filter((item) => item.status === filter);
   }, [bookings, filter]);
+
+  if (IS_PRODUCTION_READY_MODE) {
+    return (
+      <section className="rounded-xl border border-amber-200 bg-amber-50 p-5">
+        <h2 className="text-xl font-semibold text-amber-800">Partner bookings are unavailable</h2>
+        <p className="mt-2 text-sm text-amber-700">Partner booking service is not connected yet.</p>
+      </section>
+    );
+  }
 
   return (
     <section className="space-y-4">

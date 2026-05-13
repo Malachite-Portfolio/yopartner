@@ -1,6 +1,7 @@
 "use client";
 
 import { RotateCcw, ShieldAlert, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { adminStorageKeys, ADMIN_LOGIN_KEY } from "@/lib/adminData";
 import {
   PARTNER_FIREBASE_PHONE_KEY,
@@ -29,6 +30,7 @@ import {
 } from "@/lib/partnerAuth";
 import { WALLET_BALANCE_KEY, WALLET_TRANSACTIONS_KEY } from "@/lib/wallet";
 import { useEffect, useMemo, useState } from "react";
+import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 
 const USER_KEYS = [
   DEMO_LOGGED_IN_KEY,
@@ -65,12 +67,19 @@ function clearKeys(keys: string[]) {
 }
 
 export default function DevToolsPage() {
+  const router = useRouter();
   const [hostname] = useState<string>(() => (typeof window !== "undefined" ? window.location.hostname : "unknown"));
   const [firebaseUserId] = useState<string>(() => getCurrentFirebaseUser()?.uid ?? "None");
   const [firebasePhone] = useState<string>(() => getCurrentFirebaseUser()?.phoneNumber ?? "None");
   const [adminConfigured, setAdminConfigured] = useState<"checking" | "yes" | "no">("checking");
   const [verifyMessage, setVerifyMessage] = useState("");
   const firebaseClientConfigured = isFirebaseOtpEnabled();
+
+  useEffect(() => {
+    if (IS_PRODUCTION_READY_MODE) {
+      router.replace("/");
+    }
+  }, [router]);
 
   const availableToken = useMemo(() => {
     if (typeof window === "undefined") return "";
@@ -131,6 +140,10 @@ export default function DevToolsPage() {
       danger: true,
     },
   ];
+
+  if (IS_PRODUCTION_READY_MODE) {
+    return null;
+  }
 
   return (
     <section className="min-h-screen bg-[#f8fafc] px-4 py-8 sm:px-6 lg:px-8">

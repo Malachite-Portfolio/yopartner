@@ -3,6 +3,7 @@
 import { Search } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { getPartnerInbox } from "@/lib/partnerData";
 
 export default function PartnerChatsPage() {
@@ -14,6 +15,15 @@ export default function PartnerChatsPage() {
     if (!term) return chats;
     return chats.filter((chat) => `${chat.userMaskedPhone} ${chat.lastMessage}`.toLowerCase().includes(term));
   }, [chats, search]);
+
+  if (IS_PRODUCTION_READY_MODE) {
+    return (
+      <section className="rounded-xl border border-amber-200 bg-amber-50 p-5">
+        <h2 className="text-xl font-semibold text-amber-800">Partner chats are unavailable</h2>
+        <p className="mt-2 text-sm text-amber-700">Partner chat service is not connected yet.</p>
+      </section>
+    );
+  }
 
   return (
     <section className="space-y-4">

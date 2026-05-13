@@ -4,7 +4,10 @@ import { CalendarDays, ChevronDown, LogOut, UserRound, Wallet } from "lucide-rea
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { USER_FIREBASE_PHONE_KEY } from "@/lib/auth/firebasePhoneAuth";
 import { logoutUserAuthSession } from "@/lib/auth/logout";
+import { getWallet } from "@/lib/api/wallet";
+import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { getDemoPhone, subscribeDemoAuthUpdates } from "@/lib/demoAuth";
 import { formatINR, getWalletBalance, subscribeWalletUpdates } from "@/lib/wallet";
 
@@ -18,14 +21,32 @@ export function ProfileMenu({ triggerClassName, avatarClassName }: ProfileMenuPr
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [balance, setBalance] = useState(() => (typeof window !== "undefined" ? getWalletBalance() : 0));
-  const [phone, setPhone] = useState(() => (typeof window !== "undefined" ? getDemoPhone() : "+919958719363"));
+  const [phone, setPhone] = useState(() => {
+    if (typeof window === "undefined") return "+919958719363";
+    if (IS_PRODUCTION_READY_MODE) {
+      return window.localStorage.getItem(USER_FIREBASE_PHONE_KEY) || "+91**********";
+    }
+    return getDemoPhone();
+  });
   const rootRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
+    if (IS_PRODUCTION_READY_MODE) {
+      void (async () => {
+        const response = await getWallet();
+        if (response.data) {
+          setBalance(response.data.balance);
+        }
+      })();
+      return () => undefined;
+    }
     return subscribeWalletUpdates(() => setBalance(getWalletBalance()));
   }, []);
 
   useEffect(() => {
+    if (IS_PRODUCTION_READY_MODE) {
+      return () => undefined;
+    }
     return subscribeDemoAuthUpdates(() => setPhone(getDemoPhone()));
   }, []);
 

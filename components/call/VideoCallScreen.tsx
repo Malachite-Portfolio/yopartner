@@ -4,6 +4,7 @@ import { Camera, CameraOff, MessageCircle, Mic, PhoneOff, RefreshCcw } from "luc
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import type { CompanionRouteProfile } from "@/lib/companionRoutes";
 
 function formatTimer(seconds: number) {
@@ -56,6 +57,25 @@ export function VideoCallScreen({ companion }: { companion: CompanionRouteProfil
 
     return () => window.clearInterval(timer);
   }, []);
+
+  if (IS_PRODUCTION_READY_MODE) {
+    return (
+      <section className="relative h-screen min-h-screen overflow-hidden bg-[#0b1224] text-white">
+        <div className="relative z-10 mx-auto flex h-full w-full max-w-6xl items-center justify-center px-4 py-4 sm:px-6 sm:py-5">
+          <div className="w-full max-w-md rounded-2xl border border-amber-200/60 bg-amber-100/10 p-6 text-center">
+            <p className="text-xl font-semibold text-amber-100">Calling service is not configured.</p>
+            <button
+              type="button"
+              onClick={() => router.push(`/connect-now/${companion.id}`)}
+              className="mt-4 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white"
+            >
+              Back to Profile
+            </button>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="relative h-screen min-h-screen overflow-hidden bg-[#0b1224] text-white">

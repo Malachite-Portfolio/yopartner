@@ -3,6 +3,7 @@
 import { X } from "lucide-react";
 import { useState } from "react";
 import { ClientDiaryCard } from "@/components/ClientDiaryCard";
+import { IS_DEMO_MODE } from "@/lib/config/runtime";
 import { clientDiaries, type ClientDiary } from "@/lib/data";
 
 export default function ClientDiariesPage() {
@@ -37,7 +38,9 @@ export default function ClientDiariesPage() {
                 <X size={16} />
               </button>
             </div>
-            <p className="mt-3 text-sm text-slate-600">Video story preview will be added later.</p>
+            <p className="mt-3 text-sm text-slate-600">
+              {IS_DEMO_MODE ? "Video story preview will be added later." : "Video story preview is unavailable right now."}
+            </p>
           </div>
         </div>
       ) : null}

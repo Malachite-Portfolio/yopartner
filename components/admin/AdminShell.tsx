@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminTopbar } from "@/components/admin/AdminTopbar";
+import { IS_DEMO_MODE, IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { ADMIN_LOGIN_KEY } from "@/lib/adminData";
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
@@ -14,10 +15,22 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   );
 
   useEffect(() => {
+    if (IS_PRODUCTION_READY_MODE) return;
     if (!isLoggedIn) {
       router.replace("/admin/login");
     }
   }, [isLoggedIn, router]);
+
+  if (IS_PRODUCTION_READY_MODE) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+        <div className="w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
+          <p className="text-base font-semibold text-slate-900">Admin authentication is not configured for production.</p>
+          <p className="mt-2 text-sm text-slate-600">Connect real admin auth and roles before enabling /admin panel.</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!isLoggedIn) {
     return (
@@ -50,9 +63,11 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       <div className="flex min-w-0 flex-1 flex-col">
         <AdminTopbar onMenuOpen={() => setSidebarOpen(true)} />
         <main className="flex-1 p-4 sm:p-6">
-          <p className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700">
-            Test Version - demo data only
-          </p>
+          {IS_DEMO_MODE ? (
+            <p className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700">
+              Test Version - demo data only
+            </p>
+          ) : null}
           {children}
         </main>
       </div>

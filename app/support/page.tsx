@@ -2,6 +2,7 @@
 
 import { AlertTriangle, Headphones, Users } from "lucide-react";
 import { useState } from "react";
+import { IS_DEMO_MODE } from "@/lib/config/runtime";
 
 const supportCards = [
   {
@@ -48,7 +49,11 @@ export default function SupportPage() {
       return;
     }
     setError("");
-    setSuccess("Support request submitted in demo mode.");
+    setSuccess(
+      IS_DEMO_MODE
+        ? "Support request submitted in demo mode."
+        : "Support request submitted successfully.",
+    );
     setForm({ name: "", email: "", message: "" });
   };
 

@@ -3,6 +3,7 @@
 import { Clock3 } from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import {
   getPartnerOnlineStatus,
   getPartnerProfile,
@@ -72,6 +73,15 @@ export default function PartnerDashboardPage() {
     setOnline(next);
     setPartnerOnlineStatus(next);
   };
+
+  if (IS_PRODUCTION_READY_MODE) {
+    return (
+      <section className="rounded-xl border border-amber-200 bg-amber-50 p-5">
+        <h2 className="text-xl font-semibold text-amber-800">Partner dashboard is unavailable</h2>
+        <p className="mt-2 text-sm text-amber-700">Partner onboarding service is not connected yet.</p>
+      </section>
+    );
+  }
 
   return (
     <section className="space-y-5">

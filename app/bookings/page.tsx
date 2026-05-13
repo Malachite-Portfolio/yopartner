@@ -2,6 +2,8 @@
 
 import { CalendarDays, Funnel, RefreshCw, Search, ShieldCheck } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { getMyBookings } from "@/lib/api/bookings";
+import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { getDemoBookings, subscribeBookingUpdates, type BookingStatus, type DemoBooking } from "@/lib/bookings";
 import { formatINR } from "@/lib/wallet";
 
@@ -17,10 +19,40 @@ export default function BookingsPage() {
   const [search, setSearch] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [bookings, setBookings] = useState<DemoBooking[]>([]);
+  const [apiError, setApiError] = useState("");
   const [statusFilter, setStatusFilter] = useState<"All" | BookingStatus>("All");
   const [filterOpen, setFilterOpen] = useState(false);
 
   useEffect(() => {
+    if (IS_PRODUCTION_READY_MODE) {
+      void (async () => {
+        const response = await getMyBookings();
+        if (response.error) {
+          setApiError("Booking service is not connected yet.");
+          setBookings([]);
+          return;
+        }
+
+        const mapped: DemoBooking[] = response.data.map((item) => ({
+          id: item.id,
+          bookingId: item.bookingId,
+          companionName: item.companionName,
+          companionId: "",
+          serviceType: item.serviceType,
+          price: item.amount,
+          routeSource: "connect-now",
+          status:
+            item.status === "Pending" || item.status === "Completed"
+              ? item.status
+              : "Confirmed",
+          createdAt: item.createdAt,
+        }));
+        setApiError("");
+        setBookings(mapped);
+      })();
+      return () => undefined;
+    }
+
     const sync = () => setBookings(getDemoBookings());
     sync();
     return subscribeBookingUpdates(sync);
@@ -28,6 +60,34 @@ export default function BookingsPage() {
 
   const handleRefresh = () => {
     setIsRefreshing(true);
+    if (IS_PRODUCTION_READY_MODE) {
+      void (async () => {
+        const response = await getMyBookings();
+        if (response.error) {
+          setApiError("Booking service is not connected yet.");
+          setBookings([]);
+        } else {
+          const mapped: DemoBooking[] = response.data.map((item) => ({
+            id: item.id,
+            bookingId: item.bookingId,
+            companionName: item.companionName,
+            companionId: "",
+            serviceType: item.serviceType,
+            price: item.amount,
+            routeSource: "connect-now",
+            status:
+              item.status === "Pending" || item.status === "Completed"
+                ? item.status
+                : "Confirmed",
+            createdAt: item.createdAt,
+          }));
+          setBookings(mapped);
+          setApiError("");
+        }
+        window.setTimeout(() => setIsRefreshing(false), 500);
+      })();
+      return;
+    }
     setBookings(getDemoBookings());
     window.setTimeout(() => setIsRefreshing(false), 500);
   };
@@ -136,6 +196,12 @@ export default function BookingsPage() {
             <p className="mt-2 text-3xl font-semibold text-[#1e3a8a]">{stats.completed}</p>
           </article>
         </div>
+
+        {apiError ? (
+          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700">
+            {apiError}
+          </div>
+        ) : null}
 
         {filteredBookings.length === 0 ? (
           <div className="mt-6 rounded-2xl border border-slate-200 bg-white px-4 py-16 text-center shadow-sm sm:px-6 sm:py-20">

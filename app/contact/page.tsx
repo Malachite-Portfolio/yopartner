@@ -1,5 +1,6 @@
-﻿import { Mail, ShieldAlert, UserRound } from "lucide-react";
+import { Mail, ShieldAlert, UserRound } from "lucide-react";
 import { PageHero } from "@/components/PageHero";
+import { IS_DEMO_MODE } from "@/lib/config/runtime";
 
 const supportCards = [
   {
@@ -30,7 +31,9 @@ export default function ContactPage() {
       <section className="mx-auto grid w-full max-w-6xl gap-6 px-4 pb-16 sm:px-6 lg:grid-cols-[1.1fr_0.9fr] lg:px-8">
         <article className="rounded-2xl border border-line bg-surface p-6 shadow-[0_8px_24px_rgba(24,86,115,0.12)]">
           <h2 className="text-2xl font-semibold text-foreground">Send a message</h2>
-          <p className="mt-2 text-sm text-muted">Form is frontend-only demo for now.</p>
+          <p className="mt-2 text-sm text-muted">
+            {IS_DEMO_MODE ? "Form is frontend-only demo for now." : "Contact form is currently unavailable."}
+          </p>
 
           <form className="mt-6 space-y-4" action="#">
             <div>
@@ -96,6 +99,3 @@ export default function ContactPage() {
     </>
   );
 }
-
-
-

@@ -12,6 +12,7 @@ import {
   setAuthMode,
   setupRecaptcha,
 } from "@/lib/auth/firebasePhoneAuth";
+import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { connectCompanions } from "@/lib/data";
 import { setDemoPhone } from "@/lib/demoAuth";
 
@@ -48,6 +49,11 @@ export default function LoginPage() {
 
     const normalized = `+91${digits}`;
     setDemoPhone(normalized);
+
+    if (IS_PRODUCTION_READY_MODE && !firebaseEnabled) {
+      setMessage("Authentication is not configured. Please contact support.");
+      return;
+    }
 
     if (!firebaseEnabled) {
       setAuthMode("demo");
@@ -177,13 +183,24 @@ export default function LoginPage() {
               </div>
             ) : null}
             <p className="mt-2 inline-flex rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
-              {firebaseEnabled ? (firebaseTestMode ? "Firebase Test Numbers Mode" : "Firebase OTP") : "Demo OTP"}
+              {firebaseEnabled
+                ? firebaseTestMode
+                  ? "Firebase Test Numbers Mode"
+                  : "Firebase OTP"
+                : IS_PRODUCTION_READY_MODE
+                  ? "OTP Unavailable"
+                  : "Demo OTP"}
             </p>
             {firebaseEnabled ? (
               <>
                 <p className="mt-2 text-xs text-slate-500">Complete the verification to receive OTP.</p>
                 <div id="user-recaptcha-container" className="mt-2" />
               </>
+            ) : null}
+            {!firebaseEnabled && IS_PRODUCTION_READY_MODE ? (
+              <p className="mt-2 text-xs font-medium text-rose-600">
+                Authentication is not configured. Please contact support.
+              </p>
             ) : null}
 
             <p className="mt-4 inline-flex items-center gap-2 text-xs text-slate-500">

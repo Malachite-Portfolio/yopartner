@@ -2,29 +2,29 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { ComponentType } from "react";
-import { BadgeCheck, CalendarDays, CheckCircle2, MessageCircle, PhoneCall, Video } from "lucide-react";
+import { BadgeCheck, CheckCircle2, MessageCircle, PhoneCall, Video } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { createBooking } from "@/lib/api/bookings";
+import { getWallet } from "@/lib/api/wallet";
+import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import type { ConnectCompanion } from "@/lib/data";
-import { createDemoBooking } from "@/lib/bookings";
 import { formatINR, getWalletBalance, subscribeWalletUpdates } from "@/lib/wallet";
 
 type ProfileBookingPanelProps = {
   companion: ConnectCompanion;
-  mode?: "chat" | "visit";
-  routeSource?: "connect-now" | "home-visit";
   initialType?: SessionType;
 };
 
-type SessionType = "chat" | "audio" | "video" | "visit";
+type SessionType = "chat" | "audio" | "video";
 
 type SessionOption = {
   type: SessionType;
   label: string;
   icon: ComponentType<{ size?: number; className?: string }>;
-  unit: "/min" | "/hr";
+  unit: "/min";
   price: number;
-  badge: "CHAT" | "AUDIO" | "VIDEO" | "VISIT";
+  badge: "CHAT" | "AUDIO" | "VIDEO";
 };
 
 function SessionCard({
@@ -68,8 +68,6 @@ function SessionCard({
 
 export function ProfileBookingPanel({
   companion,
-  mode = "chat",
-  routeSource = "connect-now",
   initialType,
 }: ProfileBookingPanelProps) {
   const router = useRouter();
@@ -78,30 +76,61 @@ export function ProfileBookingPanel({
       { type: "chat", label: "Chat", icon: MessageCircle, unit: "/min", price: companion.chatPrice, badge: "CHAT" },
       { type: "audio", label: "Audio", icon: PhoneCall, unit: "/min", price: companion.voicePrice, badge: "AUDIO" },
       { type: "video", label: "Video", icon: Video, unit: "/min", price: companion.videoPrice ?? 20, badge: "VIDEO" },
-      { type: "visit", label: "Visit", icon: CalendarDays, unit: "/hr", price: companion.visitPrice, badge: "VISIT" },
     ],
-    [companion.chatPrice, companion.voicePrice, companion.videoPrice, companion.visitPrice],
+    [companion.chatPrice, companion.voicePrice, companion.videoPrice],
   );
 
-  const [selectedType, setSelectedType] = useState<SessionType>(initialType ?? (mode === "visit" ? "visit" : "chat"));
+  const [selectedType, setSelectedType] = useState<SessionType>(initialType ?? "chat");
   const [walletBalance, setWalletBalance] = useState(0);
   const [actionMessage, setActionMessage] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
+    if (IS_PRODUCTION_READY_MODE) {
+      void (async () => {
+        const walletResponse = await getWallet();
+        if (walletResponse.data) {
+          setWalletBalance(walletResponse.data.balance);
+        }
+      })();
+      return () => undefined;
+    }
     const sync = () => setWalletBalance(getWalletBalance());
     sync();
     return subscribeWalletUpdates(sync);
   }, []);
 
   const selectedOption = options.find((option) => option.type === selectedType) ?? options[0];
-  const multiplier = selectedOption.type === "visit" ? 1 : 5;
+  const multiplier = 5;
   const requiredAmount = selectedOption.price * multiplier;
   const shortfall = Math.max(requiredAmount - walletBalance, 0);
   const hasSufficientBalance = walletBalance >= requiredAmount;
 
   const handlePrimaryAction = () => {
-    if (!hasSufficientBalance || isSubmitting) return;
+    if (!hasSufficientBalance) return;
+
+    if (IS_PRODUCTION_READY_MODE) {
+      void (async () => {
+        const response = await createBooking({
+          companionId: companion.id,
+          serviceType: selectedType,
+        });
+        if (response.error) {
+          setActionMessage("Booking service is not connected yet.");
+          return;
+        }
+
+        if (selectedType === "chat") {
+          router.push(`/chat/${companion.id}`);
+          return;
+        }
+        if (selectedType === "audio") {
+          router.push(`/call/audio/${companion.id}`);
+          return;
+        }
+        router.push(`/call/video/${companion.id}`);
+      })();
+      return;
+    }
 
     if (selectedType === "chat") {
       router.push(`/chat/${companion.id}`);
@@ -117,46 +146,21 @@ export function ProfileBookingPanel({
       router.push(`/call/video/${companion.id}`);
       return;
     }
-
-    setIsSubmitting(true);
-    const created = createDemoBooking({
-      companionName: companion.name,
-      companionId: companion.id,
-      serviceType: selectedType,
-      price: requiredAmount,
-      routeSource,
-    });
-
-    if (!created.success) {
-      setActionMessage("Unable to create booking right now.");
-      setIsSubmitting(false);
-      return;
-    }
-
-    setActionMessage("Session booked successfully. Redirecting...");
-    setTimeout(() => {
-      router.push("/bookings");
-    }, 350);
   };
 
-  const gradientClass =
-    mode === "visit"
-      ? "from-[#2a245b] via-[#5b245a] to-[#a53f48]"
-      : "from-[#1f2a44] via-[#2b1f48] to-[#4338ca]";
+  const gradientClass = "from-[#1f2a44] via-[#2b1f48] to-[#4338ca]";
   const primaryActionLabel =
     selectedType === "chat"
       ? "Start Chat"
       : selectedType === "audio"
         ? "Start Audio Call"
-        : selectedType === "video"
-          ? "Start Video Call"
-          : "Book Visit";
+        : "Start Video Call";
 
   return (
     <div className="space-y-3.5 lg:sticky lg:top-4">
       <section className={`rounded-2xl bg-gradient-to-br ${gradientClass} p-5 text-white shadow-sm`}>
         <p className="text-xs uppercase tracking-[0.18em] text-cyan-200">
-          {mode === "visit" ? "In-Person Visit" : "Chat"}
+          Chat
         </p>
         <h3 className="mt-1 text-xl font-semibold">Book your session</h3>
 
@@ -214,16 +218,15 @@ export function ProfileBookingPanel({
           )}
         </div>
 
-        {actionMessage ? <p className="mt-3 text-xs font-medium text-emerald-100">{actionMessage}</p> : null}
+        {actionMessage ? <p className="mt-3 text-xs font-medium text-amber-100">{actionMessage}</p> : null}
 
         {hasSufficientBalance ? (
           <button
             type="button"
             onClick={handlePrimaryAction}
-            disabled={isSubmitting}
             className="mt-3.5 h-12 w-full rounded-xl bg-emerald-600 text-sm font-semibold text-white disabled:opacity-70"
           >
-            {isSubmitting ? "Booking..." : primaryActionLabel}
+            {primaryActionLabel}
           </button>
         ) : (
           <button

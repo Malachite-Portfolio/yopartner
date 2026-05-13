@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { ADMIN_LOGIN_KEY } from "@/lib/adminData";
 
 export default function AdminLoginPage() {
@@ -12,6 +13,10 @@ export default function AdminLoginPage() {
 
   const handleLogin = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (IS_PRODUCTION_READY_MODE) {
+      setError("Admin authentication is not configured for production.");
+      return;
+    }
     const normalizedEmail = email.trim().toLowerCase();
     if (!normalizedEmail || !password.trim()) {
       setError("Email and password are required.");
@@ -69,10 +74,12 @@ export default function AdminLoginPage() {
           </button>
         </form>
 
-        <p className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
-          Demo: <span className="font-semibold">admin@yopartner.in</span> /{" "}
-          <span className="font-semibold">admin123</span>
-        </p>
+        {!IS_PRODUCTION_READY_MODE ? (
+          <p className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+            Demo: <span className="font-semibold">admin@yopartner.in</span> /{" "}
+            <span className="font-semibold">admin123</span>
+          </p>
+        ) : null}
       </div>
     </section>
   );

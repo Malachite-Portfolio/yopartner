@@ -15,6 +15,7 @@ import {
   setAuthMode,
   verifyOtp,
 } from "@/lib/auth/firebasePhoneAuth";
+import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { getDemoPhone, setDemoLoggedIn } from "@/lib/demoAuth";
 
 const OTP_LENGTH = 6;
@@ -56,6 +57,11 @@ export default function OtpPage() {
   };
 
   const handleVerify = async () => {
+    if (IS_PRODUCTION_READY_MODE && mode !== "firebase") {
+      setError("Authentication is not configured. Please contact support.");
+      return;
+    }
+
     if (!isComplete) {
       setError("Please enter the complete 6-digit OTP.");
       return;
@@ -86,7 +92,11 @@ export default function OtpPage() {
         });
 
         if (sessionResponse.status === 503) {
-          setError("Firebase Admin is not configured. Please use Demo OTP mode.");
+          setError(
+            IS_PRODUCTION_READY_MODE
+              ? "Authentication is not configured. Please contact support."
+              : "Firebase Admin is not configured. Please use Demo OTP mode.",
+          );
           setIsSubmitting(false);
           return;
         }
@@ -201,7 +211,7 @@ export default function OtpPage() {
           {message && <p className="mt-3 text-xs font-medium text-emerald-700">{message}</p>}
           {error ? <p className="mt-1 text-xs font-medium text-rose-600">{error}</p> : null}
           <p className="mt-2 inline-flex rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
-            {mode === "firebase" ? "Firebase OTP" : "Demo OTP"}
+            {mode === "firebase" ? "Firebase OTP" : IS_PRODUCTION_READY_MODE ? "OTP Unavailable" : "Demo OTP"}
           </p>
 
           <p className="mt-5 inline-flex items-center gap-2 text-xs text-slate-500">
