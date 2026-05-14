@@ -53,7 +53,7 @@ export default function PartnerLoginPage() {
     }
 
     if (IS_PRODUCTION_READY_MODE && !firebaseEnabled) {
-      setError("Authentication is not configured. Please contact support.");
+      setError("Firebase OTP is not configured. Please check Vercel environment variables.");
       return;
     }
 
@@ -153,7 +153,7 @@ export default function PartnerLoginPage() {
                 ? "Firebase Test Numbers Mode"
                 : "Firebase OTP"
               : IS_PRODUCTION_READY_MODE
-                ? "OTP Unavailable"
+                ? "Firebase OTP Required"
                 : "Demo OTP"}
           </p>
           {firebaseEnabled ? (
@@ -163,7 +163,9 @@ export default function PartnerLoginPage() {
             </>
           ) : null}
           {!firebaseEnabled && IS_PRODUCTION_READY_MODE ? (
-            <p className="text-xs font-medium text-rose-600">Authentication is not configured. Please contact support.</p>
+            <p className="text-xs font-medium text-rose-600">
+              Firebase OTP is not configured. Please check Vercel environment variables.
+            </p>
           ) : null}
 
           <p className="inline-flex items-center gap-2 text-xs text-slate-500">

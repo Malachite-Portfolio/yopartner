@@ -6,11 +6,11 @@ export default function CompanionsPage() {
     <>
       <PageHero
         title="Meet Verified YoPartner Companions"
-        subtitle="Browse trusted companions for conversation, support, activities, and safe in-person sessions."
+        subtitle="Browse trusted companions for conversation, support, and meaningful listening sessions."
       />
       <CompanionSection
         showHeader={false}
-        note="Profiles shown are demo data for now."
+        note="Verified companions will appear here after approval."
       />
     </>
   );

@@ -15,6 +15,11 @@ function resolveApiUrl(input: string) {
   return `${baseUrl.replace(/\/+$/, "")}${input}`;
 }
 
+export function isApiBaseUrlConfigured() {
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
+  return Boolean(baseUrl);
+}
+
 export async function apiRequest<T>(input: string, init?: RequestInit): Promise<ApiResult<T>> {
   try {
     const token = getStoredAuthToken();
@@ -40,7 +45,7 @@ export async function apiRequest<T>(input: string, init?: RequestInit): Promise<
             payload.message ||
             payload.error ||
             (response.status === 501
-              ? "Backend service is not connected yet."
+              ? "Network request failed. Please check your connection or backend URL."
               : "Request failed."),
         },
       };

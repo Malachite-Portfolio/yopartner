@@ -28,8 +28,9 @@ export default function OtpPage() {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const firebaseEnabled = isFirebaseOtpEnabled();
+  const pendingConfirmation = getPendingConfirmationResult();
   const mode =
-    firebaseEnabled && (getAuthMode() === "firebase" || Boolean(getPendingConfirmationResult()))
+    firebaseEnabled && (getAuthMode() === "firebase" || Boolean(pendingConfirmation))
       ? "firebase"
       : "demo";
 
@@ -56,8 +57,13 @@ export default function OtpPage() {
   };
 
   const handleVerify = async () => {
-    if (IS_PRODUCTION_READY_MODE && mode !== "firebase") {
-      setError("Authentication is not configured. Please contact support.");
+    if (IS_PRODUCTION_READY_MODE && !firebaseEnabled) {
+      setError("Firebase OTP is not configured. Please check Vercel environment variables.");
+      return;
+    }
+
+    if (IS_PRODUCTION_READY_MODE && !pendingConfirmation) {
+      setError("OTP session expired. Please request a new OTP.");
       return;
     }
 
@@ -67,8 +73,7 @@ export default function OtpPage() {
     }
 
     if (mode === "firebase") {
-      const confirmation = getPendingConfirmationResult();
-      if (!confirmation) {
+      if (!pendingConfirmation) {
         setError("OTP session expired. Please request a new OTP.");
         return;
       }
@@ -78,7 +83,7 @@ export default function OtpPage() {
       setMessage("");
       try {
         const otpValue = otp.join("");
-        const user = await verifyOtp(confirmation, otpValue);
+        const user = await verifyOtp(pendingConfirmation, otpValue);
         const idToken = await user.getIdToken();
 
         const sessionResponse = await fetch("/api/auth/session", {
@@ -93,7 +98,7 @@ export default function OtpPage() {
         if (sessionResponse.status === 503) {
           setError(
             IS_PRODUCTION_READY_MODE
-              ? "Authentication is not configured. Please contact support."
+              ? "Authentication service is temporarily unavailable. Please try again."
               : "Firebase Admin is not configured. Please use Demo OTP mode.",
           );
           setIsSubmitting(false);
@@ -195,8 +200,11 @@ export default function OtpPage() {
         {message ? <p className="mt-3 text-xs font-medium text-emerald-700">{message}</p> : null}
         {error ? <p className="mt-1 text-xs font-medium text-rose-600">{error}</p> : null}
         <p className="mt-2 inline-flex rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
-          {mode === "firebase" ? "Firebase OTP" : IS_PRODUCTION_READY_MODE ? "OTP Unavailable" : "Demo OTP"}
+          {mode === "firebase" ? "Firebase OTP" : IS_PRODUCTION_READY_MODE ? "Firebase OTP Required" : "Demo OTP"}
         </p>
+        {IS_PRODUCTION_READY_MODE && firebaseEnabled && !pendingConfirmation ? (
+          <p className="mt-1 text-xs font-medium text-rose-600">OTP session expired. Please request a new OTP.</p>
+        ) : null}
 
         <p className="mt-5 inline-flex items-center gap-2 text-xs text-slate-500">
           <ShieldCheck size={14} className="text-emerald-600" />

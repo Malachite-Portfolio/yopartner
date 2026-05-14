@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PARTNER_FIREBASE_TOKEN_KEY } from "@/lib/auth/firebasePhoneAuth";
 import { submitPartnerApplication } from "@/lib/api/partner";
+import { isApiBaseUrlConfigured } from "@/lib/api/client";
 import { IS_DEMO_MODE, IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { firebaseAuth } from "@/lib/firebase/client";
 import {
@@ -247,6 +248,11 @@ export default function PartnerOnboardingPage() {
     if (IS_PRODUCTION_READY_MODE) {
       void (async () => {
         setIsSubmitting(true);
+        if (!isApiBaseUrlConfigured()) {
+          setErrors({ base: "Backend API URL is not configured. Please set NEXT_PUBLIC_API_BASE_URL." });
+          setIsSubmitting(false);
+          return;
+        }
         if (!firebaseAuth?.currentUser) {
           setErrors({ base: "Please login again as a partner to submit your profile." });
           setIsSubmitting(false);

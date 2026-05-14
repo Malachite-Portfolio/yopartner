@@ -33,7 +33,7 @@ export async function requireFirebaseUser(request: Request): Promise<AuthResult>
 
   const prisma = getPrismaClient();
   if (!prisma) {
-    return { error: "Backend service is not connected yet.", status: 501 };
+    return { error: "Network request failed. Please check your connection or backend URL.", status: 501 };
   }
 
   const user = await prisma.user.upsert({
@@ -85,7 +85,7 @@ export async function requireAdminUser(request: Request) {
 
   const prisma = getPrismaClient();
   if (!prisma) {
-    return { error: "Backend service is not connected yet.", status: 501 } as const;
+    return { error: "Network request failed. Please check your connection or backend URL.", status: 501 } as const;
   }
 
   const promotedUser = await prisma.user.update({

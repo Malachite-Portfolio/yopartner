@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-export function notImplementedResponse(message = "Backend service is not connected yet.") {
+export function notImplementedResponse(message = "Network request failed. Please check your connection or backend URL.") {
   return NextResponse.json(
     {
       error: "NOT_IMPLEMENTED",

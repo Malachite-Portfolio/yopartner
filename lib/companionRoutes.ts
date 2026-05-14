@@ -1,4 +1,4 @@
-import { connectCompanions, homeVisitCompanions } from "@/lib/data";
+import { connectCompanions } from "@/lib/data";
 
 export type CompanionRouteProfile = {
   id: string;
@@ -27,22 +27,5 @@ export function getCompanionRouteProfile(id: string): CompanionRouteProfile | nu
     };
   }
 
-  const fallbackCompanion = homeVisitCompanions.find(
-    (item) => item.id === id || item.connectProfileId === id,
-  );
-
-  if (!fallbackCompanion) {
-    return null;
-  }
-
-  return {
-    id,
-    name: fallbackCompanion.name,
-    image: fallbackCompanion.image,
-    tagline: fallbackCompanion.tagline,
-    online: true,
-    chatPrice: 10,
-    voicePrice: 15,
-    videoPrice: 20,
-  };
+  return null;
 }
