@@ -71,7 +71,7 @@ export function AudioCallScreen({ companion }: { companion: CompanionRouteProfil
       <section className="relative h-screen min-h-screen overflow-hidden bg-gradient-to-b from-[#0f1d4d] via-[#2b235e] to-[#4d2a68] px-4 py-6 text-white sm:px-6">
         <div className="mx-auto flex h-full w-full max-w-xl flex-col items-center justify-center">
           <div className="w-full rounded-2xl border border-amber-200/60 bg-amber-100/10 p-6 text-center">
-            <p className="text-xl font-semibold text-amber-100">Calling service is not configured.</p>
+            <p className="text-xl font-semibold text-amber-100">Calling service is not connected yet.</p>
             <button
               type="button"
               onClick={() => router.push(`/connect-now/${companion.id}`)}

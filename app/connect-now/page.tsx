@@ -16,7 +16,8 @@ export default function ConnectNowPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [availability, setAvailability] = useState<"all" | "online">("all");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [companions, setCompanions] = useState(connectCompanions);
+  const [companions, setCompanions] = useState(() => (IS_PRODUCTION_READY_MODE ? [] : connectCompanions));
+  const [isLoadingCompanions, setIsLoadingCompanions] = useState(IS_PRODUCTION_READY_MODE);
   const [apiError, setApiError] = useState("");
 
   useEffect(() => {
@@ -26,10 +27,12 @@ export default function ConnectNowPage() {
       if (response.error) {
         setApiError("Companions are currently unavailable. Please try again later.");
         setCompanions([]);
+        setIsLoadingCompanions(false);
         return;
       }
       setCompanions(response.data as typeof connectCompanions);
       setApiError("");
+      setIsLoadingCompanions(false);
     })();
   }, []);
 
@@ -126,7 +129,11 @@ export default function ConnectNowPage() {
 
             {filteredCompanions.length === 0 ? (
               <div className="mt-6 rounded-xl border border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-600">
-                No companions matched your current search or filters.
+                {isLoadingCompanions
+                  ? "Loading companions..."
+                  : IS_PRODUCTION_READY_MODE
+                    ? "No companions available right now. Please check back soon."
+                    : "No companions matched your current search or filters."}
               </div>
             ) : null}
           </div>

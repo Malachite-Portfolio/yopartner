@@ -10,9 +10,16 @@ export type ApiResult<T> = {
   error: ApiClientError | null;
 };
 
+function resolveApiUrl(input: string) {
+  if (!input.startsWith("/")) return input;
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
+  if (!baseUrl) return input;
+  return `${baseUrl.replace(/\/+$/, "")}${input}`;
+}
+
 export async function apiRequest<T>(input: string, init?: RequestInit): Promise<ApiResult<T>> {
   try {
-    const response = await fetch(input, {
+    const response = await fetch(resolveApiUrl(input), {
       ...init,
       headers: {
         "Content-Type": "application/json",

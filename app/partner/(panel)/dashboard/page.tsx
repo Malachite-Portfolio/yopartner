@@ -78,7 +78,9 @@ export default function PartnerDashboardPage() {
     return (
       <section className="rounded-xl border border-amber-200 bg-amber-50 p-5">
         <h2 className="text-xl font-semibold text-amber-800">Partner dashboard is unavailable</h2>
-        <p className="mt-2 text-sm text-amber-700">Partner onboarding service is not connected yet.</p>
+        <p className="mt-2 text-sm text-amber-700">
+          Your dashboard will appear after your account is approved.
+        </p>
       </section>
     );
   }

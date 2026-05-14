@@ -146,6 +146,7 @@ export default function WalletPage() {
   const [customAmount, setCustomAmount] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [rechargeError, setRechargeError] = useState("");
+  const [apiError, setApiError] = useState("");
 
   const [balance, setBalance] = useState(0);
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
@@ -161,6 +162,9 @@ export default function WalletPage() {
         ]);
         if (walletResponse.data) {
           setBalance(walletResponse.data.balance);
+        }
+        if (walletResponse.error) {
+          setApiError("Wallet service is not connected yet.");
         }
         if (transactionResponse.data) {
           const mapped = transactionResponse.data.map((tx) => ({
@@ -179,6 +183,9 @@ export default function WalletPage() {
               .filter((tx) => tx.type === "booking")
               .reduce((sum, tx) => sum + Math.abs(tx.amountAdded), 0),
           );
+        }
+        if (transactionResponse.error) {
+          setApiError("Wallet service is not connected yet.");
         }
       })();
       return () => undefined;
@@ -239,7 +246,7 @@ export default function WalletPage() {
           return;
         }
         setRechargeError("");
-        setSuccessMessage("Recharge order created. Complete payment after gateway integration.");
+        setSuccessMessage("Recharge order created successfully.");
       })();
       return;
     }
@@ -293,6 +300,7 @@ export default function WalletPage() {
                         getWalletTransactionsFromApi(),
                       ]);
                       if (walletResponse.data) setBalance(walletResponse.data.balance);
+                      if (walletResponse.error) setApiError("Wallet service is not connected yet.");
                       if (txResponse.data) {
                         const mapped = txResponse.data.map((tx) => ({
                           id: tx.id,
@@ -311,6 +319,7 @@ export default function WalletPage() {
                             .reduce((sum, tx) => sum + Math.abs(tx.amountAdded), 0),
                         );
                       }
+                      if (txResponse.error) setApiError("Wallet service is not connected yet.");
                       setSuccessMessage("Wallet summary refreshed.");
                     })();
                     return;
@@ -410,7 +419,12 @@ export default function WalletPage() {
             {successMessage}
           </p>
         )}
-        {IS_PRODUCTION_READY_MODE ? (
+        {apiError ? (
+          <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700">
+            {apiError}
+          </p>
+        ) : null}
+        {IS_PRODUCTION_READY_MODE && !apiError ? (
           <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700">
             Payments are not live yet. Please try later.
           </p>

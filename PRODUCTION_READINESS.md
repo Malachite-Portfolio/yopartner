@@ -69,3 +69,13 @@
 - No real payment verification yet
 - No live chat/call transport integration yet
 - No production-grade admin authentication yet
+
+## Launch Blockers Before Public Production
+- Railway backend is not connected
+- Database schema and migrations are not deployed
+- Payment gateway is not live
+- Real booking/session APIs are not implemented
+- Admin auth and role permissions are not live
+- Partner approval workflow is not wired to backend
+- Agora production tokens need backend validation/refresh
+- Legal/privacy/terms pages need final compliance review

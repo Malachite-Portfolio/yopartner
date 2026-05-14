@@ -115,7 +115,7 @@ export function ProfileBookingPanel({
           serviceType: selectedType,
         });
         if (response.error) {
-          setActionMessage("Booking service is not connected yet.");
+          setActionMessage("Session booking is not available yet.");
           return;
         }
 

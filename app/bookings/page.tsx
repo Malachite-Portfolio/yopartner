@@ -210,7 +210,7 @@ export default function BookingsPage() {
             </span>
             <h2 className="mt-5 text-2xl font-semibold text-slate-900">No Appointments</h2>
             <p className="mt-2 text-sm text-slate-500 sm:text-base">
-              You don&apos;t have any scheduled appointments yet.
+              No bookings found.
             </p>
           </div>
         ) : (

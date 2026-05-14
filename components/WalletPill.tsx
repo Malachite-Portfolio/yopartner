@@ -16,7 +16,7 @@ type WalletPillProps = {
 
 export function WalletPill({ className, iconSize = 15, iconClassName, onClick }: WalletPillProps) {
   const [balance, setBalance] = useState(() =>
-    typeof window !== "undefined" ? getWalletBalance() : 0,
+    IS_PRODUCTION_READY_MODE ? 0 : typeof window !== "undefined" ? getWalletBalance() : 0,
   );
 
   useEffect(() => {

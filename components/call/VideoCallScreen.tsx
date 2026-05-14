@@ -63,7 +63,7 @@ export function VideoCallScreen({ companion }: { companion: CompanionRouteProfil
       <section className="relative h-screen min-h-screen overflow-hidden bg-[#0b1224] text-white">
         <div className="relative z-10 mx-auto flex h-full w-full max-w-6xl items-center justify-center px-4 py-4 sm:px-6 sm:py-5">
           <div className="w-full max-w-md rounded-2xl border border-amber-200/60 bg-amber-100/10 p-6 text-center">
-            <p className="text-xl font-semibold text-amber-100">Calling service is not configured.</p>
+            <p className="text-xl font-semibold text-amber-100">Calling service is not connected yet.</p>
             <button
               type="button"
               onClick={() => router.push(`/connect-now/${companion.id}`)}

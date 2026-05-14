@@ -22,7 +22,7 @@ export default async function ConnectProfilePage({ params, searchParams }: Conne
         <div className="mx-auto flex min-h-[calc(100vh-72px)] w-full max-w-3xl items-center justify-center px-4 py-8">
           <div className="w-full rounded-2xl border border-amber-200 bg-amber-50 p-6 text-center">
             <p className="text-base font-semibold text-amber-800">
-              Companions are currently unavailable. Please try again later.
+              Companion profile is not available right now. Please try again later.
             </p>
           </div>
         </div>

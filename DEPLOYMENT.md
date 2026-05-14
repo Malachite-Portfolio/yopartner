@@ -27,6 +27,7 @@ Set these in Vercel Project Settings -> Environment Variables:
 
 ### Firebase Public (Client)
 - `NEXT_PUBLIC_APP_MODE=production`
+- `NEXT_PUBLIC_API_BASE_URL=https://your-railway-api-url.up.railway.app`
 - `NEXT_PUBLIC_FIREBASE_API_KEY`
 - `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
 - `NEXT_PUBLIC_FIREBASE_PROJECT_ID`

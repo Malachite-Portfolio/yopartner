@@ -25,8 +25,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
         <div className="w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
-          <p className="text-base font-semibold text-slate-900">Admin authentication is not configured for production.</p>
-          <p className="mt-2 text-sm text-slate-600">Connect real admin auth and roles before enabling /admin panel.</p>
+          <p className="text-base font-semibold text-slate-900">Admin backend is not connected yet.</p>
+          <p className="mt-2 text-sm text-slate-600">Connect real admin authentication and role APIs before enabling /admin.</p>
         </div>
       </div>
     );
