@@ -4,6 +4,7 @@ import { CheckCircle2, ChevronLeft, ChevronRight, ShieldCheck } from "lucide-rea
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { onAuthStateChanged, type User } from "firebase/auth";
 import { PARTNER_FIREBASE_TOKEN_KEY } from "@/lib/auth/firebasePhoneAuth";
 import { submitPartnerApplication } from "@/lib/api/partner";
 import { isApiBaseUrlConfigured } from "@/lib/api/client";
@@ -113,6 +114,29 @@ function toPartnerOnboardingPayload(profile: OnboardingProfile) {
     categories: profile.categories,
     safetyChecklist,
   };
+}
+
+async function waitForFirebaseUser(timeoutMs = 3000) {
+  if (typeof window === "undefined") return null;
+  const auth = firebaseAuth;
+  if (!auth) return null;
+  if (auth.currentUser) return auth.currentUser;
+
+  return new Promise<User | null>((resolve) => {
+    let settled = false;
+    let unsubscribe: () => void = () => undefined;
+
+    const finish = (user: User | null) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeout);
+      unsubscribe();
+      resolve(user);
+    };
+
+    const timeout = window.setTimeout(() => finish(null), timeoutMs);
+    unsubscribe = onAuthStateChanged(auth, (user) => finish(user));
+  });
 }
 
 export default function PartnerOnboardingPage() {
@@ -253,20 +277,32 @@ export default function PartnerOnboardingPage() {
           setIsSubmitting(false);
           return;
         }
-        if (!firebaseAuth?.currentUser) {
-          setErrors({ base: "Please login again as a partner to submit your profile." });
-          setIsSubmitting(false);
-          return;
-        }
-        try {
-          const freshToken = await firebaseAuth.currentUser.getIdToken(true);
-          if (typeof window !== "undefined") {
-            window.localStorage.setItem(PARTNER_FIREBASE_TOKEN_KEY, freshToken);
+        const user = await waitForFirebaseUser();
+        if (user) {
+          try {
+            const freshToken = await user.getIdToken(true);
+            if (typeof window !== "undefined") {
+              window.localStorage.setItem(PARTNER_FIREBASE_TOKEN_KEY, freshToken);
+            }
+          } catch {
+            if (typeof window !== "undefined") {
+              const storedToken = window.localStorage.getItem(PARTNER_FIREBASE_TOKEN_KEY);
+              if (!storedToken || storedToken.trim().length === 0) {
+                setErrors({ base: "Please login again as a partner to submit your profile." });
+                setIsSubmitting(false);
+                return;
+              }
+            }
           }
-        } catch {
-          setErrors({ base: "Please login again as a partner to submit your profile." });
-          setIsSubmitting(false);
-          return;
+        } else {
+          if (typeof window !== "undefined") {
+            const storedToken = window.localStorage.getItem(PARTNER_FIREBASE_TOKEN_KEY);
+            if (!storedToken || storedToken.trim().length === 0) {
+              setErrors({ base: "Your login session expired. Please login again as a partner." });
+              setIsSubmitting(false);
+              return;
+            }
+          }
         }
         const payload = toPartnerOnboardingPayload(finalProfile);
         const response = await submitPartnerApplication(payload);
