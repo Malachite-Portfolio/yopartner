@@ -35,9 +35,14 @@ import {
   partnerHobbyOptions,
   partnerLanguageOptions,
   type PartnerProfile,
+  type PartnerServiceType,
 } from "@/lib/partnerData";
 
-type ValidationErrors = Partial<Record<keyof PartnerProfile | "base", string>>;
+type OnboardingServiceType = Extract<PartnerServiceType, "Chat" | "Audio Call" | "Video Call">;
+type OnboardingProfile = Omit<PartnerProfile, "servicesOffered"> & {
+  servicesOffered: OnboardingServiceType[];
+};
+type ValidationErrors = Partial<Record<keyof OnboardingProfile | "base", string>>;
 
 const stepTitles = [
   "Basic Details",
@@ -62,6 +67,53 @@ function hasAnyValue(profile: PartnerProfile) {
   );
 }
 
+function sanitizeServices(services: string[]): OnboardingServiceType[] {
+  const allowed: OnboardingServiceType[] = ["Chat", "Audio Call", "Video Call"];
+  return services.filter((service): service is OnboardingServiceType =>
+    allowed.includes(service as OnboardingServiceType),
+  );
+}
+
+function toOnboardingProfile(source: PartnerProfile): OnboardingProfile {
+  return {
+    ...source,
+    servicesOffered: sanitizeServices(source.servicesOffered as string[]),
+  };
+}
+
+function toPartnerOnboardingPayload(profile: OnboardingProfile) {
+  const selectedServices = new Set(profile.servicesOffered);
+  return {
+    fullName: profile.fullName.trim(),
+    age: Number(profile.age) || null,
+    gender: profile.gender || null,
+    religion: profile.religion.trim(),
+    bornCity: profile.bornCity.trim(),
+    nationality: profile.nationality.trim(),
+    school: profile.school.trim(),
+    college: profile.college.trim(),
+    qualification: profile.qualification.trim(),
+    languagesKnown: profile.languagesKnown,
+    communicationStyle: profile.communicationStyle,
+    hobbies: profile.hobbies,
+    profileTagline: profile.profileTagline.trim(),
+    aboutYourself: profile.aboutYourself.trim(),
+    categories: profile.categories,
+    chat: selectedServices.has("Chat"),
+    audio: selectedServices.has("Audio Call"),
+    video: selectedServices.has("Video Call"),
+    chatRatePerMin: Number(profile.chatPricePerMinute) || 0,
+    audioRatePerMin: Number(profile.audioPricePerMinute) || 0,
+    videoRatePerMin: Number(profile.videoPricePerMinute) || 0,
+    safetyChecklist: {
+      platonicOnly: profile.safetyPlatonicOnly,
+      respectfulCommunication: profile.safetyRespectfulRules,
+      noOutsidePaymentsOrContacts: profile.safetyNoOutsidePayments,
+      profileReviewAndVerification: profile.safetyReviewVerification,
+    },
+  };
+}
+
 export default function PartnerOnboardingPage() {
   const router = useRouter();
   const isEditMode =
@@ -69,16 +121,18 @@ export default function PartnerOnboardingPage() {
     new URLSearchParams(window.location.search).get("edit") === "true";
   const [step, setStep] = useState(0);
   const [errors, setErrors] = useState<ValidationErrors>({});
-  const [profile, setProfile] = useState<PartnerProfile>(() => {
+  const [submitMessage, setSubmitMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [profile, setProfile] = useState<OnboardingProfile>(() => {
     if (IS_PRODUCTION_READY_MODE) {
-      return { ...defaultPartnerProfile };
+      return toOnboardingProfile({ ...defaultPartnerProfile });
     }
     const saved = getPartnerProfile<PartnerProfile>(defaultPartnerProfile);
     const draft = getPartnerDraft<PartnerProfile>(defaultPartnerProfile);
-    if (isEditMode) return { ...defaultPartnerProfile, ...saved };
-    if (hasAnyValue(draft)) return { ...defaultPartnerProfile, ...draft };
-    if (hasAnyValue(saved)) return { ...defaultPartnerProfile, ...saved };
-    return { ...defaultPartnerProfile };
+    if (isEditMode) return toOnboardingProfile({ ...defaultPartnerProfile, ...saved });
+    if (hasAnyValue(draft)) return toOnboardingProfile({ ...defaultPartnerProfile, ...draft });
+    if (hasAnyValue(saved)) return toOnboardingProfile({ ...defaultPartnerProfile, ...saved });
+    return toOnboardingProfile({ ...defaultPartnerProfile });
   });
 
   useEffect(() => {
@@ -111,7 +165,7 @@ export default function PartnerOnboardingPage() {
       { label: "Services", value: profile.servicesOffered.join(", ") || "-" },
       {
         label: "Pricing",
-        value: `Chat ${profile.chatPricePerMinute || "0"}/min, Audio ${profile.audioPricePerMinute || "0"}/min, Video ${profile.videoPricePerMinute || "0"}/min, Visit ${profile.visitPricePerSession || "0"}`,
+        value: `Chat ${profile.chatPricePerMinute || "0"}/min, Audio ${profile.audioPricePerMinute || "0"}/min, Video ${profile.videoPricePerMinute || "0"}/min`,
       },
       { label: "Categories", value: profile.categories.join(", ") || "-" },
     ],
@@ -155,7 +209,6 @@ export default function PartnerOnboardingPage() {
       if (!profile.chatPricePerMinute.trim()) nextErrors.chatPricePerMinute = "Chat price is required.";
       if (!profile.audioPricePerMinute.trim()) nextErrors.audioPricePerMinute = "Audio price is required.";
       if (!profile.videoPricePerMinute.trim()) nextErrors.videoPricePerMinute = "Video price is required.";
-      if (!profile.visitPricePerSession.trim()) nextErrors.visitPricePerSession = "Visit price is required.";
       if (profile.categories.length === 0) nextErrors.categories = "Select at least one category.";
     }
 
@@ -183,21 +236,29 @@ export default function PartnerOnboardingPage() {
   const handleSubmit = () => {
     const stepErrors = validateStep(5);
     setErrors(stepErrors);
+    setSubmitMessage("");
     if (Object.keys(stepErrors).length > 0) return;
 
-    const finalProfile: PartnerProfile = {
+    const finalProfile: OnboardingProfile = {
       ...profile,
       reviewStatus: "under_review",
     };
 
     if (IS_PRODUCTION_READY_MODE) {
       void (async () => {
-        const response = await submitPartnerApplication(finalProfile as unknown as Record<string, unknown>);
+        setIsSubmitting(true);
+        const payload = toPartnerOnboardingPayload(finalProfile);
+        const response = await submitPartnerApplication(payload);
         if (response.error) {
-          setErrors({ base: "Partner onboarding service is not connected yet." });
+          setErrors({ base: response.error.message || "Unable to submit your profile for review." });
+          setIsSubmitting(false);
           return;
         }
-        router.push("/partner/dashboard");
+        setSubmitMessage("Your profile has been submitted for review.");
+        setTimeout(() => {
+          router.push("/partner/dashboard");
+        }, 900);
+        setIsSubmitting(false);
       })();
       return;
     }
@@ -460,7 +521,7 @@ export default function PartnerOnboardingPage() {
               <div>
                 <p className="mb-2 text-sm font-medium text-slate-700">Services offered</p>
                 <div className="grid gap-2 sm:grid-cols-2">
-                  {(["Chat", "Audio Call", "Video Call", "Home Visit"] as PartnerProfile["servicesOffered"]).map(
+                  {(["Chat", "Audio Call", "Video Call"] as OnboardingServiceType[]).map(
                     (service) => (
                       <label
                         key={service}
@@ -526,19 +587,6 @@ export default function PartnerOnboardingPage() {
                   />
                   {errors.videoPricePerMinute ? (
                     <p className="mt-1 text-xs text-rose-600">{errors.videoPricePerMinute}</p>
-                  ) : null}
-                </label>
-                <label>
-                  <p className="mb-1.5 text-sm font-medium text-slate-700">Visit price per hour/session</p>
-                  <input
-                    value={profile.visitPricePerSession}
-                    onChange={(event) =>
-                      setProfile((current) => ({ ...current, visitPricePerSession: event.target.value }))
-                    }
-                    className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-[#2563eb]"
-                  />
-                  {errors.visitPricePerSession ? (
-                    <p className="mt-1 text-xs text-rose-600">{errors.visitPricePerSession}</p>
                   ) : null}
                 </label>
               </div>
@@ -639,16 +687,18 @@ export default function PartnerOnboardingPage() {
                 <ChevronRight size={16} />
               </button>
             ) : (
-              <button
-                type="button"
-                onClick={handleSubmit}
-                className="inline-flex h-10 items-center gap-1 rounded-xl bg-gradient-to-r from-[#1d4ed8] to-[#0ea5a6] px-4 text-sm font-semibold text-white"
-              >
-                <ShieldCheck size={16} />
-                Submit for Review
-              </button>
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={isSubmitting}
+                  className="inline-flex h-10 items-center gap-1 rounded-xl bg-gradient-to-r from-[#1d4ed8] to-[#0ea5a6] px-4 text-sm font-semibold text-white"
+                >
+                  <ShieldCheck size={16} />
+                  {isSubmitting ? "Submitting..." : "Submit for Review"}
+                </button>
             )}
           </div>
+          {submitMessage ? <p className="mt-3 text-sm font-medium text-emerald-700">{submitMessage}</p> : null}
         </div>
 
         {IS_DEMO_MODE ? (

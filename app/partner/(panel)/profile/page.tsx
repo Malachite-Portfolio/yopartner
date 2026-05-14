@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
@@ -35,7 +35,7 @@ export default function PartnerProfilePage() {
     ["Services Offered", profile.servicesOffered.join(", ")],
     [
       "Pricing",
-      `Chat ${profile.chatPricePerMinute || "0"}/min • Audio ${profile.audioPricePerMinute || "0"}/min • Video ${profile.videoPricePerMinute || "0"}/min • Visit ${profile.visitPricePerSession || "0"}`,
+      `Chat ${profile.chatPricePerMinute || "0"}/min • Audio ${profile.audioPricePerMinute || "0"}/min • Video ${profile.videoPricePerMinute || "0"}/min`,
     ],
     ["Categories", profile.categories.join(", ")],
   ] as const;

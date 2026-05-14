@@ -57,7 +57,7 @@ export const partnerCategoryOptions = [
   "Social & Outdoor",
 ];
 
-export type PartnerServiceType = "Chat" | "Audio Call" | "Video Call" | "Home Visit";
+export type PartnerServiceType = "Chat" | "Audio Call" | "Video Call";
 
 export type PartnerProfile = {
   fullName: string;
@@ -78,7 +78,6 @@ export type PartnerProfile = {
   chatPricePerMinute: string;
   audioPricePerMinute: string;
   videoPricePerMinute: string;
-  visitPricePerSession: string;
   categories: string[];
   safetyPlatonicOnly: boolean;
   safetyRespectfulRules: boolean;
@@ -106,7 +105,6 @@ export const defaultPartnerProfile: PartnerProfile = {
   chatPricePerMinute: "",
   audioPricePerMinute: "",
   videoPricePerMinute: "",
-  visitPricePerSession: "",
   categories: [],
   safetyPlatonicOnly: false,
   safetyRespectfulRules: false,
