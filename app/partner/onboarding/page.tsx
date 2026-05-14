@@ -4,6 +4,7 @@ import { CheckCircle2, ChevronLeft, ChevronRight, ShieldCheck } from "lucide-rea
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { PARTNER_FIREBASE_TOKEN_KEY } from "@/lib/auth/firebasePhoneAuth";
 import { submitPartnerApplication } from "@/lib/api/partner";
 import { IS_DEMO_MODE, IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import {
@@ -245,14 +246,20 @@ export default function PartnerOnboardingPage() {
     if (IS_PRODUCTION_READY_MODE) {
       void (async () => {
         setIsSubmitting(true);
+        if (typeof window !== "undefined") {
+          const token = window.localStorage.getItem(PARTNER_FIREBASE_TOKEN_KEY);
+          if (!token || token.trim().length === 0) {
+            setErrors({ base: "Please login again as a partner to submit your profile." });
+            setIsSubmitting(false);
+            return;
+          }
+        }
         const payload = toPartnerOnboardingPayload(finalProfile);
         const response = await submitPartnerApplication(payload);
         if (response.error) {
-          const message =
-            response.error.message && response.error.message !== "Backend service is not connected yet."
-              ? response.error.message
-              : "Unable to submit your profile for review.";
-          setErrors({ base: message });
+          const statusLabel = response.error.status ?? "ERR";
+          const message = response.error.message || "Unknown error";
+          setErrors({ base: `Submit failed (${statusLabel}): ${message}` });
           setIsSubmitting(false);
           return;
         }

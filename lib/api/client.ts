@@ -1,5 +1,3 @@
-import { IS_DEMO_MODE } from "@/lib/config/runtime";
-
 export type ApiClientError = {
   message: string;
   status?: number;
@@ -56,9 +54,7 @@ export async function apiRequest<T>(input: string, init?: RequestInit): Promise<
     return {
       data: null,
       error: {
-        message: IS_DEMO_MODE
-          ? "Network request failed."
-          : "Backend service is not connected yet.",
+        message: "Network request failed. Please check your connection or backend URL.",
       },
     };
   }
@@ -74,11 +70,11 @@ export function notConnectedError(message: string): ApiResult<never> {
   };
 }
 
-function getStoredAuthToken() {
+export function getStoredAuthToken() {
   if (typeof window === "undefined") return null;
   const keys = [
-    "yopartner_firebase_id_token",
     "yopartner_partner_firebase_id_token",
+    "yopartner_firebase_id_token",
   ];
   for (const key of keys) {
     const token = window.localStorage.getItem(key);
