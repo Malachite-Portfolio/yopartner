@@ -41,6 +41,11 @@ Set these in Vercel Project Settings -> Environment Variables:
 - `FIREBASE_ADMIN_CLIENT_EMAIL`
 - `FIREBASE_ADMIN_PRIVATE_KEY`
 
+### Backend / Database
+- `DATABASE_URL`
+- `ADMIN_UID_ALLOWLIST` (optional bootstrap)
+- `ADMIN_PHONE_ALLOWLIST` (optional bootstrap)
+
 ### Agora
 - `NEXT_PUBLIC_AGORA_APP_ID`
 - `NEXT_PUBLIC_AGORA_CHAT_APP_KEY`

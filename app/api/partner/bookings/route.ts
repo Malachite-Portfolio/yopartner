@@ -1,33 +1,40 @@
 import { NextResponse } from "next/server";
+import { getPrismaClient } from "@/lib/server/prisma";
+import { notImplementedResponse } from "@/lib/server/http";
+import { requireFirebaseUser } from "@/lib/server/auth";
+import { getPartnerCompanion } from "@/lib/server/partner";
 
 export const runtime = "nodejs";
 
-export async function GET() {
-  return NextResponse.json(
-    {
-      error: "NOT_IMPLEMENTED",
-      message: "Backend service is not connected yet.",
-    },
-    { status: 501 },
-  );
-}
+export async function GET(request: Request) {
+  const prisma = getPrismaClient();
+  if (!prisma) return notImplementedResponse();
 
-export async function POST() {
-  return NextResponse.json(
-    {
-      error: "NOT_IMPLEMENTED",
-      message: "Backend service is not connected yet.",
-    },
-    { status: 501 },
-  );
-}
+  const auth = await requireFirebaseUser(request);
+  if ("error" in auth) {
+    return NextResponse.json({ error: "UNAUTHORIZED", message: auth.error }, { status: auth.status });
+  }
 
-export async function PATCH() {
-  return NextResponse.json(
-    {
-      error: "NOT_IMPLEMENTED",
-      message: "Backend service is not connected yet.",
-    },
-    { status: 501 },
-  );
+  const companion = await getPartnerCompanion(prisma, auth.user);
+  if (!companion) {
+    return NextResponse.json({ bookings: [] });
+  }
+
+  const bookings = await prisma.booking.findMany({
+    where: { companionId: companion.id },
+    include: { user: true },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return NextResponse.json({
+    bookings: bookings.map((item) => ({
+      id: item.id,
+      bookingId: item.bookingId,
+      userPhone: item.user.phone,
+      type: item.serviceType,
+      amount: item.amount,
+      status: item.status,
+      date: item.createdAt.toISOString(),
+    })),
+  });
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminAuth, isFirebaseAdminConfigured } from "@/lib/firebase/admin";
+import { getPrismaClient } from "@/lib/server/prisma";
 
 export const runtime = "nodejs";
 
@@ -45,6 +46,24 @@ export async function POST(request: Request) {
         lastSignInTime &&
         new Date(lastSignInTime).getTime() - new Date(creationTime).getTime() < 2 * 60 * 1000,
     );
+
+    const prisma = getPrismaClient();
+    if (prisma) {
+      await prisma.user.upsert({
+        where: { firebaseUid: decodedToken.uid },
+        update: {
+          phone: decodedToken.phone_number ?? userRecord.phoneNumber ?? undefined,
+          role: role === "partner" ? "PARTNER" : "USER",
+          lastLoginAt: new Date(),
+        },
+        create: {
+          firebaseUid: decodedToken.uid,
+          phone: decodedToken.phone_number ?? userRecord.phoneNumber ?? null,
+          role: role === "partner" ? "PARTNER" : "USER",
+          lastLoginAt: new Date(),
+        },
+      });
+    }
 
     return NextResponse.json({
       uid: decodedToken.uid,

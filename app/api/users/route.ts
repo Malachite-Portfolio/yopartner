@@ -14,19 +14,17 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "UNAUTHORIZED", message: auth.error }, { status: auth.status });
   }
 
-  const transactions = await prisma.walletTransaction.findMany({
-    where: { userId: auth.user.id },
-    orderBy: { createdAt: "desc" },
-  });
-
   return NextResponse.json({
-    transactions: transactions.map((tx) => ({
-      id: tx.transactionId,
-      type: tx.type,
-      amount: tx.amount,
-      status: tx.status,
-      createdAt: tx.createdAt.toISOString(),
-      description: tx.description ?? undefined,
-    })),
+    user: {
+      id: auth.user.id,
+      firebaseUid: auth.user.firebaseUid,
+      phone: auth.user.phone,
+      name: auth.user.name,
+      role: auth.user.role,
+      status: auth.user.status,
+      walletBalance: auth.user.walletBalance,
+      createdAt: auth.user.createdAt.toISOString(),
+      lastLoginAt: auth.user.lastLoginAt?.toISOString() ?? null,
+    },
   });
 }

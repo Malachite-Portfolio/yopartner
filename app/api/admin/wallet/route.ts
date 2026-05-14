@@ -1,33 +1,22 @@
 import { NextResponse } from "next/server";
+import { getPrismaClient } from "@/lib/server/prisma";
+import { notImplementedResponse } from "@/lib/server/http";
+import { requireAdminUser } from "@/lib/server/auth";
 
 export const runtime = "nodejs";
 
-export async function GET() {
-  return NextResponse.json(
-    {
-      error: "NOT_IMPLEMENTED",
-      message: "Backend service is not connected yet.",
-    },
-    { status: 501 },
-  );
-}
+export async function GET(request: Request) {
+  const prisma = getPrismaClient();
+  if (!prisma) return notImplementedResponse();
 
-export async function POST() {
-  return NextResponse.json(
-    {
-      error: "NOT_IMPLEMENTED",
-      message: "Backend service is not connected yet.",
-    },
-    { status: 501 },
-  );
-}
+  const auth = await requireAdminUser(request);
+  if ("error" in auth) {
+    return NextResponse.json({ error: "FORBIDDEN", message: auth.error }, { status: auth.status });
+  }
 
-export async function PATCH() {
-  return NextResponse.json(
-    {
-      error: "NOT_IMPLEMENTED",
-      message: "Backend service is not connected yet.",
-    },
-    { status: 501 },
-  );
+  const transactions = await prisma.walletTransaction.findMany({
+    include: { user: true },
+    orderBy: { createdAt: "desc" },
+  });
+  return NextResponse.json({ transactions });
 }

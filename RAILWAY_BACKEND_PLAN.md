@@ -57,7 +57,12 @@
 3. Add backend API service.
 4. Configure `DATABASE_URL`.
 5. Configure Firebase Admin environment variables.
-6. Configure Agora environment variables.
-7. Run Prisma migrations on Railway.
-8. Deploy backend API.
-9. Set frontend `NEXT_PUBLIC_API_BASE_URL` to Railway API URL.
+6. Configure admin bootstrap allowlist:
+   - `ADMIN_UID_ALLOWLIST`
+   - `ADMIN_PHONE_ALLOWLIST`
+7. Configure Agora environment variables.
+8. Run Prisma commands on Railway:
+   - `npm run prisma:generate`
+   - `npx prisma migrate deploy`
+9. Deploy backend API.
+10. Set frontend `NEXT_PUBLIC_API_BASE_URL` to Railway API URL.

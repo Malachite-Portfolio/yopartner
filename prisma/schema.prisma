@@ -1,0 +1,207 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AppRole {
+  USER
+  PARTNER
+  ADMIN
+}
+
+model User {
+  id                  String               @id @default(cuid())
+  firebaseUid         String               @unique
+  phone               String?
+  name                String?
+  role                AppRole              @default(USER)
+  status              String               @default("active")
+  walletBalance       Int                  @default(0)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  lastLoginAt         DateTime?
+  bookings            Booking[]            @relation("UserBookings")
+  sessions            Session[]            @relation("UserSessions")
+  walletTransactions  WalletTransaction[]
+  partnerApplications PartnerApplication[]
+  reviews             Review[]             @relation("UserReviews")
+  supportTickets      SupportTicket[]
+}
+
+model Companion {
+  id                  String               @id
+  name                String
+  phone               String?
+  city                String?
+  tagline             String?
+  category            String?
+  rating              Float                @default(0)
+  status              String               @default("active")
+  verificationStatus  String               @default("pending")
+  availability        String               @default("offline")
+  chatPrice           Int                  @default(0)
+  voicePrice          Int                  @default(0)
+  videoPrice          Int                  @default(0)
+  visitPrice          Int                  @default(0)
+  languages           String[]
+  servicesOffered     String[]
+  totalSessions       Int                  @default(0)
+  totalEarnings       Int                  @default(0)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  bookings            Booking[]            @relation("CompanionBookings")
+  sessions            Session[]            @relation("CompanionSessions")
+  receivedReviews     Review[]             @relation("CompanionReviews")
+  verifications       VerificationRecord[]
+  payouts             Payout[]
+}
+
+model PartnerApplication {
+  id          String   @id @default(cuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  phone       String
+  fullName    String
+  city        String?
+  status      String   @default("under_review")
+  payload     Json
+  adminNote   String?
+  submittedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Booking {
+  id          String    @id @default(cuid())
+  bookingId   String    @unique
+  userId      String
+  companionId String?
+  serviceType String
+  amount      Int
+  status      String    @default("pending")
+  createdAt   DateTime  @default(now())
+  scheduledAt DateTime?
+  sessionId   String?
+  user        User      @relation("UserBookings", fields: [userId], references: [id], onDelete: Cascade)
+  companion   Companion? @relation("CompanionBookings", fields: [companionId], references: [id], onDelete: SetNull)
+}
+
+model Session {
+  id              String    @id @default(cuid())
+  sessionId       String    @unique
+  userId          String?
+  companionId     String?
+  bookingId       String?
+  type            String
+  status          String    @default("pending")
+  safetyFlag      Boolean   @default(false)
+  startedAt       DateTime  @default(now())
+  endedAt         DateTime?
+  durationSec     Int       @default(0)
+  amount          Int       @default(0)
+  platformFee     Int       @default(0)
+  companionEarning Int      @default(0)
+  metadata        Json?
+  user            User?      @relation("UserSessions", fields: [userId], references: [id], onDelete: SetNull)
+  companion       Companion? @relation("CompanionSessions", fields: [companionId], references: [id], onDelete: SetNull)
+}
+
+model WalletTransaction {
+  id          String   @id @default(cuid())
+  transactionId String @unique
+  userId      String
+  type        String
+  amount      Int
+  status      String   @default("pending")
+  gateway     String?
+  description String?
+  orderId     String?
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Payout {
+  id            String    @id @default(cuid())
+  payoutId      String    @unique
+  companionId   String
+  amount        Int
+  status        String    @default("requested")
+  requestedAt   DateTime  @default(now())
+  processedAt   DateTime?
+  reason        String?
+  companion     Companion @relation(fields: [companionId], references: [id], onDelete: Cascade)
+}
+
+model VerificationRecord {
+  id                 String    @id @default(cuid())
+  companionId        String
+  idVerification     String    @default("pending")
+  policeVerification String    @default("pending")
+  psychometric       String    @default("pending")
+  interview          String    @default("pending")
+  training           String    @default("pending")
+  overallStatus      String    @default("pending")
+  updatedAt          DateTime  @updatedAt
+  companion          Companion @relation(fields: [companionId], references: [id], onDelete: Cascade)
+}
+
+model Review {
+  id          String    @id @default(cuid())
+  userId      String?
+  companionId String?
+  rating      Int
+  text        String
+  status      String    @default("pending")
+  createdAt   DateTime  @default(now())
+  user        User?      @relation("UserReviews", fields: [userId], references: [id], onDelete: SetNull)
+  companion   Companion? @relation("CompanionReviews", fields: [companionId], references: [id], onDelete: SetNull)
+}
+
+model SupportTicket {
+  id          String   @id @default(cuid())
+  ticketId    String   @unique
+  userId      String?
+  subject     String
+  type        String
+  priority    String   @default("medium")
+  status      String   @default("open")
+  details     String?
+  assignedTo  String?
+  notes       String[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model MediaItem {
+  id         String   @id @default(cuid())
+  type       String
+  title      String
+  publisher  String?
+  imageUrl   String?
+  linkUrl    String?
+  status     String   @default("draft")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model ClientDiary {
+  id         String   @id @default(cuid())
+  title      String
+  subtitle   String?
+  imageUrl   String?
+  videoUrl   String?
+  status     String   @default("draft")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model AdminSetting {
+  id         String   @id @default(cuid())
+  key        String   @unique
+  value      Json
+  updatedAt  DateTime @updatedAt
+}

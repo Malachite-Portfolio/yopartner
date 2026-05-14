@@ -19,12 +19,15 @@ function resolveApiUrl(input: string) {
 
 export async function apiRequest<T>(input: string, init?: RequestInit): Promise<ApiResult<T>> {
   try {
+    const token = getStoredAuthToken();
+    const headers = new Headers(init?.headers);
+    headers.set("Content-Type", "application/json");
+    if (token) {
+      headers.set("Authorization", `Bearer ${token}`);
+    }
     const response = await fetch(resolveApiUrl(input), {
       ...init,
-      headers: {
-        "Content-Type": "application/json",
-        ...(init?.headers ?? {}),
-      },
+      headers,
       cache: "no-store",
     });
 
@@ -69,4 +72,17 @@ export function notConnectedError(message: string): ApiResult<never> {
       message,
     },
   };
+}
+
+function getStoredAuthToken() {
+  if (typeof window === "undefined") return null;
+  const keys = [
+    "yopartner_firebase_id_token",
+    "yopartner_partner_firebase_id_token",
+  ];
+  for (const key of keys) {
+    const token = window.localStorage.getItem(key);
+    if (token && token.trim().length > 0) return token.trim();
+  }
+  return null;
 }
