@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { PARTNER_FIREBASE_TOKEN_KEY } from "@/lib/auth/firebasePhoneAuth";
 import { submitPartnerApplication } from "@/lib/api/partner";
 import { IS_DEMO_MODE, IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
+import { firebaseAuth } from "@/lib/firebase/client";
 import {
   getPartnerDraft,
   getPartnerPhone,
@@ -246,17 +247,29 @@ export default function PartnerOnboardingPage() {
     if (IS_PRODUCTION_READY_MODE) {
       void (async () => {
         setIsSubmitting(true);
-        if (typeof window !== "undefined") {
-          const token = window.localStorage.getItem(PARTNER_FIREBASE_TOKEN_KEY);
-          if (!token || token.trim().length === 0) {
-            setErrors({ base: "Please login again as a partner to submit your profile." });
-            setIsSubmitting(false);
-            return;
+        if (!firebaseAuth?.currentUser) {
+          setErrors({ base: "Please login again as a partner to submit your profile." });
+          setIsSubmitting(false);
+          return;
+        }
+        try {
+          const freshToken = await firebaseAuth.currentUser.getIdToken(true);
+          if (typeof window !== "undefined") {
+            window.localStorage.setItem(PARTNER_FIREBASE_TOKEN_KEY, freshToken);
           }
+        } catch {
+          setErrors({ base: "Please login again as a partner to submit your profile." });
+          setIsSubmitting(false);
+          return;
         }
         const payload = toPartnerOnboardingPayload(finalProfile);
         const response = await submitPartnerApplication(payload);
         if (response.error) {
+          if (response.error.status === 401) {
+            setErrors({ base: "Your login session expired. Please login again as a partner." });
+            setIsSubmitting(false);
+            return;
+          }
           const statusLabel = response.error.status ?? "ERR";
           const message = response.error.message || "Unknown error";
           setErrors({ base: `Submit failed (${statusLabel}): ${message}` });
