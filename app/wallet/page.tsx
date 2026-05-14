@@ -279,14 +279,14 @@ export default function WalletPage() {
   const recentTransactions = transactions.slice(0, 5);
 
   return (
-    <div className="min-h-screen bg-[#f4f7fb]">
+    <div className="min-h-screen bg-[#f8fafc]">
       <section className="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8">
         <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-semibold text-slate-900">Find the right companion for You</h1>
+              <h1 className="text-3xl font-semibold text-slate-900">Wallet</h1>
               <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-600 sm:text-base">
-                Browse trusted, verified companions ready to talk, listen, or spend time with you, anytime.
+                View your balance, review transactions, and recharge securely.
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -378,7 +378,7 @@ export default function WalletPage() {
               <button
                 type="button"
                 onClick={openModal}
-                className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[#00A6B2] to-[#2563EB] px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+                className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-[#2563eb] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#1d4ed8]"
               >
                 <Plus size={15} />
                 Add Money

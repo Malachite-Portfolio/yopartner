@@ -123,11 +123,11 @@ export default function MyProfilePage() {
   }, [phone]);
 
   if (!authReady || !loggedIn) {
-    return <section className="min-h-[60vh] bg-gradient-to-b from-[#f4f8ff] to-[#f8fbfc]" />;
+    return <section className="min-h-[60vh] bg-[#f8fafc]" />;
   }
 
   return (
-    <section className="min-h-screen bg-gradient-to-b from-[#f4f8ff] to-[#f8fbfc]">
+    <section className="min-h-screen bg-[#f8fafc]">
       <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {statCards.map((card) => {
@@ -140,7 +140,7 @@ export default function MyProfilePage() {
                     <p className="mt-2 text-2xl font-semibold text-slate-900">{card.value}</p>
                     <p className="mt-2 text-xs text-slate-500">{card.subtitle}</p>
                   </div>
-                  <span className={`inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${card.iconTint} text-white`}>
+                  <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
                     <Icon size={18} />
                   </span>
                 </div>
@@ -160,7 +160,7 @@ export default function MyProfilePage() {
                   onClick={() => setActiveTab(tab.id)}
                   className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
                     selected
-                      ? "bg-gradient-to-r from-[#2563eb] to-[#8b5cf6] text-white shadow-sm"
+                      ? "bg-[#2563eb] text-white shadow-sm"
                       : "border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900"
                   }`}
                 >

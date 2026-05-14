@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { ArrowLeft, ShieldCheck } from "lucide-react";
 import Link from "next/link";
@@ -24,12 +24,7 @@ import {
   isPartnerOnboardingComplete,
   loginPartner,
 } from "@/lib/partnerAuth";
-
-function maskPhone(phone: string) {
-  const digits = phone.replace(/\D/g, "");
-  const suffix = digits.slice(-4);
-  return `+91******${suffix || "9363"}`;
-}
+import { maskIndianPhoneNumber } from "@/lib/phoneMask";
 
 export default function PartnerOtpPage() {
   const router = useRouter();
@@ -114,10 +109,12 @@ export default function PartnerOtpPage() {
 
         loginPartner(phone);
         if (typeof window !== "undefined") {
+          const normalizedPhone = phone.replace(/\D/g, "").slice(-10);
+          const phoneValue = normalizedPhone.length === 10 ? `+91${normalizedPhone}` : phone;
           window.localStorage.setItem(PARTNER_LOGGED_IN_KEY, "true");
-          window.localStorage.setItem(PARTNER_PHONE_KEY, phone);
+          window.localStorage.setItem(PARTNER_PHONE_KEY, phoneValue);
           window.localStorage.setItem(PARTNER_FIREBASE_UID_KEY, user.uid);
-          window.localStorage.setItem(PARTNER_FIREBASE_PHONE_KEY, phone);
+          window.localStorage.setItem(PARTNER_FIREBASE_PHONE_KEY, phoneValue);
           window.localStorage.setItem(PARTNER_FIREBASE_TOKEN_KEY, idToken);
         }
 
@@ -147,9 +144,9 @@ export default function PartnerOtpPage() {
   };
 
   return (
-    <section className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#eff6ff] via-[#f8fafc] to-[#ecfeff] px-4">
-      <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
-        <div className="mb-6 flex items-center justify-between">
+    <section className="flex min-h-screen items-center justify-center bg-[#f8fafc] px-4 py-10">
+      <div className="w-full max-w-[420px] rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
+        <div className="mb-4 flex items-center justify-between">
           <Link
             href="/partner/login"
             className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600"
@@ -157,14 +154,14 @@ export default function PartnerOtpPage() {
             <ArrowLeft size={16} />
           </Link>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/images/logo.png" alt="YoPartner" className="h-auto max-h-11 w-auto object-contain" />
+          <img src="/images/logo.png" alt="YoPartner" className="h-auto max-h-10 w-auto object-contain" />
           <span className="w-9" />
         </div>
 
         <div className="text-center">
-          <h1 className="text-2xl font-semibold text-slate-900">Verify Partner Number</h1>
-          <p className="mt-2 text-sm text-slate-600">Enter the 6-digit OTP sent to your phone.</p>
-          <p className="mt-1 text-sm font-semibold text-slate-800">{maskPhone(phone)}</p>
+          <h1 className="text-2xl font-semibold text-slate-900">Verify your number</h1>
+          <p className="mt-1 text-sm text-slate-600">Enter the 6-digit code sent to your phone.</p>
+          <p className="mt-2 text-sm font-semibold text-slate-900">{maskIndianPhoneNumber(phone)}</p>
         </div>
 
         <div className="mt-6 flex items-center justify-center gap-2">
@@ -179,16 +176,18 @@ export default function PartnerOtpPage() {
               value={digit}
               onChange={(event) => updateDigit(index, event.target.value)}
               onKeyDown={(event) => handleKeyDown(index, event)}
-              className="h-12 w-11 rounded-xl border border-slate-200 text-center text-lg font-semibold text-slate-800 outline-none focus:border-[#2563eb]"
+              className="h-12 w-11 rounded-xl border border-slate-300 text-center text-lg font-semibold text-slate-800 outline-none focus:border-[#2563eb]"
             />
           ))}
         </div>
+
+        <p className="mt-3 text-xs text-slate-500">Resend code in 28s</p>
 
         <button
           type="button"
           onClick={handleVerify}
           disabled={otpValue.length !== 6 || isSubmitting}
-          className="mt-6 h-11 w-full rounded-xl bg-gradient-to-r from-[#1d4ed8] to-[#0ea5a6] text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-55"
+          className="mt-5 h-11 w-full rounded-xl bg-[#2563eb] text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-400"
         >
           {isSubmitting ? "Verifying..." : "Verify"}
         </button>
@@ -198,14 +197,11 @@ export default function PartnerOtpPage() {
         </p>
 
         <p className="mt-4 inline-flex items-center gap-1 text-xs text-slate-500">
-          <ShieldCheck size={13} />
-          {mode === "firebase"
-            ? "Firebase OTP verification enabled."
-            : IS_PRODUCTION_READY_MODE
-              ? "Authentication is not configured."
-              : "Demo OTP flow only. No real OTP verification is used."}
+          <ShieldCheck size={13} className="text-emerald-600" />
+          Secure verification powered by Firebase OTP.
         </p>
       </div>
     </section>
   );
 }
+

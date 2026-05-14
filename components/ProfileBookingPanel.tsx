@@ -44,14 +44,14 @@ function SessionCard({
       onClick={onSelect}
       className={`rounded-xl border p-3 text-left transition sm:p-3.5 ${
         selected
-          ? "border-slate-200 bg-white text-slate-900 shadow-sm"
-          : "border-white/20 bg-white/10 text-white hover:border-white/30"
+          ? "border-slate-300 bg-slate-50 text-slate-900 shadow-sm"
+          : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
       }`}
     >
       <div className="flex items-start justify-between gap-2">
         <span
           className={`inline-flex h-7 w-7 items-center justify-center rounded-md ${
-            selected ? "bg-[#eff6ff] text-[#2563EB]" : "bg-white/15 text-white"
+            selected ? "bg-[#eff6ff] text-[#2563EB]" : "bg-slate-100 text-slate-600"
           }`}
         >
           <Icon size={15} />
@@ -59,7 +59,7 @@ function SessionCard({
         {selected ? <CheckCircle2 size={16} className="text-emerald-500" /> : null}
       </div>
       <p className="mt-2 text-sm font-semibold">{option.label}</p>
-      <p className={`mt-0.5 text-sm ${selected ? "text-slate-600" : "text-white/90"}`}>
+      <p className={`mt-0.5 text-sm ${selected ? "text-slate-600" : "text-slate-500"}`}>
         {formatINR(option.price)}{option.unit}
       </p>
     </button>
@@ -148,7 +148,6 @@ export function ProfileBookingPanel({
     }
   };
 
-  const gradientClass = "from-[#1f2a44] via-[#2b1f48] to-[#4338ca]";
   const primaryActionLabel =
     selectedType === "chat"
       ? "Start Chat"
@@ -158,13 +157,13 @@ export function ProfileBookingPanel({
 
   return (
     <div className="space-y-3.5 lg:sticky lg:top-4">
-      <section className={`rounded-2xl bg-gradient-to-br ${gradientClass} p-5 text-white shadow-sm`}>
-        <p className="text-xs uppercase tracking-[0.18em] text-cyan-200">
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 text-slate-900 shadow-sm">
+        <p className="text-xs uppercase tracking-[0.18em] text-slate-500">
           Chat
         </p>
         <h3 className="mt-1 text-xl font-semibold">Book your session</h3>
 
-        <p className="mt-3 text-sm font-semibold text-white">Choose Session Type</p>
+        <p className="mt-3 text-sm font-semibold text-slate-700">Choose Session Type</p>
         <div className="mt-3 grid grid-cols-2 gap-2">
           {options.map((option) => (
             <SessionCard
@@ -218,7 +217,7 @@ export function ProfileBookingPanel({
           )}
         </div>
 
-        {actionMessage ? <p className="mt-3 text-xs font-medium text-amber-100">{actionMessage}</p> : null}
+        {actionMessage ? <p className="mt-3 text-xs font-medium text-amber-700">{actionMessage}</p> : null}
 
         {hasSufficientBalance ? (
           <button

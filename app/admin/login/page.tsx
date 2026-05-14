@@ -33,7 +33,7 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <section className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#eff6ff] via-[#f8fafc] to-[#ecfeff] px-4">
+    <section className="flex min-h-screen items-center justify-center bg-[#f8fafc] px-4">
       <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
         <div className="mb-6 text-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -68,7 +68,7 @@ export default function AdminLoginPage() {
 
           <button
             type="submit"
-            className="h-11 w-full rounded-xl bg-gradient-to-r from-[#2563eb] to-[#0ea5a6] text-sm font-semibold text-white transition hover:opacity-95"
+            className="h-11 w-full rounded-xl bg-[#2563eb] text-sm font-semibold text-white transition hover:bg-[#1d4ed8]"
           >
             Login
           </button>

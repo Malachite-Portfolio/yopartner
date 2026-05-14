@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { ShieldCheck, Sparkles } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
@@ -13,10 +13,7 @@ import {
   setupRecaptcha,
 } from "@/lib/auth/firebasePhoneAuth";
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
-import { connectCompanions } from "@/lib/data";
 import { setDemoPhone } from "@/lib/demoAuth";
-
-const previewCompanions = connectCompanions.slice(0, 3);
 
 export default function LoginPage() {
   const router = useRouter();
@@ -88,136 +85,94 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white lg:grid lg:grid-cols-2">
-      <section className="relative overflow-hidden bg-gradient-to-br from-[#2563EB] via-[#9B5DE5] to-[#f97316] p-7 text-white sm:p-10">
-        <div className="relative z-10">
-          <h1 className="text-4xl font-semibold sm:text-5xl">Welcome to YoPartner</h1>
-          <p className="mt-4 max-w-xl text-sm leading-7 text-white/90 sm:text-base">
-            Continue your journey with our trusted companionship platform. Your security and privacy are our top priorities.
-          </p>
-
-          <div className="mt-10 rounded-3xl border border-white/25 bg-white/10 p-8 backdrop-blur-sm">
-            <p className="text-7xl">💬</p>
-            <p className="mt-4 text-3xl font-semibold">Secure Authentication</p>
-            <p className="mt-2 max-w-lg text-sm text-white/90">
-              Continue your journey with our trusted companion services platform. Your security and privacy are our top priorities.
-            </p>
-          </div>
+    <section className="flex min-h-screen items-center justify-center bg-[#f8fafc] px-4 py-10">
+      <div className="w-full max-w-[420px] rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
+        <div className="text-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/images/logo.png" alt="YoPartner" className="mx-auto h-auto max-h-11 w-auto object-contain" />
+          <h1 className="mt-4 text-2xl font-semibold text-slate-900">Sign in to YoPartner</h1>
+          <p className="mt-1 text-sm text-slate-600">Enter your phone number to continue securely.</p>
         </div>
 
-        <div className="pointer-events-none absolute -bottom-20 -right-16 h-72 w-72 rounded-full bg-white/20 blur-3xl" />
-      </section>
-
-      <section className="flex items-center justify-center px-4 py-10 sm:px-6">
-        <div className="w-full max-w-[560px]">
-          <p className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
-            <Sparkles size={14} className="text-[#7c3aed]" />
-            India&apos;s trusted Human Connection Platform
-          </p>
-
-          <h2 className="mt-5 text-3xl font-semibold text-slate-900">Someone who actually listens to you</h2>
-          <p className="mt-3 text-sm leading-7 text-slate-600 sm:text-base">
-            Chat or call a real, verified companion for loneliness, stress, heartbreak, or just a good conversation.
-          </p>
-
-          <div className="mt-5 rounded-2xl border border-slate-200 bg-[#101828] px-4 py-3 text-white">
-            <p className="font-semibold">Your first chat is completely free</p>
-            <p className="mt-1 text-xs text-white/80">No credit card · No commitment</p>
-          </div>
-
-          <div className="mt-5 grid gap-3 sm:grid-cols-3">
-            {previewCompanions.map((companion) => (
-              <article key={companion.id} className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={companion.image} alt={companion.name} className="h-20 w-full rounded-lg object-cover" />
-                <p className="mt-2 text-sm font-semibold text-slate-900">{companion.name}</p>
-                <p className="truncate text-xs text-slate-500">{companion.tagline}</p>
-                <p className="mt-1 text-xs font-semibold text-amber-500">★★★★★ {companion.rating.toFixed(1)}</p>
-              </article>
-            ))}
-          </div>
-
-          <div className="mt-6 rounded-2xl border border-slate-200 p-4">
-            <label className="text-xs font-semibold uppercase tracking-wider text-slate-500">Phone Number</label>
-            <div className="mt-2 flex items-center rounded-xl border border-slate-300 bg-white px-3">
-              <span className="mr-2 text-sm">🇮🇳</span>
-              <span className="mr-2 text-sm font-semibold text-slate-700">+91</span>
+        <div className="mt-6 space-y-4">
+          <label className="block">
+            <p className="mb-1.5 text-sm font-medium text-slate-700">Phone Number</p>
+            <div className="flex h-11 overflow-hidden rounded-xl border border-slate-200 bg-white">
+              <span className="inline-flex items-center border-r border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-slate-700">
+                +91
+              </span>
               <input
                 type="tel"
                 value={phone}
                 onChange={(event) => setPhone(event.target.value.replace(/[^0-9]/g, "").slice(0, 10))}
-                placeholder="Enter phone number"
-                className="h-12 w-full bg-transparent text-sm outline-none"
+                placeholder="Enter mobile number"
+                className="w-full px-3 text-sm text-slate-800 outline-none"
               />
             </div>
+          </label>
 
-            <label className="mt-4 flex items-start gap-2 text-xs text-slate-600">
-              <input
-                type="checkbox"
-                checked={accepted}
-                onChange={(event) => {
-                  setAccepted(event.target.checked);
-                  if (event.target.checked) {
-                    setMessage("");
-                  }
-                }}
-                className="mt-0.5"
-              />
-              I accept the Terms &amp; Conditions and Privacy Policy.
-            </label>
+          <label className="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+            <input
+              type="checkbox"
+              checked={accepted}
+              onChange={(event) => {
+                setAccepted(event.target.checked);
+                if (event.target.checked) {
+                  setMessage("");
+                }
+              }}
+              className="mt-0.5"
+            />
+            <span className="text-xs text-slate-700">I accept the Terms &amp; Conditions and Privacy Policy.</span>
+          </label>
 
-            <button
-              type="button"
-              onClick={handleContinue}
-              disabled={isSubmitting}
-              className="mt-4 w-full rounded-full bg-gradient-to-r from-[#f97316] to-[#ea580c] px-6 py-3 text-sm font-semibold text-white"
-            >
-              {isSubmitting ? "Sending OTP..." : "Talk Now"}
-            </button>
+          <button
+            type="button"
+            onClick={handleContinue}
+            disabled={isSubmitting}
+            className="h-11 w-full rounded-xl bg-[#2563eb] text-sm font-semibold text-white transition hover:bg-[#1d4ed8] disabled:cursor-not-allowed disabled:bg-slate-400"
+          >
+            {isSubmitting ? "Sending OTP..." : "Continue"}
+          </button>
 
-            {message && <p className="mt-2 text-xs font-medium text-red-600">{message}</p>}
-            {showDebugDetails && debugError ? (
-              <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                <p className="font-semibold">Firebase error: {debugError.code}</p>
-                <p className="mt-1">Message: {debugError.message}</p>
-              </div>
-            ) : null}
-            <p className="mt-2 inline-flex rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
-              {firebaseEnabled
-                ? firebaseTestMode
-                  ? "Firebase Test Numbers Mode"
-                  : "Firebase OTP"
-                : IS_PRODUCTION_READY_MODE
-                  ? "OTP Unavailable"
-                  : "Demo OTP"}
-            </p>
-            {firebaseEnabled ? (
-              <>
-                <p className="mt-2 text-xs text-slate-500">Complete the verification to receive OTP.</p>
-                <div id="user-recaptcha-container" className="mt-2" />
-              </>
-            ) : null}
-            {!firebaseEnabled && IS_PRODUCTION_READY_MODE ? (
-              <p className="mt-2 text-xs font-medium text-rose-600">
-                Authentication is not configured. Please contact support.
-              </p>
-            ) : null}
+          <p className="text-xs text-slate-500">We&apos;ll send a one-time password to verify your number.</p>
 
-            <p className="mt-4 inline-flex items-center gap-2 text-xs text-slate-500">
-              <ShieldCheck size={14} className="text-emerald-600" />
-              Your number is encrypted and only used to verify you
-            </p>
-            <p className="mt-1 text-xs text-slate-500">Verified companions · 100% private &amp; safe</p>
-          </div>
+          {message ? <p className="text-xs font-medium text-rose-600">{message}</p> : null}
+          {showDebugDetails && debugError ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              <p className="font-semibold">Firebase error: {debugError.code}</p>
+              <p className="mt-1">Message: {debugError.message}</p>
+            </div>
+          ) : null}
 
-          <div className="mt-5 rounded-2xl border border-slate-200 bg-[#111827] px-4 py-3 text-white">
-            <p className="font-semibold">You deserve to be heard</p>
-            <p className="mt-1 text-xs text-white/80">
-              Join 50,000+ people who found comfort, connection, and compassion on YoPartner.
-            </p>
-          </div>
+          <p className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
+            {firebaseEnabled
+              ? firebaseTestMode
+                ? "Firebase Test Numbers Mode"
+                : "Firebase OTP"
+              : IS_PRODUCTION_READY_MODE
+                ? "OTP Unavailable"
+                : "Demo OTP"}
+          </p>
+
+          {firebaseEnabled ? (
+            <>
+              <p className="text-xs text-slate-500">Complete the verification to receive OTP.</p>
+              <div id="user-recaptcha-container" className="pt-1" />
+            </>
+          ) : null}
+
+          {!firebaseEnabled && IS_PRODUCTION_READY_MODE ? (
+            <p className="text-xs font-medium text-rose-600">Authentication is not configured. Please contact support.</p>
+          ) : null}
+
+          <p className="inline-flex items-center gap-2 text-xs text-slate-500">
+            <ShieldCheck size={14} className="text-emerald-600" />
+            Secure login powered by Firebase OTP.
+          </p>
         </div>
-      </section>
-    </div>
+      </div>
+    </section>
   );
 }
+
