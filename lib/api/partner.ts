@@ -1,7 +1,7 @@
 import { apiRequest } from "@/lib/api/client";
 
 export async function submitPartnerApplication(payload: Record<string, unknown>) {
-  return apiRequest<{ success: boolean; message?: string }>("/api/partner/onboarding", {
+  return apiRequest<{ success: boolean; message?: string }>("/api/partner/applications", {
     method: "POST",
     body: JSON.stringify(payload),
   });

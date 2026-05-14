@@ -82,35 +82,33 @@ function toOnboardingProfile(source: PartnerProfile): OnboardingProfile {
 }
 
 function toPartnerOnboardingPayload(profile: OnboardingProfile) {
-  const selectedServices = new Set(profile.servicesOffered);
+  const safetyChecklist = [];
+  if (profile.safetyPlatonicOnly) safetyChecklist.push("strictly platonic");
+  if (profile.safetyRespectfulRules) safetyChecklist.push("respectful communication");
+  if (profile.safetyNoOutsidePayments) safetyChecklist.push("no personal payment/contact sharing");
+  if (profile.safetyReviewVerification) safetyChecklist.push("profile review and verification");
+
   return {
     fullName: profile.fullName.trim(),
-    age: Number(profile.age) || null,
-    gender: profile.gender || null,
-    religion: profile.religion.trim(),
-    bornCity: profile.bornCity.trim(),
-    nationality: profile.nationality.trim(),
-    school: profile.school.trim(),
-    college: profile.college.trim(),
-    qualification: profile.qualification.trim(),
+    age: Number(profile.age) || 0,
+    gender: String(profile.gender || ""),
+    religion: profile.religion.trim() || undefined,
+    bornCity: profile.bornCity.trim() || undefined,
+    nationality: profile.nationality.trim() || undefined,
+    school: profile.school.trim() || undefined,
+    college: profile.college.trim() || undefined,
+    qualification: profile.qualification.trim() || undefined,
     languagesKnown: profile.languagesKnown,
     communicationStyle: profile.communicationStyle,
     hobbies: profile.hobbies,
     profileTagline: profile.profileTagline.trim(),
     aboutYourself: profile.aboutYourself.trim(),
+    servicesOffered: profile.servicesOffered,
+    chatPrice: Number(profile.chatPricePerMinute) || 0,
+    audioPrice: Number(profile.audioPricePerMinute) || 0,
+    videoPrice: Number(profile.videoPricePerMinute) || 0,
     categories: profile.categories,
-    chat: selectedServices.has("Chat"),
-    audio: selectedServices.has("Audio Call"),
-    video: selectedServices.has("Video Call"),
-    chatRatePerMin: Number(profile.chatPricePerMinute) || 0,
-    audioRatePerMin: Number(profile.audioPricePerMinute) || 0,
-    videoRatePerMin: Number(profile.videoPricePerMinute) || 0,
-    safetyChecklist: {
-      platonicOnly: profile.safetyPlatonicOnly,
-      respectfulCommunication: profile.safetyRespectfulRules,
-      noOutsidePaymentsOrContacts: profile.safetyNoOutsidePayments,
-      profileReviewAndVerification: profile.safetyReviewVerification,
-    },
+    safetyChecklist,
   };
 }
 
@@ -250,7 +248,11 @@ export default function PartnerOnboardingPage() {
         const payload = toPartnerOnboardingPayload(finalProfile);
         const response = await submitPartnerApplication(payload);
         if (response.error) {
-          setErrors({ base: response.error.message || "Unable to submit your profile for review." });
+          const message =
+            response.error.message && response.error.message !== "Backend service is not connected yet."
+              ? response.error.message
+              : "Unable to submit your profile for review.";
+          setErrors({ base: message });
           setIsSubmitting(false);
           return;
         }
