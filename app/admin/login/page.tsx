@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -101,10 +101,11 @@ export default function AdminLoginPage() {
         ) : null}
         {isClientDemoEnabled() ? (
           <p className="mt-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
-            Client Demo • Preview Mode PIN enabled
+            Client Demo | Preview Mode PIN enabled
           </p>
         ) : null}
       </div>
     </section>
   );
 }
+

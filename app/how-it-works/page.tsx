@@ -10,7 +10,7 @@ const steps = [
     icon: Search,
   },
   {
-    title: "Choose chat, call, video, or in-person support",
+    title: "Choose chat, audio, or video support",
     description: "Pick the type of companionship that fits your emotional needs and comfort level.",
     icon: Handshake,
   },
@@ -34,7 +34,7 @@ export default function HowItWorksPage() {
         subtitle="A simple, safe way to find verified companionship when you need support, company, or a real conversation."
         actions={
           <Link
-            href="/companions"
+            href="/connect-now"
             className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-brand to-brand-purple px-6 py-3 text-sm font-semibold text-white transition hover:opacity-90"
           >
             Browse Companions
@@ -73,7 +73,7 @@ export default function HowItWorksPage() {
         title="Ready to connect with confidence?"
         subtitle="Browse verified companions and choose the format that feels right for you."
         primaryLabel="Browse Companions"
-        primaryHref="/companions"
+        primaryHref="/connect-now"
       />
     </>
   );

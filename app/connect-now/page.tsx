@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { listCompanions } from "@/lib/api/companions";
 import { ConnectAppHeader } from "@/components/ConnectAppHeader";
 import { ConnectCompanionCard } from "@/components/ConnectCompanionCard";
@@ -131,6 +132,16 @@ export default function ConnectNowPage() {
                 Selected category not found. Please clear filters.
               </p>
             ) : null}
+
+            <div className="mb-4 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+              <p className="font-medium text-slate-900">Home Visit</p>
+              <p className="mt-1">
+                Verified in-person companionship for everyday support. Available only after verification and platform approval.
+              </p>
+              <Link href="/home-visit" className="mt-2 inline-flex text-sm font-semibold text-[#2563eb]">
+                Explore Home Visit
+              </Link>
+            </div>
 
             <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2 xl:grid-cols-3 xl:gap-5">
               {filteredCompanions.map((companion) => (

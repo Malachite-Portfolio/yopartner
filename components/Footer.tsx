@@ -12,6 +12,7 @@ const companyLinks = [
 
 const serviceLinks = [
   { label: "Connect", href: "/connect-now" },
+  { label: "Home Visit", href: "/home-visit" },
   { label: "Media", href: "/media" },
   { label: "Client Diaries", href: "/client-diaries" },
 ];

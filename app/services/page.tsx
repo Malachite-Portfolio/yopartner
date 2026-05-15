@@ -14,7 +14,7 @@ export default function ServicesPage() {
         subtitle="Choose the kind of support that fits your moment."
         actions={
           <Link
-            href="/companions"
+            href="/connect-now"
             className="rounded-full bg-gradient-to-r from-brand to-brand-purple px-6 py-3 text-sm font-semibold text-white transition hover:opacity-90"
           >
             Find a Companion
@@ -59,9 +59,9 @@ export default function ServicesPage() {
 
       <CTASection
         title="Find support on your terms"
-        subtitle="Choose from verified companions who offer chat, calls, activities, and safe in-person support."
+        subtitle="Choose from verified companions who offer chat, audio, video, and safety-approved Home Visit sessions."
         primaryLabel="Find a Companion"
-        primaryHref="/companions"
+        primaryHref="/connect-now"
       />
     </>
   );

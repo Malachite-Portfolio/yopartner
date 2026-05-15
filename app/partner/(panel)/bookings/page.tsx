@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useMemo, useState } from "react";
-import { isClientDemoPartnerSessionActive } from "@/lib/clientDemoData";
+import { isClientDemoEnabled, isClientDemoPartnerSessionActive } from "@/lib/clientDemoData";
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { getPartnerBookings } from "@/lib/partnerData";
 
@@ -14,6 +14,7 @@ function formatINR(value: number) {
 export default function PartnerBookingsPage() {
   const [filter, setFilter] = useState<BookingFilter>("All");
   const bookings = getPartnerBookings();
+  const demoEnabled = isClientDemoEnabled();
   const isDemoSession = isClientDemoPartnerSessionActive();
 
   const filteredBookings = useMemo(() => {
@@ -34,7 +35,7 @@ export default function PartnerBookingsPage() {
     <section className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-xl font-semibold text-slate-900">Bookings</h2>
-        {isDemoSession ? (
+        {demoEnabled && isDemoSession ? (
           <p className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">
             Client Demo • Preview Mode
           </p>

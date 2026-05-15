@@ -1,12 +1,13 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { isClientDemoPartnerSessionActive } from "@/lib/clientDemoData";
+import { isClientDemoEnabled, isClientDemoPartnerSessionActive } from "@/lib/clientDemoData";
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { getPartnerProfile } from "@/lib/partnerAuth";
 import { defaultPartnerProfile, type PartnerProfile } from "@/lib/partnerData";
 
 export default function PartnerProfilePage() {
+  const demoEnabled = isClientDemoEnabled();
   const isDemoSession = isClientDemoPartnerSessionActive();
 
   if (IS_PRODUCTION_READY_MODE && !isDemoSession) {
@@ -47,7 +48,7 @@ export default function PartnerProfilePage() {
     <section className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-xl font-semibold text-slate-900">Profile</h2>
-        {isDemoSession ? (
+        {demoEnabled && isDemoSession ? (
           <p className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">
             Client Demo • Preview Mode
           </p>

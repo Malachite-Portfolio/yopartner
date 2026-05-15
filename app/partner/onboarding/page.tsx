@@ -46,7 +46,7 @@ import {
   type PartnerServiceType,
 } from "@/lib/partnerData";
 
-type OnboardingServiceType = Extract<PartnerServiceType, "Chat" | "Audio Call" | "Video Call">;
+type OnboardingServiceType = PartnerServiceType;
 type OnboardingProfile = Omit<PartnerProfile, "servicesOffered"> & {
   servicesOffered: OnboardingServiceType[];
 };
@@ -77,7 +77,7 @@ function hasAnyValue(profile: PartnerProfile) {
 }
 
 function sanitizeServices(services: string[]): OnboardingServiceType[] {
-  const allowed: OnboardingServiceType[] = ["Chat", "Audio Call", "Video Call"];
+  const allowed: OnboardingServiceType[] = ["Chat", "Audio Call", "Video Call", "Home Visit"];
   return services.filter((service): service is OnboardingServiceType =>
     allowed.includes(service as OnboardingServiceType),
   );
@@ -96,6 +96,9 @@ function toOnboardingProfile(source: PartnerProfile): OnboardingProfile {
 }
 
 function toPartnerOnboardingPayload(profile: OnboardingProfile) {
+  const backendSupportedServices = profile.servicesOffered.filter(
+    (service): service is Exclude<OnboardingServiceType, "Home Visit"> => service !== "Home Visit",
+  );
   const safetyChecklist = [];
   if (profile.safetyPlatonicOnly) safetyChecklist.push("strictly platonic");
   if (profile.safetyRespectfulRules) safetyChecklist.push("respectful communication");
@@ -117,7 +120,7 @@ function toPartnerOnboardingPayload(profile: OnboardingProfile) {
     hobbies: profile.hobbies,
     profileTagline: profile.profileTagline.trim(),
     aboutYourself: profile.aboutYourself.trim(),
-    servicesOffered: profile.servicesOffered,
+    servicesOffered: backendSupportedServices,
     chatPrice: Number(profile.chatPricePerMinute) || 0,
     audioPrice: Number(profile.audioPricePerMinute) || 0,
     videoPrice: Number(profile.videoPricePerMinute) || 0,
@@ -201,7 +204,13 @@ export default function PartnerOnboardingPage() {
       { label: "Services", value: profile.servicesOffered.join(", ") || "-" },
       {
         label: "Pricing",
-        value: `Chat ${profile.chatPricePerMinute || "0"}/min, Audio ${profile.audioPricePerMinute || "0"}/min, Video ${profile.videoPricePerMinute || "0"}/min`,
+        value: `Chat ${profile.chatPricePerMinute || "0"}/min, Audio ${profile.audioPricePerMinute || "0"}/min, Video ${profile.videoPricePerMinute || "0"}/min${profile.servicesOffered.includes("Home Visit") ? `, Home Visit ${profile.homeVisitPricePerSession || "Pending"}/session` : ""}`,
+      },
+      {
+        label: "Home Visit Approval",
+        value: profile.servicesOffered.includes("Home Visit")
+          ? "Requested (manual admin verification required)"
+          : "Not requested",
       },
       { label: "Categories", value: profile.categories.join(", ") || "-" },
       {
@@ -254,9 +263,15 @@ export default function PartnerOnboardingPage() {
 
     if (stepIndex === 4) {
       if (profile.servicesOffered.length === 0) nextErrors.servicesOffered = "Select at least one service.";
+      if (!profile.servicesOffered.some((service) => service !== "Home Visit")) {
+        nextErrors.servicesOffered = "Select at least one of Chat, Audio Call, or Video Call.";
+      }
       if (!profile.chatPricePerMinute.trim()) nextErrors.chatPricePerMinute = "Chat price is required.";
       if (!profile.audioPricePerMinute.trim()) nextErrors.audioPricePerMinute = "Audio price is required.";
       if (!profile.videoPricePerMinute.trim()) nextErrors.videoPricePerMinute = "Video price is required.";
+      if (profile.servicesOffered.includes("Home Visit") && !profile.homeVisitPricePerSession.trim()) {
+        nextErrors.homeVisitPricePerSession = "Home Visit price per session is required.";
+      }
       if (profile.categories.length === 0) nextErrors.categories = "Select at least one category.";
     }
 
@@ -612,7 +627,7 @@ export default function PartnerOnboardingPage() {
               <div>
                 <p className="mb-2 text-sm font-medium text-slate-700">Services offered</p>
                 <div className="grid gap-2 sm:grid-cols-2">
-                  {(["Chat", "Audio Call", "Video Call"] as OnboardingServiceType[]).map(
+                  {(["Chat", "Audio Call", "Video Call", "Home Visit"] as OnboardingServiceType[]).map(
                     (service) => (
                       <label
                         key={service}
@@ -635,6 +650,9 @@ export default function PartnerOnboardingPage() {
                     ),
                   )}
                 </div>
+                <p className="mt-2 text-xs text-slate-500">
+                  Home Visit is optional and available only after additional verification and platform approval.
+                </p>
                 {errors.servicesOffered ? (
                   <p className="mt-1 text-xs text-rose-600">{errors.servicesOffered}</p>
                 ) : null}
@@ -680,7 +698,30 @@ export default function PartnerOnboardingPage() {
                     <p className="mt-1 text-xs text-rose-600">{errors.videoPricePerMinute}</p>
                   ) : null}
                 </label>
+                <label>
+                  <p className="mb-1.5 text-sm font-medium text-slate-700">Home Visit price per session</p>
+                  <input
+                    value={profile.homeVisitPricePerSession}
+                    onChange={(event) =>
+                      setProfile((current) => ({ ...current, homeVisitPricePerSession: event.target.value }))
+                    }
+                    placeholder="499"
+                    className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-[#2563eb]"
+                  />
+                  <p className="mt-1 text-xs text-slate-500">
+                    Available only after additional verification.
+                  </p>
+                  {errors.homeVisitPricePerSession ? (
+                    <p className="mt-1 text-xs text-rose-600">{errors.homeVisitPricePerSession}</p>
+                  ) : null}
+                </label>
               </div>
+
+              {profile.servicesOffered.includes("Home Visit") ? (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                  Home Visit approval will be completed manually by admin after verification review.
+                </div>
+              ) : null}
 
               <div>
                 <p className="mb-2 text-sm font-medium text-slate-700">Categories</p>

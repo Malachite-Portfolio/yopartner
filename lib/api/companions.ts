@@ -18,6 +18,7 @@ export type CompanionItem = {
   chatPrice: number;
   voicePrice: number;
   videoPrice?: number;
+  visitPrice?: number;
   servicesOffered: string[];
 };
 
@@ -36,12 +37,30 @@ type RawCompanionItem = {
   voicePrice?: number | string | null;
   audioPrice?: number | string | null;
   videoPrice?: number | string | null;
+  homeVisitPrice?: number | string | null;
+  visitPrice?: number | string | null;
   servicesOffered?: string[] | null;
 };
 
 function toNumber(value: unknown, fallback = 0) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function normalizeServiceLabel(service: string) {
+  const cleaned = service.trim();
+  if (cleaned.toUpperCase() === "HOME_VISIT") return "Home Visit";
+  if (cleaned.toUpperCase() === "AUDIO") return "Audio Call";
+  if (cleaned.toUpperCase() === "VIDEO") return "Video Call";
+  if (cleaned.toUpperCase() === "CHAT") return "Chat";
+  return cleaned;
+}
+
+function normalizeServices(services: string[] | null | undefined) {
+  if (!Array.isArray(services) || services.length === 0) {
+    return ["Chat", "Audio Call", "Video Call"];
+  }
+  return services.map(normalizeServiceLabel);
 }
 
 function toCompanionItem(item: RawCompanionItem): CompanionItem {
@@ -58,7 +77,11 @@ function toCompanionItem(item: RawCompanionItem): CompanionItem {
     chatPrice: toNumber(item.chatPrice, 0),
     voicePrice: toNumber(item.voicePrice ?? item.audioPrice, 0),
     videoPrice: item.videoPrice == null ? undefined : toNumber(item.videoPrice, 0),
-    servicesOffered: Array.isArray(item.servicesOffered) ? item.servicesOffered : ["Chat", "Audio Call", "Video Call"],
+    visitPrice:
+      item.homeVisitPrice == null && item.visitPrice == null
+        ? undefined
+        : toNumber(item.homeVisitPrice ?? item.visitPrice, 0),
+    servicesOffered: normalizeServices(item.servicesOffered),
   };
 }
 

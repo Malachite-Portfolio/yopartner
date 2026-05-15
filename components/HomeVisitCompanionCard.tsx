@@ -26,7 +26,7 @@ export function HomeVisitCompanionCard({ companion }: HomeVisitCompanionCardProp
               {companion.verified && (
                 <span className="inline-flex h-6 items-center gap-1 rounded-lg bg-sky-50 px-2.5 text-[12px] font-semibold text-sky-700">
                   <BadgeCheck size={13} />
-                  Verified
+                  Verified in-person support
                 </span>
               )}
             </div>

@@ -208,8 +208,8 @@ export const services: Service[] = [
     icon: "video",
   },
   {
-    title: "In-Person Visits",
-    description: "Safe, pre-planned meetings for coffee, walks, and companionship.",
+    title: "Home Visit",
+    description: "Verified in-person companionship for everyday support.",
     icon: "map-pin",
   },
   {
@@ -257,13 +257,13 @@ export const serviceDetails: ServiceDetail[] = [
     ],
   },
   {
-    title: "In-Person Visits",
+    title: "Home Visit",
     description:
-      "Planned in-person companionship for coffee, walks, events, or everyday support.",
+      "Verified in-person companionship for everyday support in approved, safety-reviewed settings.",
     highlights: [
-      "Conducted in approved safe settings",
-      "Respectful boundaries and platform safety protocols",
-      "Available in selected cities with verified companions",
+      "Available only after verification and platform approval",
+      "Strictly platonic with respectful boundaries and platform safety rules",
+      "No outside payments or personal contact sharing allowed",
     ],
   },
   {
@@ -458,9 +458,19 @@ export const faqs: FAQ[] = [
       "YoPartner is built for adults aged 18 and above who are looking for respectful, meaningful companionship sessions.",
   },
   {
-    question: "How do in-person sessions work?",
+    question: "How does Home Visit work safely?",
     answer:
-      "In-person sessions are planned in advance, held in approved public or agreed safe spaces, and monitored by platform safety standards.",
+      "Home Visit is strictly platonic and available only for verified companions after platform approval. Sessions follow YoPartner safety rules and approved support guidelines.",
+  },
+  {
+    question: "Can I share personal contact details or pay outside YoPartner?",
+    answer:
+      "No. Users and partners must follow platform safety rules, including no outside payments and no personal contact sharing.",
+  },
+  {
+    question: "Can YoPartner ask for extra checks before enabling Home Visit?",
+    answer:
+      "Yes. YoPartner may require additional verification before enabling in-person service for safety and compliance.",
   },
   {
     question: "How much does a session cost?",

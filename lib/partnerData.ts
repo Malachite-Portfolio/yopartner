@@ -57,7 +57,7 @@ export const partnerCategoryOptions = [
   "Social & Outdoor",
 ];
 
-export type PartnerServiceType = "Chat" | "Audio Call" | "Video Call";
+export type PartnerServiceType = "Chat" | "Audio Call" | "Video Call" | "Home Visit";
 
 export type PartnerProfile = {
   fullName: string;
@@ -78,6 +78,7 @@ export type PartnerProfile = {
   chatPricePerMinute: string;
   audioPricePerMinute: string;
   videoPricePerMinute: string;
+  homeVisitPricePerSession: string;
   selfieFileName: string;
   aadhaarFileName: string;
   panFileName: string;
@@ -108,6 +109,7 @@ export const defaultPartnerProfile: PartnerProfile = {
   chatPricePerMinute: "",
   audioPricePerMinute: "",
   videoPricePerMinute: "",
+  homeVisitPricePerSession: "",
   selfieFileName: "",
   aadhaarFileName: "",
   panFileName: "",

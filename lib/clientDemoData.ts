@@ -14,7 +14,7 @@ import {
   setPartnerOnlineStatus,
   writeJSON,
 } from "@/lib/partnerAuth";
-import type { ConnectCompanion } from "@/lib/data";
+import type { ConnectCompanion, HomeVisitCompanion } from "@/lib/data";
 import type { PartnerEarningItem, PartnerProfile, PartnerBookingItem, PartnerSettings } from "@/lib/partnerData";
 import type { WalletTransaction } from "@/lib/wallet";
 
@@ -116,9 +116,9 @@ export const demoHosts: ConnectCompanion[] = [
     chatPrice: 10,
     voicePrice: 20,
     videoPrice: 40,
-    visitPrice: 0,
+    visitPrice: 499,
     serviceAreas: ["India"],
-    servicesOffered: ["Active listening", "Empathetic conversation", "Motivational talk"],
+    servicesOffered: ["Active listening", "Empathetic conversation", "Motivational talk", "Home Visit"],
     about:
       "A calm and respectful companion focused on emotionally safe, strictly platonic conversations for preview sessions.",
     sessions: 28,
@@ -160,9 +160,9 @@ export const demoHosts: ConnectCompanion[] = [
     chatPrice: 12,
     voicePrice: 25,
     videoPrice: 45,
-    visitPrice: 0,
+    visitPrice: 499,
     serviceAreas: ["India"],
-    servicesOffered: ["Active listening", "Lifestyle planning", "Empathetic conversation"],
+    servicesOffered: ["Active listening", "Lifestyle planning", "Empathetic conversation", "Home Visit"],
     about:
       "Anshika supports clients with calm communication and practical daily support through safe one-on-one sessions.",
     sessions: 22,
@@ -345,6 +345,25 @@ export const demoWallet: { balance: number; transactions: WalletTransaction[] } 
   ],
 };
 
+export function getClientDemoHomeVisitCompanions(): HomeVisitCompanion[] {
+  return demoHosts
+    .filter((host) => host.visitPrice > 0)
+    .map((host) => ({
+      id: host.id,
+      name: host.name,
+      tagline: host.tagline,
+      image: host.image ?? "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=320&q=80",
+      rating: host.rating,
+      experience: host.experience || "Verified companion",
+      verified: true,
+      price: host.visitPrice,
+      category: host.category,
+      services: host.servicesOffered,
+      city: host.bornCity,
+      connectProfileId: host.id,
+    }));
+}
+
 export const demoAdminStats = {
   totalUsers: 128,
   activeCompanions: 5,
@@ -369,10 +388,11 @@ export const clientDemoPartnerProfile: PartnerProfile = {
   profileTagline: "Calm, friendly conversations for client preview",
   aboutYourself:
     "I offer calm, respectful and strictly platonic sessions with active listening and supportive communication.",
-  servicesOffered: ["Chat", "Audio Call", "Video Call"],
+  servicesOffered: ["Chat", "Audio Call", "Video Call", "Home Visit"],
   chatPricePerMinute: "10",
   audioPricePerMinute: "20",
   videoPricePerMinute: "40",
+  homeVisitPricePerSession: "499",
   selfieFileName: "client-demo-selfie.jpg",
   aadhaarFileName: "client-demo-aadhaar.pdf",
   panFileName: "client-demo-pan.pdf",
@@ -498,11 +518,14 @@ const adminCompanions: AdminCompanion[] = demoHosts.map((host, index) => ({
   city: host.bornCity,
   category: host.category,
   languages: host.languages,
-  services: host.videoPrice ? ["Chat", "Audio Call", "Video Call"] : ["Chat", "Audio Call"],
+  services: [
+    ...(host.videoPrice ? (["Chat", "Audio Call", "Video Call"] as string[]) : (["Chat", "Audio Call"] as string[])),
+    ...(host.visitPrice > 0 ? (["Home Visit"] as string[]) : []),
+  ],
   chatPrice: host.chatPrice,
   audioPrice: host.voicePrice,
   videoPrice: host.videoPrice ?? 0,
-  visitPrice: 0,
+  visitPrice: host.visitPrice,
   rating: host.rating,
   sessions: host.sessions,
   earnings: 50000 + index * 5000,
@@ -543,11 +566,14 @@ const adminApplications: AdminApplication[] = demoHosts.map((host, index) => ({
   hobbies: host.hobbies,
   profileTagline: host.tagline,
   aboutYourself: host.about,
-  servicesOffered: host.videoPrice ? ["Chat", "Audio Call", "Video Call"] : ["Chat", "Audio Call"],
+  servicesOffered: [
+    ...(host.videoPrice ? (["Chat", "Audio Call", "Video Call"] as string[]) : (["Chat", "Audio Call"] as string[])),
+    ...(host.visitPrice > 0 ? (["Home Visit"] as string[]) : []),
+  ],
   chatPricePerMinute: String(host.chatPrice),
   audioPricePerMinute: String(host.voicePrice),
   videoPricePerMinute: String(host.videoPrice ?? 0),
-  visitPricePerSession: "0",
+  visitPricePerSession: String(host.visitPrice || 0),
   categories: [host.category],
   safetyChecklist: {
     platonicOnly: true,

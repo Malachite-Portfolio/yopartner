@@ -3,7 +3,7 @@
 import { Clock3 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { isClientDemoPartnerSessionActive } from "@/lib/clientDemoData";
+import { isClientDemoEnabled, isClientDemoPartnerSessionActive } from "@/lib/clientDemoData";
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import {
   getPartnerOnlineStatus,
@@ -42,6 +42,7 @@ function formatINR(value: number) {
 
 export default function PartnerDashboardPage() {
   const router = useRouter();
+  const demoEnabled = isClientDemoEnabled();
   const isDemoSession = isClientDemoPartnerSessionActive();
   const profile = getPartnerProfile<PartnerProfile>(defaultPartnerProfile);
   const [online, setOnline] = useState(getPartnerOnlineStatus);
@@ -97,7 +98,7 @@ export default function PartnerDashboardPage() {
           <h2 className="text-2xl font-semibold text-slate-900">
             Welcome back, {profile.fullName || "YoPartner Companion"}
           </h2>
-          {isDemoSession ? (
+          {demoEnabled && isDemoSession ? (
             <p className="mt-2 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">
               <span>Client Demo</span>
               <span className="text-slate-400">Preview Mode</span>

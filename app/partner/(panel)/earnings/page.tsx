@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useMemo, useState } from "react";
-import { isClientDemoPartnerSessionActive } from "@/lib/clientDemoData";
+import { isClientDemoEnabled, isClientDemoPartnerSessionActive } from "@/lib/clientDemoData";
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { getPartnerEarnings } from "@/lib/partnerData";
 
@@ -12,6 +12,7 @@ function formatINR(value: number) {
 export default function PartnerEarningsPage() {
   const earnings = getPartnerEarnings();
   const [message, setMessage] = useState("");
+  const demoEnabled = isClientDemoEnabled();
   const isDemoSession = isClientDemoPartnerSessionActive();
 
   const stats = useMemo(() => {
@@ -39,7 +40,7 @@ export default function PartnerEarningsPage() {
     <section className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-xl font-semibold text-slate-900">Earnings</h2>
-        {isDemoSession ? (
+        {demoEnabled && isDemoSession ? (
           <p className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">
             Client Demo • Preview Mode
           </p>
