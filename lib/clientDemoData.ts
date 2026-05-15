@@ -5,6 +5,8 @@ import {
   PARTNER_LOGGED_IN_KEY,
   PARTNER_MESSAGES_KEY,
   PARTNER_ONBOARDING_COMPLETE_KEY,
+  PARTNER_APPLICATION_STATUS_KEY,
+  PARTNER_KYC_STATUS_KEY,
   PARTNER_ONLINE_KEY,
   PARTNER_PHONE_KEY,
   PARTNER_PROFILE_DRAFT_KEY,
@@ -27,6 +29,7 @@ export const PARTNER_DEMO_SESSION_KEY = "yopartner_partner_demo_session";
 export const PARTNER_DEMO_PENDING_PHONE_KEY = "yopartner_partner_demo_pending_phone";
 export const PARTNER_DEMO_TOKEN_KEY = "yopartner_partner_demo_token";
 export const ADMIN_DEMO_SESSION_KEY = "yopartner_admin_demo_session";
+const PARTNER_APPROVAL_STATE_KEY = "yopartner_partner_approval_state";
 
 export function isClientDemoEnabled() {
   return process.env.NEXT_PUBLIC_CLIENT_DEMO_ENABLED === "true";
@@ -70,6 +73,7 @@ export function clearClientDemoPartnerPendingPhone() {
 }
 
 export function isClientDemoPartnerSessionActive() {
+  if (!isClientDemoEnabled()) return false;
   if (!canUseStorage()) return false;
   return window.localStorage.getItem(PARTNER_DEMO_SESSION_KEY) === "true";
 }
@@ -729,6 +733,18 @@ export function activateClientDemoPartnerSession() {
   if (!canUseStorage()) return;
   window.localStorage.setItem(PARTNER_LOGGED_IN_KEY, "true");
   window.localStorage.setItem(PARTNER_ONBOARDING_COMPLETE_KEY, "true");
+  window.localStorage.setItem(PARTNER_APPLICATION_STATUS_KEY, "APPROVED");
+  window.localStorage.setItem(PARTNER_KYC_STATUS_KEY, "VERIFIED");
+  window.localStorage.setItem(
+    PARTNER_APPROVAL_STATE_KEY,
+    JSON.stringify({
+      applicationStatus: "APPROVED",
+      kycStatus: "VERIFIED",
+      companionStatus: "ACTIVE",
+      verificationStatus: "VERIFIED",
+      reviewStatus: "approved",
+    }),
+  );
   window.localStorage.setItem(PARTNER_PHONE_KEY, CLIENT_DEMO_PHONE_E164);
   window.localStorage.setItem(PARTNER_DEMO_SESSION_KEY, "true");
   window.localStorage.setItem(PARTNER_DEMO_TOKEN_KEY, "true");
@@ -755,9 +771,25 @@ export function clearClientDemoPartnerSession() {
 
 export function completeClientDemoPartnerOnboarding(profileData: PartnerProfile) {
   if (!isClientDemoEnabled() || !canUseStorage()) return;
+  const approvedProfile: PartnerProfile = {
+    ...profileData,
+    reviewStatus: "approved",
+  };
   window.localStorage.setItem(PARTNER_ONBOARDING_COMPLETE_KEY, "true");
-  writeJSON(PARTNER_PROFILE_KEY, profileData);
-  writeJSON(PARTNER_PROFILE_DRAFT_KEY, profileData);
+  window.localStorage.setItem(PARTNER_APPLICATION_STATUS_KEY, "APPROVED");
+  window.localStorage.setItem(PARTNER_KYC_STATUS_KEY, "VERIFIED");
+  window.localStorage.setItem(
+    PARTNER_APPROVAL_STATE_KEY,
+    JSON.stringify({
+      applicationStatus: "APPROVED",
+      kycStatus: "VERIFIED",
+      companionStatus: "ACTIVE",
+      verificationStatus: "VERIFIED",
+      reviewStatus: "approved",
+    }),
+  );
+  writeJSON(PARTNER_PROFILE_KEY, approvedProfile);
+  writeJSON(PARTNER_PROFILE_DRAFT_KEY, approvedProfile);
   writeJSON(PARTNER_BOOKINGS_KEY, clientDemoPartnerBookings);
   writeJSON(PARTNER_EARNINGS_KEY, clientDemoPartnerEarnings);
   writeJSON(PARTNER_SESSIONS_KEY, clientDemoPartnerSessions);

@@ -3,13 +3,17 @@
 import { useEffect } from "react";
 import { getCurrentFirebaseUser, subscribeFirebaseAuthState } from "@/lib/auth/firebasePhoneAuth";
 import { useRouter } from "next/navigation";
-import { isPartnerLoggedIn, isPartnerOnboardingComplete } from "@/lib/partnerAuth";
+import { fetchPartnerApprovalState, isPartnerApproved, isPartnerUnderReview } from "@/lib/partnerApproval";
+import {
+  isPartnerLoggedIn,
+  isPartnerOnboardingComplete,
+} from "@/lib/partnerAuth";
 
 export default function PartnerEntryPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const sync = () => {
+    const sync = async () => {
       const isLoggedIn = isPartnerLoggedIn() || Boolean(getCurrentFirebaseUser());
       if (!isLoggedIn) {
         router.replace("/partner/login");
@@ -19,12 +23,21 @@ export default function PartnerEntryPage() {
         router.replace("/partner/onboarding");
         return;
       }
-      router.replace("/partner/dashboard");
+      const approvalState = await fetchPartnerApprovalState();
+      if (isPartnerApproved(approvalState)) {
+        router.replace("/partner/dashboard");
+        return;
+      }
+      if (isPartnerUnderReview(approvalState)) {
+        router.replace("/partner/application-status");
+        return;
+      }
+      router.replace("/partner/onboarding");
     };
 
-    sync();
+    void sync();
     const unsubscribe = subscribeFirebaseAuthState(() => {
-      sync();
+      void sync();
     });
 
     return unsubscribe;

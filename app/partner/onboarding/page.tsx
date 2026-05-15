@@ -11,6 +11,7 @@ import {
 } from "@/lib/auth/firebasePhoneAuth";
 import { submitPartnerApplication } from "@/lib/api/partner";
 import { isApiBaseUrlConfigured } from "@/lib/api/client";
+import { saveLocalPartnerApprovalState } from "@/lib/partnerApproval";
 import {
   completeClientDemoPartnerOnboarding,
   isClientDemoPartnerSession,
@@ -375,9 +376,20 @@ export default function PartnerOnboardingPage() {
           setIsSubmitting(false);
           return;
         }
+        saveLocalPartnerApprovalState({
+          applicationStatus: "UNDER_REVIEW",
+          kycStatus: "PENDING",
+          verificationStatus: "PENDING",
+          companionStatus: "UNDER_REVIEW",
+          reviewStatus: "under_review",
+        });
+        setPartnerOnboardingComplete(true);
+        setPartnerOnlineStatus(false);
+        savePartnerProfile(finalProfile);
+        savePartnerDraft(finalProfile);
         setSubmitMessage("Your profile has been submitted for review.");
-        setTimeout(() => {
-          router.push("/partner/dashboard");
+        window.setTimeout(() => {
+          router.push("/partner/application-status");
         }, 900);
         setIsSubmitting(false);
       })();

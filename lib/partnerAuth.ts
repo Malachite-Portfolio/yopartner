@@ -10,6 +10,11 @@ export const PARTNER_EARNINGS_KEY = "yopartner_partner_earnings";
 export const PARTNER_SETTINGS_KEY = "yopartner_partner_settings";
 export const PARTNER_PROFILE_DRAFT_KEY = "yopartner_partner_profile_draft";
 export const PARTNER_ONLINE_STATUS_EVENT = "yopartner:partner-online-status";
+export const PARTNER_APPLICATION_STATUS_KEY = "yopartner_partner_application_status";
+export const PARTNER_KYC_STATUS_KEY = "yopartner_partner_kyc_status";
+
+export type PartnerApplicationStatus = "NOT_SUBMITTED" | "UNDER_REVIEW" | "APPROVED" | "REJECTED" | "NEEDS_INFO";
+export type PartnerKycStatus = "PENDING" | "VERIFIED" | "FAILED" | "NEEDS_REVIEW";
 
 function canUseStorage() {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
@@ -77,6 +82,39 @@ export function isPartnerOnboardingComplete() {
 export function setPartnerOnboardingComplete(value: boolean) {
   if (!canUseStorage()) return;
   window.localStorage.setItem(PARTNER_ONBOARDING_COMPLETE_KEY, value ? "true" : "false");
+}
+
+export function getPartnerApplicationStatus(): PartnerApplicationStatus {
+  if (!canUseStorage()) return "NOT_SUBMITTED";
+  const status = window.localStorage.getItem(PARTNER_APPLICATION_STATUS_KEY);
+  if (
+    status === "UNDER_REVIEW" ||
+    status === "APPROVED" ||
+    status === "REJECTED" ||
+    status === "NEEDS_INFO"
+  ) {
+    return status;
+  }
+  return "NOT_SUBMITTED";
+}
+
+export function setPartnerApplicationStatus(status: PartnerApplicationStatus) {
+  if (!canUseStorage()) return;
+  window.localStorage.setItem(PARTNER_APPLICATION_STATUS_KEY, status);
+}
+
+export function getPartnerKycStatus(): PartnerKycStatus {
+  if (!canUseStorage()) return "PENDING";
+  const status = window.localStorage.getItem(PARTNER_KYC_STATUS_KEY);
+  if (status === "VERIFIED" || status === "FAILED" || status === "NEEDS_REVIEW") {
+    return status;
+  }
+  return "PENDING";
+}
+
+export function setPartnerKycStatus(status: PartnerKycStatus) {
+  if (!canUseStorage()) return;
+  window.localStorage.setItem(PARTNER_KYC_STATUS_KEY, status);
 }
 
 export function getPartnerOnlineStatus() {

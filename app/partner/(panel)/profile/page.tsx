@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { isClientDemoEnabled, isClientDemoPartnerSessionActive } from "@/lib/clientDemoData";
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
+import { getPartnerApprovalLabel, getLocalPartnerApprovalState, isPartnerApproved } from "@/lib/partnerApproval";
 import { getPartnerProfile } from "@/lib/partnerAuth";
 import { defaultPartnerProfile, type PartnerProfile } from "@/lib/partnerData";
 
@@ -20,6 +21,9 @@ export default function PartnerProfilePage() {
   }
 
   const profile = getPartnerProfile<PartnerProfile>(defaultPartnerProfile);
+  const approvalState = getLocalPartnerApprovalState();
+  const isApproved = isPartnerApproved(approvalState);
+  const labels = getPartnerApprovalLabel(approvalState);
 
   const rows = [
     ["Name", profile.fullName],
@@ -64,9 +68,22 @@ export default function PartnerProfilePage() {
       <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="mb-4">
           <p className="text-sm font-medium text-slate-500">Review Status</p>
-          <span className="mt-1 inline-flex rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
-            {profile.reviewStatus === "approved" ? "Approved / Active" : "Under Review"}
-          </span>
+          <div className="mt-1 flex flex-wrap gap-2">
+            <span
+              className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
+                isApproved ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+              }`}
+            >
+              {labels.kyc}
+            </span>
+            <span
+              className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
+                isApproved ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-700"
+              }`}
+            >
+              {labels.review}
+            </span>
+          </div>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">

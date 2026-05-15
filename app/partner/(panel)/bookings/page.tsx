@@ -1,8 +1,14 @@
 ﻿"use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { isClientDemoEnabled, isClientDemoPartnerSessionActive } from "@/lib/clientDemoData";
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
+import {
+  fetchPartnerApprovalState,
+  getLocalPartnerApprovalState,
+  isPartnerApproved,
+  type PartnerApprovalState,
+} from "@/lib/partnerApproval";
 import { getPartnerBookings } from "@/lib/partnerData";
 
 type BookingFilter = "All" | "Upcoming" | "Completed" | "Cancelled";
@@ -15,12 +21,21 @@ export default function PartnerBookingsPage() {
   const [filter, setFilter] = useState<BookingFilter>("All");
   const bookings = getPartnerBookings();
   const demoEnabled = isClientDemoEnabled();
-  const isDemoSession = isClientDemoPartnerSessionActive();
+  const isDemoSession = demoEnabled && isClientDemoPartnerSessionActive();
+  const [approvalState, setApprovalState] = useState<PartnerApprovalState>(() => getLocalPartnerApprovalState());
+  const isApproved = isPartnerApproved(approvalState);
 
   const filteredBookings = useMemo(() => {
     if (filter === "All") return bookings;
     return bookings.filter((item) => item.status === filter);
   }, [bookings, filter]);
+
+  useEffect(() => {
+    void (async () => {
+      const state = await fetchPartnerApprovalState();
+      setApprovalState(state);
+    })();
+  }, []);
 
   if (IS_PRODUCTION_READY_MODE && !isDemoSession) {
     return (
@@ -85,7 +100,10 @@ export default function PartnerBookingsPage() {
                   </td>
                   <td className="px-2 py-2">
                     <div className="flex gap-1.5">
-                      <button className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-medium text-slate-700">
+                      <button
+                        disabled={!isApproved}
+                        className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-medium text-slate-700 disabled:cursor-not-allowed disabled:text-slate-400"
+                      >
                         Join
                       </button>
                       <button className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-medium text-slate-700">

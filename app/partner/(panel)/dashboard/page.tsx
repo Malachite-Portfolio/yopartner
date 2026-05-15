@@ -4,7 +4,14 @@ import { Clock3 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { isClientDemoEnabled, isClientDemoPartnerSessionActive } from "@/lib/clientDemoData";
-import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
+import {
+  fetchPartnerApprovalState,
+  getLocalPartnerApprovalState,
+  getPartnerApprovalLabel,
+  isPartnerApproved,
+  isPartnerUnderReview,
+  type PartnerApprovalState,
+} from "@/lib/partnerApproval";
 import {
   getPartnerOnlineStatus,
   getPartnerProfile,
@@ -43,8 +50,9 @@ function formatINR(value: number) {
 export default function PartnerDashboardPage() {
   const router = useRouter();
   const demoEnabled = isClientDemoEnabled();
-  const isDemoSession = isClientDemoPartnerSessionActive();
+  const isDemoSession = demoEnabled && isClientDemoPartnerSessionActive();
   const profile = getPartnerProfile<PartnerProfile>(defaultPartnerProfile);
+  const [approvalState, setApprovalState] = useState<PartnerApprovalState>(() => getLocalPartnerApprovalState());
   const [online, setOnline] = useState(getPartnerOnlineStatus);
   const [requests, setRequests] = useState<IncomingRequest[]>(initialRequests);
   const sessions = getPartnerSessions() as Array<{
@@ -54,8 +62,13 @@ export default function PartnerDashboardPage() {
     duration: string;
     status: string;
   }>;
+  const isApproved = isPartnerApproved(approvalState);
+  const labels = getPartnerApprovalLabel(approvalState);
+  const statusTone = isApproved ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700";
+  const secondaryStatusTone = isApproved ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-700";
 
   const handleAccept = (request: IncomingRequest) => {
+    if (!isApproved) return;
     if (request.type === "Chat") {
       router.push("/partner/chats/demo-user-1");
       return;
@@ -72,6 +85,7 @@ export default function PartnerDashboardPage() {
   };
 
   const toggleOnline = () => {
+    if (!isApproved) return;
     const next = !getPartnerOnlineStatus();
     setPartnerOnlineStatus(next);
   };
@@ -80,16 +94,21 @@ export default function PartnerDashboardPage() {
     return subscribePartnerOnlineStatus(setOnline);
   }, []);
 
-  if (IS_PRODUCTION_READY_MODE && !isDemoSession) {
-    return (
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-xl font-semibold text-slate-900">Partner dashboard is unavailable</h2>
-        <p className="mt-2 text-sm text-slate-600">
-          Your dashboard will appear after your account is approved.
-        </p>
-      </section>
-    );
-  }
+  useEffect(() => {
+    void (async () => {
+      const state = await fetchPartnerApprovalState();
+      setApprovalState(state);
+      if (!isPartnerApproved(state) && !isPartnerUnderReview(state)) {
+        router.replace("/partner/onboarding");
+      }
+    })();
+  }, [router]);
+
+  useEffect(() => {
+    if (!isApproved && online) {
+      setPartnerOnlineStatus(false);
+    }
+  }, [isApproved, online]);
 
   return (
     <section className="space-y-5">
@@ -104,23 +123,33 @@ export default function PartnerDashboardPage() {
               <span className="text-slate-400">Preview Mode</span>
             </p>
           ) : null}
-          <p className="mt-1 text-sm text-slate-600">
+          <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-600">
             Status:
-            <span
-              className={`ml-2 rounded-full px-2 py-0.5 text-xs font-semibold ${
-                online ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-700"
-              }`}
-            >
-              {online ? "Online" : "Offline"}
-            </span>
+            <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusTone}`}>{labels.kyc}</span>
+            <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${secondaryStatusTone}`}>{labels.review}</span>
+            {isApproved ? (
+              <span
+                className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                  online ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-700"
+                }`}
+              >
+                {online ? "Online" : "Offline"}
+              </span>
+            ) : null}
           </p>
+          {!isApproved ? (
+            <p className="mt-2 text-sm text-amber-700">
+              Your profile is under review. You can go online after KYC verification and admin approval.
+            </p>
+          ) : null}
         </div>
         <button
           type="button"
           onClick={toggleOnline}
-          className="rounded-xl bg-[#2563eb] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#1d4ed8]"
+          disabled={!isApproved}
+          className="rounded-xl bg-[#2563eb] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#1d4ed8] disabled:cursor-not-allowed disabled:bg-slate-400"
         >
-          {online ? "Go Offline" : "Go Online"}
+          {isApproved ? (online ? "Go Offline" : "Go Online") : "Go Online"}
         </button>
       </div>
 
@@ -172,7 +201,8 @@ export default function PartnerDashboardPage() {
                       <button
                         type="button"
                         onClick={() => handleAccept(request)}
-                        className="rounded-lg bg-[#1d4ed8] px-3 py-1.5 text-xs font-semibold text-white"
+                        disabled={!isApproved}
+                        className="rounded-lg bg-[#1d4ed8] px-3 py-1.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-400"
                       >
                         Accept
                       </button>
@@ -205,11 +235,13 @@ export default function PartnerDashboardPage() {
                 <button
                   type="button"
                   onClick={() => {
+                    if (!isApproved) return;
                     if (session.type.toLowerCase() === "audio") router.push("/partner/calls/audio/demo-user-1");
                     else if (session.type.toLowerCase() === "video") router.push("/partner/calls/video/demo-user-1");
                     else router.push("/partner/chats/demo-user-1");
                   }}
-                  className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-700"
+                  disabled={!isApproved}
+                  className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-700 disabled:cursor-not-allowed disabled:text-slate-400"
                 >
                   Join
                 </button>

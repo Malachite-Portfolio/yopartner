@@ -28,6 +28,12 @@ export async function getPartnerDashboard() {
   return result;
 }
 
+export async function getPartnerApplications() {
+  const result = await apiRequest<Record<string, unknown>>("/api/partner/applications");
+  if (result.error) return { data: null, error: result.error };
+  return result;
+}
+
 export async function getPartnerChats() {
   const result = await apiRequest<{ chats: Record<string, unknown>[] }>("/api/partner/chats");
   if (result.error) return { data: [], error: result.error };
