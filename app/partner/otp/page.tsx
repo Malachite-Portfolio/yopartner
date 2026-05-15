@@ -14,7 +14,6 @@ import {
   isFirebaseOtpEnabled,
   mapFirebaseAuthError,
   setAuthMode,
-  syncLocalSessionSafely,
   verifyOtp,
 } from "@/lib/auth/firebasePhoneAuth";
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
@@ -101,7 +100,6 @@ export default function PartnerOtpPage() {
           window.localStorage.setItem(PARTNER_FIREBASE_PHONE_KEY, phoneValue);
           setPartnerStoredFirebaseToken(idToken);
         }
-        void syncLocalSessionSafely(idToken, "partner");
 
         clearPendingConfirmationResult();
         setAuthMode("firebase");

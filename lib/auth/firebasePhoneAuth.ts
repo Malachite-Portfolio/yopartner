@@ -21,7 +21,6 @@ export const PARTNER_FIREBASE_TOKEN_KEY = "yopartner_partner_firebase_id_token";
 
 type AuthMode = "firebase" | "demo";
 type FirebaseDebugDetails = { code: string; message: string };
-type SessionRole = "user" | "partner";
 
 let recaptchaVerifierRef: RecaptchaVerifier | null = null;
 let recaptchaWidgetIdRef: number | null = null;
@@ -68,29 +67,6 @@ export function clearPartnerStoredFirebaseToken() {
   if (!canUseStorage()) return;
   window.localStorage.removeItem(PARTNER_FIREBASE_TOKEN_KEY);
   window.localStorage.removeItem(PARTNER_FIREBASE_UID_KEY);
-}
-
-export async function syncLocalSessionSafely(idToken: string, role: SessionRole) {
-  if (typeof window === "undefined") return;
-
-  try {
-    const response = await fetch("/api/auth/session", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ idToken, role }),
-    });
-
-    if (response.ok || process.env.NODE_ENV === "production") return;
-
-    const payload = (await response.json().catch(() => null)) as { error?: string; message?: string } | null;
-    const reason = payload?.error || payload?.message || "Unknown error";
-    console.warn("[auth] local session sync failed", { role, status: response.status, reason });
-  } catch (error) {
-    if (process.env.NODE_ENV !== "production") {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      console.warn("[auth] local session sync request failed", { role, message });
-    }
-  }
 }
 
 export function setPendingConfirmationResult(confirmationResult: ConfirmationResult | null) {
