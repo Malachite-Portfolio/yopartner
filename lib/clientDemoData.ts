@@ -74,6 +74,19 @@ export function isClientDemoPartnerSessionActive() {
   return window.localStorage.getItem(PARTNER_DEMO_SESSION_KEY) === "true";
 }
 
+export function isClientDemoPartnerSession(phone?: string) {
+  if (!isClientDemoEnabled()) return false;
+  if (phone && isClientDemoPartnerPhone(phone)) return true;
+  if (!canUseStorage()) return false;
+
+  const storedPhone = window.localStorage.getItem(PARTNER_PHONE_KEY) ?? "";
+  return (
+    window.localStorage.getItem(PARTNER_DEMO_SESSION_KEY) === "true" ||
+    window.localStorage.getItem(PARTNER_DEMO_TOKEN_KEY) === "true" ||
+    isClientDemoPartnerPhone(storedPhone)
+  );
+}
+
 export function isClientDemoAdminSessionActive() {
   if (!canUseStorage()) return false;
   return window.localStorage.getItem(ADMIN_DEMO_SESSION_KEY) === "true";
@@ -738,6 +751,18 @@ export function clearClientDemoPartnerSession() {
   window.localStorage.removeItem(PARTNER_DEMO_SESSION_KEY);
   window.localStorage.removeItem(PARTNER_DEMO_TOKEN_KEY);
   clearClientDemoPartnerPendingPhone();
+}
+
+export function completeClientDemoPartnerOnboarding(profileData: PartnerProfile) {
+  if (!isClientDemoEnabled() || !canUseStorage()) return;
+  window.localStorage.setItem(PARTNER_ONBOARDING_COMPLETE_KEY, "true");
+  writeJSON(PARTNER_PROFILE_KEY, profileData);
+  writeJSON(PARTNER_PROFILE_DRAFT_KEY, profileData);
+  writeJSON(PARTNER_BOOKINGS_KEY, clientDemoPartnerBookings);
+  writeJSON(PARTNER_EARNINGS_KEY, clientDemoPartnerEarnings);
+  writeJSON(PARTNER_SESSIONS_KEY, clientDemoPartnerSessions);
+  writeJSON(PARTNER_MESSAGES_KEY, {});
+  writeJSON(PARTNER_SETTINGS_KEY, clientDemoPartnerSettings);
 }
 
 export function activateClientDemoAdminSession() {

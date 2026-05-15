@@ -11,7 +11,11 @@ import {
 } from "@/lib/auth/firebasePhoneAuth";
 import { submitPartnerApplication } from "@/lib/api/partner";
 import { isApiBaseUrlConfigured } from "@/lib/api/client";
-import { isClientDemoPartnerSessionActive } from "@/lib/clientDemoData";
+import {
+  completeClientDemoPartnerOnboarding,
+  isClientDemoPartnerSession,
+  isClientDemoPartnerSessionActive,
+} from "@/lib/clientDemoData";
 import { IS_DEMO_MODE, IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { firebaseAuth } from "@/lib/firebase/client";
 import {
@@ -306,6 +310,17 @@ export default function PartnerOnboardingPage() {
       ...profile,
       reviewStatus: "under_review",
     };
+
+    if (isClientDemoPartnerSession(getPartnerPhone())) {
+      setIsSubmitting(true);
+      completeClientDemoPartnerOnboarding(finalProfile);
+      setSubmitMessage("Your profile has been submitted for review.");
+      window.setTimeout(() => {
+        setIsSubmitting(false);
+        router.push("/partner/dashboard");
+      }, 900);
+      return;
+    }
 
     if (IS_PRODUCTION_READY_MODE) {
       void (async () => {
