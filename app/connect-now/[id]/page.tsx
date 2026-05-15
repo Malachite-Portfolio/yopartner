@@ -6,6 +6,7 @@ import { ProfileHeroCard } from "@/components/ProfileHeroCard";
 import { ProfileInfoSection } from "@/components/ProfileInfoSection";
 import { ProfileReviews } from "@/components/ProfileReviews";
 import { ProfileVerification } from "@/components/ProfileVerification";
+import { demoHosts, isClientDemoEnabled } from "@/lib/clientDemoData";
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { connectCompanions } from "@/lib/data";
 
@@ -15,7 +16,12 @@ type ConnectProfilePageProps = {
 };
 
 export default async function ConnectProfilePage({ params, searchParams }: ConnectProfilePageProps) {
-  if (IS_PRODUCTION_READY_MODE) {
+  const { id } = await params;
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const preferredType = resolvedSearchParams?.type;
+  const demoCompanion = isClientDemoEnabled() ? demoHosts.find((item) => item.id === id) : null;
+
+  if (IS_PRODUCTION_READY_MODE && !demoCompanion) {
     return (
       <main className="min-h-screen bg-[#f4f7fb]">
         <ConnectAppHeader />
@@ -30,10 +36,7 @@ export default async function ConnectProfilePage({ params, searchParams }: Conne
     );
   }
 
-  const { id } = await params;
-  const resolvedSearchParams = searchParams ? await searchParams : undefined;
-  const preferredType = resolvedSearchParams?.type;
-  const companion = connectCompanions.find((item) => item.id === id);
+  const companion = demoCompanion ?? connectCompanions.find((item) => item.id === id);
 
   if (!companion) {
     notFound();

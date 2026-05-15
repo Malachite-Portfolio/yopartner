@@ -16,6 +16,13 @@ import {
   setAuthMode,
   verifyOtp,
 } from "@/lib/auth/firebasePhoneAuth";
+import {
+  activateClientDemoPartnerSession,
+  CLIENT_DEMO_OTP,
+  getClientDemoPartnerPendingPhone,
+  isClientDemoEnabled,
+  isClientDemoPartnerPhone,
+} from "@/lib/clientDemoData";
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import {
   PARTNER_LOGGED_IN_KEY,
@@ -28,7 +35,7 @@ import { maskIndianPhoneNumber } from "@/lib/phoneMask";
 
 export default function PartnerOtpPage() {
   const router = useRouter();
-  const phone = getPartnerPhone();
+  const phone = getPartnerPhone() || getClientDemoPartnerPendingPhone();
   const [digits, setDigits] = useState(["", "", "", "", "", ""]);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -40,6 +47,7 @@ export default function PartnerOtpPage() {
     firebaseEnabled && (getAuthMode() === "firebase" || Boolean(pendingConfirmation))
       ? "firebase"
       : "demo";
+  const isClientDemoOtpFlow = isClientDemoEnabled() && isClientDemoPartnerPhone(phone);
 
   useEffect(() => {
     if (!phone) {
@@ -63,6 +71,23 @@ export default function PartnerOtpPage() {
   };
 
   const handleVerify = async () => {
+    if (isClientDemoOtpFlow) {
+      if (otpValue.length !== 6) {
+        setError("Please enter the complete 6-digit OTP.");
+        return;
+      }
+      if (otpValue !== CLIENT_DEMO_OTP) {
+        setError("Invalid OTP. Please check and try again.");
+        return;
+      }
+      setError("");
+      activateClientDemoPartnerSession();
+      clearPendingConfirmationResult();
+      setAuthMode("demo");
+      router.replace("/partner/dashboard");
+      return;
+    }
+
     if (IS_PRODUCTION_READY_MODE && !firebaseEnabled) {
       setError("Firebase OTP is not configured. Please check Vercel environment variables.");
       return;
@@ -176,9 +201,18 @@ export default function PartnerOtpPage() {
         </button>
         {error ? <p className="mt-2 text-xs font-medium text-rose-600">{error}</p> : null}
         <p className="mt-2 inline-flex rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
-          {mode === "firebase" ? "Firebase OTP" : IS_PRODUCTION_READY_MODE ? "Firebase OTP Required" : "Demo OTP"}
+          {isClientDemoOtpFlow
+            ? "Client Demo OTP"
+            : mode === "firebase"
+              ? "Firebase OTP"
+              : IS_PRODUCTION_READY_MODE
+                ? "Firebase OTP Required"
+                : "Demo OTP"}
         </p>
-        {IS_PRODUCTION_READY_MODE && firebaseEnabled && !pendingConfirmation ? (
+        {isClientDemoOtpFlow ? (
+          <p className="mt-1 text-xs font-medium text-slate-500">Preview Mode</p>
+        ) : null}
+        {IS_PRODUCTION_READY_MODE && firebaseEnabled && !pendingConfirmation && !isClientDemoOtpFlow ? (
           <p className="mt-1 text-xs font-medium text-rose-600">OTP session expired. Please request a new OTP.</p>
         ) : null}
 

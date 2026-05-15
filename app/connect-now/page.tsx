@@ -8,6 +8,7 @@ import { connectCategoryGroups, ConnectFilters } from "@/components/ConnectFilte
 import { ConnectTabs, type ConnectServiceTab } from "@/components/ConnectTabs";
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { connectCompanions } from "@/lib/data";
+import { demoHosts, isClientDemoEnabled } from "@/lib/clientDemoData";
 
 const allCategoryItems = connectCategoryGroups.flatMap((group) => group.items);
 
@@ -19,18 +20,34 @@ export default function ConnectNowPage() {
   const [companions, setCompanions] = useState(() => (IS_PRODUCTION_READY_MODE ? [] : connectCompanions));
   const [isLoadingCompanions, setIsLoadingCompanions] = useState(IS_PRODUCTION_READY_MODE);
   const [apiError, setApiError] = useState("");
+  const [isPreviewMode, setIsPreviewMode] = useState(false);
 
   useEffect(() => {
     if (!IS_PRODUCTION_READY_MODE) return;
     void (async () => {
       const response = await listCompanions();
       if (response.error) {
+        if (isClientDemoEnabled()) {
+          setCompanions(demoHosts);
+          setApiError("");
+          setIsPreviewMode(true);
+          setIsLoadingCompanions(false);
+          return;
+        }
         setApiError("Companions are currently unavailable. Please try again later.");
         setCompanions([]);
         setIsLoadingCompanions(false);
         return;
       }
+      if (response.data.length === 0 && isClientDemoEnabled()) {
+        setCompanions(demoHosts);
+        setApiError("");
+        setIsPreviewMode(true);
+        setIsLoadingCompanions(false);
+        return;
+      }
       setCompanions(response.data as typeof connectCompanions);
+      setIsPreviewMode(false);
       setApiError("");
       setIsLoadingCompanions(false);
     })();
@@ -115,11 +132,18 @@ export default function ConnectNowPage() {
               </p>
             ) : null}
 
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 xl:gap-5">
+            <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2 xl:grid-cols-3 xl:gap-5">
               {filteredCompanions.map((companion) => (
                 <ConnectCompanionCard key={companion.id} companion={companion} />
               ))}
             </div>
+
+            {isPreviewMode ? (
+              <p className="mt-4 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">
+                <span>Client Demo</span>
+                <span className="text-slate-400">Preview Mode</span>
+              </p>
+            ) : null}
 
             {apiError ? (
               <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-8 text-center text-sm text-amber-700">

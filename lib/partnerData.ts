@@ -78,6 +78,9 @@ export type PartnerProfile = {
   chatPricePerMinute: string;
   audioPricePerMinute: string;
   videoPricePerMinute: string;
+  selfieFileName: string;
+  aadhaarFileName: string;
+  panFileName: string;
   categories: string[];
   safetyPlatonicOnly: boolean;
   safetyRespectfulRules: boolean;
@@ -105,6 +108,9 @@ export const defaultPartnerProfile: PartnerProfile = {
   chatPricePerMinute: "",
   audioPricePerMinute: "",
   videoPricePerMinute: "",
+  selfieFileName: "",
+  aadhaarFileName: "",
+  panFileName: "",
   categories: [],
   safetyPlatonicOnly: false,
   safetyRespectfulRules: false,

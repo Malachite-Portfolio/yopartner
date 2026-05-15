@@ -298,7 +298,7 @@ export const companions: Companion[] = [
     longBio:
       "Aarav is known for his calm energy and thoughtful presence. He supports clients through private chat, calls, and safe in-person sessions focused on connection, clarity, and emotional steadiness.",
     tags: ["Calm", "Empathetic", "English/Hindi"],
-    price: "from INR 899 / session",
+    price: "from ₹899 / session",
     focus: ["Chat", "Calls", "In-Person"],
     languages: ["English", "Hindi"],
     availability: "Mon-Sat, 10:00 AM - 9:00 PM",
@@ -314,7 +314,7 @@ export const companions: Companion[] = [
     longBio:
       "Meera creates uplifting sessions centered on creativity, social confidence, and healthy emotional expression. She is a great fit for activities and supportive calls that feel natural and warm.",
     tags: ["Creative", "Positive", "Kannada/English"],
-    price: "from INR 999 / session",
+    price: "from ₹999 / session",
     focus: ["Calls", "Activities", "In-Person"],
     languages: ["English", "Kannada"],
     availability: "Tue-Sun, 11:00 AM - 8:00 PM",
@@ -330,7 +330,7 @@ export const companions: Companion[] = [
     longBio:
       "Rohan offers grounded companionship for people navigating stress, uncertainty, or big life changes. His sessions are thoughtful, practical, and deeply respectful.",
     tags: ["Supportive", "Patient", "Hindi/English"],
-    price: "from INR 799 / session",
+    price: "from ₹799 / session",
     focus: ["Chat", "Calls"],
     languages: ["English", "Hindi"],
     availability: "Daily, 9:00 AM - 7:00 PM",
@@ -346,7 +346,7 @@ export const companions: Companion[] = [
     longBio:
       "Ishita brings a thoughtful and reflective style to companionship. She is popular for structured activity sessions and gentle conversations that help clients feel balanced and seen.",
     tags: ["Thoughtful", "Warm", "Marathi/English"],
-    price: "from INR 1099 / session",
+    price: "from ₹1099 / session",
     focus: ["Activities", "In-Person", "Calls"],
     languages: ["English", "Marathi"],
     availability: "Mon-Fri, 12:00 PM - 9:00 PM",
@@ -362,7 +362,7 @@ export const companions: Companion[] = [
     longBio:
       "Kabir is approachable and grounded, making sessions feel easy and natural. He supports social confidence, routine companionship, and practical everyday check-ins.",
     tags: ["Friendly", "Grounded", "Telugu/Hindi"],
-    price: "from INR 949 / session",
+    price: "from ₹949 / session",
     focus: ["Chat", "Activities", "In-Person"],
     languages: ["Hindi", "Telugu"],
     availability: "Wed-Mon, 2:00 PM - 10:00 PM",
@@ -378,7 +378,7 @@ export const companions: Companion[] = [
     longBio:
       "Sana offers compassionate companionship for emotionally heavy moments. Her sessions prioritize listening, privacy, and helping clients feel understood without pressure.",
     tags: ["Kind", "Confidential", "Tamil/English"],
-    price: "from INR 999 / session",
+    price: "from ₹999 / session",
     focus: ["Chat", "Calls"],
     languages: ["English", "Tamil"],
     availability: "Daily, 8:00 AM - 6:00 PM",

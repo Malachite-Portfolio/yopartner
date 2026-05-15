@@ -15,6 +15,7 @@ import {
   setAuthMode,
   setupRecaptcha,
 } from "@/lib/auth/firebasePhoneAuth";
+import { CLIENT_DEMO_PHONE, isClientDemoEnabled, isClientDemoPartnerPhone, setClientDemoPartnerPendingPhone } from "@/lib/clientDemoData";
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { PARTNER_PHONE_KEY } from "@/lib/partnerAuth";
 
@@ -27,6 +28,7 @@ export default function PartnerLoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const firebaseEnabled = isFirebaseOtpEnabled();
   const firebaseTestMode = isFirebaseTestNumbersMode();
+  const isDemoPhoneInput = isClientDemoEnabled() && isClientDemoPartnerPhone(phone);
   const showDebugDetails =
     typeof window !== "undefined" &&
     process.env.NODE_ENV !== "production" &&
@@ -54,6 +56,15 @@ export default function PartnerLoginPage() {
       clearPartnerStoredFirebaseToken();
       clearPendingConfirmationResult();
       window.localStorage.setItem(PARTNER_PHONE_KEY, normalizedPhone);
+    }
+
+    if (isClientDemoEnabled() && isClientDemoPartnerPhone(trimmedPhone)) {
+      setAuthMode("demo");
+      setClientDemoPartnerPendingPhone(normalizedPhone);
+      setDebugError(null);
+      setError("");
+      router.push("/partner/otp");
+      return;
     }
 
     if (IS_PRODUCTION_READY_MODE && !firebaseEnabled) {
@@ -160,6 +171,11 @@ export default function PartnerLoginPage() {
                 ? "Firebase OTP Required"
                 : "Demo OTP"}
           </p>
+          {isDemoPhoneInput ? (
+            <p className="inline-flex rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-semibold text-slate-600">
+              Client Demo OTP • {CLIENT_DEMO_PHONE}
+            </p>
+          ) : null}
           {firebaseEnabled ? (
             <>
               <p className="text-xs text-slate-500">Complete the verification to receive OTP.</p>

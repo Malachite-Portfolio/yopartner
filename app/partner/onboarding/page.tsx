@@ -11,6 +11,7 @@ import {
 } from "@/lib/auth/firebasePhoneAuth";
 import { submitPartnerApplication } from "@/lib/api/partner";
 import { isApiBaseUrlConfigured } from "@/lib/api/client";
+import { isClientDemoPartnerSessionActive } from "@/lib/clientDemoData";
 import { IS_DEMO_MODE, IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { firebaseAuth } from "@/lib/firebase/client";
 import {
@@ -57,6 +58,7 @@ const stepTitles = [
   "Languages & Style",
   "About Yourself",
   "Services & Pricing",
+  "Verification Documents",
   "Safety & Review",
 ];
 
@@ -79,6 +81,11 @@ function sanitizeServices(services: string[]): OnboardingServiceType[] {
   return services.filter((service): service is OnboardingServiceType =>
     allowed.includes(service as OnboardingServiceType),
   );
+}
+
+function formatVerificationStatus(fileName: string, verifiedInDemo: boolean) {
+  if (verifiedInDemo) return "Verified";
+  return fileName.trim() ? "Uploaded" : "Pending";
 }
 
 function toOnboardingProfile(source: PartnerProfile): OnboardingProfile {
@@ -144,6 +151,7 @@ async function waitForFirebaseUser(timeoutMs = 3000) {
 
 export default function PartnerOnboardingPage() {
   const router = useRouter();
+  const isDemoPartnerSession = isClientDemoPartnerSessionActive();
   const isEditMode =
     typeof window !== "undefined" &&
     new URLSearchParams(window.location.search).get("edit") === "true";
@@ -196,8 +204,20 @@ export default function PartnerOnboardingPage() {
         value: `Chat ${profile.chatPricePerMinute || "0"}/min, Audio ${profile.audioPricePerMinute || "0"}/min, Video ${profile.videoPricePerMinute || "0"}/min`,
       },
       { label: "Categories", value: profile.categories.join(", ") || "-" },
+      {
+        label: "Selfie",
+        value: formatVerificationStatus(profile.selfieFileName, isDemoPartnerSession),
+      },
+      {
+        label: "Aadhaar",
+        value: formatVerificationStatus(profile.aadhaarFileName, isDemoPartnerSession),
+      },
+      {
+        label: "PAN",
+        value: formatVerificationStatus(profile.panFileName, isDemoPartnerSession),
+      },
     ],
-    [profile],
+    [isDemoPartnerSession, profile],
   );
 
   const validateStep = (stepIndex: number): ValidationErrors => {
@@ -240,7 +260,7 @@ export default function PartnerOnboardingPage() {
       if (profile.categories.length === 0) nextErrors.categories = "Select at least one category.";
     }
 
-    if (stepIndex === 5) {
+    if (stepIndex === 6) {
       if (
         !profile.safetyPlatonicOnly ||
         !profile.safetyRespectfulRules ||
@@ -262,7 +282,7 @@ export default function PartnerOnboardingPage() {
   };
 
   const handleSubmit = () => {
-    const stepErrors = validateStep(5);
+    const stepErrors = validateStep(6);
     setErrors(stepErrors);
     setSubmitMessage("");
     if (Object.keys(stepErrors).length > 0) return;
@@ -678,6 +698,72 @@ export default function PartnerOnboardingPage() {
           {step === 5 ? (
             <div className="space-y-4">
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <h3 className="text-sm font-semibold text-slate-900">Verification Documents</h3>
+                <p className="mt-1 text-xs text-slate-600">
+                  Documents are reviewed securely by the YoPartner verification team.
+                </p>
+                <p className="mt-1 text-xs text-amber-700">
+                  Document upload storage will be connected before final approval.
+                </p>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="rounded-xl border border-slate-200 p-3">
+                  <p className="text-sm font-medium text-slate-800">Selfie photo</p>
+                  <p className="mt-1 text-xs text-slate-500">Upload a clear selfie image for profile verification.</p>
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,application/pdf"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      setProfile((current) => ({ ...current, selfieFileName: file?.name ?? "" }));
+                    }}
+                    className="mt-3 block w-full text-xs text-slate-600 file:mr-3 file:rounded-lg file:border file:border-slate-200 file:bg-white file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-slate-700"
+                  />
+                  <p className="mt-2 text-xs text-slate-600">Selected: {profile.selfieFileName || "Pending"}</p>
+                  <p className="mt-1 text-xs text-slate-500">Used only for profile verification.</p>
+                </label>
+
+                <label className="rounded-xl border border-slate-200 p-3">
+                  <p className="text-sm font-medium text-slate-800">Aadhaar card</p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Upload Aadhaar front/back scan or PDF for verification review.
+                  </p>
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,application/pdf"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      setProfile((current) => ({ ...current, aadhaarFileName: file?.name ?? "" }));
+                    }}
+                    className="mt-3 block w-full text-xs text-slate-600 file:mr-3 file:rounded-lg file:border file:border-slate-200 file:bg-white file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-slate-700"
+                  />
+                  <p className="mt-2 text-xs text-slate-600">Selected: {profile.aadhaarFileName || "Pending"}</p>
+                  <p className="mt-1 text-xs text-slate-500">Used only for profile verification.</p>
+                </label>
+
+                <label className="rounded-xl border border-slate-200 p-3 sm:col-span-2">
+                  <p className="text-sm font-medium text-slate-800">PAN card</p>
+                  <p className="mt-1 text-xs text-slate-500">Upload PAN card scan or PDF for verification review.</p>
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,application/pdf"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      setProfile((current) => ({ ...current, panFileName: file?.name ?? "" }));
+                    }}
+                    className="mt-3 block w-full text-xs text-slate-600 file:mr-3 file:rounded-lg file:border file:border-slate-200 file:bg-white file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-slate-700"
+                  />
+                  <p className="mt-2 text-xs text-slate-600">Selected: {profile.panFileName || "Pending"}</p>
+                  <p className="mt-1 text-xs text-slate-500">Used only for profile verification.</p>
+                </label>
+              </div>
+            </div>
+          ) : null}
+
+          {step === 6 ? (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                 <h3 className="text-sm font-semibold text-slate-900">Profile Summary</h3>
                 <div className="mt-3 grid gap-2 sm:grid-cols-2">
                   {summaryRows.map((row) => (
@@ -734,6 +820,18 @@ export default function PartnerOnboardingPage() {
 
                 {errors.base ? <p className="text-xs text-rose-600">{errors.base}</p> : null}
               </div>
+
+              {isDemoPartnerSession ? (
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                  <p className="text-sm font-semibold text-emerald-800">Demo verification status</p>
+                  <div className="mt-2 grid gap-1 text-xs text-emerald-700 sm:grid-cols-2">
+                    <p>Selfie: Verified</p>
+                    <p>Aadhaar: Verified</p>
+                    <p>PAN: Verified</p>
+                    <p>Overall: Verified</p>
+                  </div>
+                </div>
+              ) : null}
             </div>
           ) : null}
 

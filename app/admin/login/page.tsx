@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { activateClientDemoAdminSession, CLIENT_DEMO_ADMIN_PIN, isClientDemoEnabled } from "@/lib/clientDemoData";
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { ADMIN_LOGIN_KEY } from "@/lib/adminData";
 
@@ -9,10 +10,16 @@ export default function AdminLoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [pin, setPin] = useState("");
   const [error, setError] = useState("");
 
   const handleLogin = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (isClientDemoEnabled() && pin.trim() === CLIENT_DEMO_ADMIN_PIN) {
+      activateClientDemoAdminSession();
+      router.replace("/admin");
+      return;
+    }
     if (IS_PRODUCTION_READY_MODE) {
       setError("Admin authentication is not configured for production.");
       return;
@@ -63,6 +70,18 @@ export default function AdminLoginPage() {
               className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm text-slate-800 outline-none transition focus:border-[#2563eb]"
             />
           </label>
+          {isClientDemoEnabled() ? (
+            <label className="block">
+              <p className="mb-1.5 text-sm font-medium text-slate-700">Client Demo PIN</p>
+              <input
+                type="password"
+                value={pin}
+                onChange={(event) => setPin(event.target.value.replace(/[^\d]/g, "").slice(0, 4))}
+                placeholder="Enter 4-digit PIN"
+                className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm text-slate-800 outline-none transition focus:border-[#2563eb]"
+              />
+            </label>
+          ) : null}
 
           {error ? <p className="text-sm font-medium text-red-600">{error}</p> : null}
 
@@ -78,6 +97,11 @@ export default function AdminLoginPage() {
           <p className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
             Demo: <span className="font-semibold">admin@yopartner.in</span> /{" "}
             <span className="font-semibold">admin123</span>
+          </p>
+        ) : null}
+        {isClientDemoEnabled() ? (
+          <p className="mt-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
+            Client Demo • Preview Mode PIN enabled
           </p>
         ) : null}
       </div>

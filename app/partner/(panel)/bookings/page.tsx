@@ -1,6 +1,7 @@
-"use client";
+﻿"use client";
 
 import { useMemo, useState } from "react";
+import { isClientDemoPartnerSessionActive } from "@/lib/clientDemoData";
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { getPartnerBookings } from "@/lib/partnerData";
 
@@ -13,13 +14,14 @@ function formatINR(value: number) {
 export default function PartnerBookingsPage() {
   const [filter, setFilter] = useState<BookingFilter>("All");
   const bookings = getPartnerBookings();
+  const isDemoSession = isClientDemoPartnerSessionActive();
 
   const filteredBookings = useMemo(() => {
     if (filter === "All") return bookings;
     return bookings.filter((item) => item.status === filter);
   }, [bookings, filter]);
 
-  if (IS_PRODUCTION_READY_MODE) {
+  if (IS_PRODUCTION_READY_MODE && !isDemoSession) {
     return (
       <section className="rounded-xl border border-amber-200 bg-amber-50 p-5">
         <h2 className="text-xl font-semibold text-amber-800">Partner bookings are unavailable</h2>
@@ -30,7 +32,15 @@ export default function PartnerBookingsPage() {
 
   return (
     <section className="space-y-4">
-      <h2 className="text-xl font-semibold text-slate-900">Bookings</h2>
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-xl font-semibold text-slate-900">Bookings</h2>
+        {isDemoSession ? (
+          <p className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">
+            Client Demo • Preview Mode
+          </p>
+        ) : null}
+      </div>
+
       <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="mb-3 flex flex-wrap gap-2">
           {(["All", "Upcoming", "Completed", "Cancelled"] as BookingFilter[]).map((item) => (
@@ -65,9 +75,7 @@ export default function PartnerBookingsPage() {
                   <td className="px-2 py-2 font-medium text-slate-800">{booking.bookingId}</td>
                   <td className="px-2 py-2 text-slate-700">{booking.userMaskedPhone}</td>
                   <td className="px-2 py-2 text-slate-700">{booking.type}</td>
-                  <td className="px-2 py-2 text-slate-700">
-                    {new Date(booking.date).toLocaleString("en-IN")}
-                  </td>
+                  <td className="px-2 py-2 text-slate-700">{new Date(booking.date).toLocaleString("en-IN")}</td>
                   <td className="px-2 py-2 text-slate-700">{formatINR(booking.price)}</td>
                   <td className="px-2 py-2">
                     <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700">

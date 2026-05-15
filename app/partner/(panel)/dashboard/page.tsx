@@ -1,20 +1,22 @@
 ﻿"use client";
 
 import { Clock3 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { isClientDemoPartnerSessionActive } from "@/lib/clientDemoData";
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import {
   getPartnerOnlineStatus,
   getPartnerProfile,
   setPartnerOnlineStatus,
+  subscribePartnerOnlineStatus,
 } from "@/lib/partnerAuth";
 import { defaultPartnerProfile, getPartnerSessions, type PartnerProfile } from "@/lib/partnerData";
 
 type IncomingRequest = {
   id: string;
   userMaskedPhone: string;
-  type: "Chat" | "Audio" | "Video" | "Visit";
+  type: "Chat" | "Audio" | "Video";
   price: number;
   time: string;
 };
@@ -23,7 +25,6 @@ const initialRequests: IncomingRequest[] = [
   { id: "r1", userMaskedPhone: "+91******9363", type: "Chat", price: 250, time: "Now" },
   { id: "r2", userMaskedPhone: "+91******7788", type: "Audio", price: 450, time: "2 min ago" },
   { id: "r3", userMaskedPhone: "+91******2231", type: "Video", price: 600, time: "5 min ago" },
-  { id: "r4", userMaskedPhone: "+91******8841", type: "Visit", price: 1800, time: "10 min ago" },
 ];
 
 const activityItems = [
@@ -41,6 +42,7 @@ function formatINR(value: number) {
 
 export default function PartnerDashboardPage() {
   const router = useRouter();
+  const isDemoSession = isClientDemoPartnerSessionActive();
   const profile = getPartnerProfile<PartnerProfile>(defaultPartnerProfile);
   const [online, setOnline] = useState(getPartnerOnlineStatus);
   const [requests, setRequests] = useState<IncomingRequest[]>(initialRequests);
@@ -69,12 +71,15 @@ export default function PartnerDashboardPage() {
   };
 
   const toggleOnline = () => {
-    const next = !online;
-    setOnline(next);
+    const next = !getPartnerOnlineStatus();
     setPartnerOnlineStatus(next);
   };
 
-  if (IS_PRODUCTION_READY_MODE) {
+  useEffect(() => {
+    return subscribePartnerOnlineStatus(setOnline);
+  }, []);
+
+  if (IS_PRODUCTION_READY_MODE && !isDemoSession) {
     return (
       <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <h2 className="text-xl font-semibold text-slate-900">Partner dashboard is unavailable</h2>
@@ -92,6 +97,12 @@ export default function PartnerDashboardPage() {
           <h2 className="text-2xl font-semibold text-slate-900">
             Welcome back, {profile.fullName || "YoPartner Companion"}
           </h2>
+          {isDemoSession ? (
+            <p className="mt-2 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">
+              <span>Client Demo</span>
+              <span className="text-slate-400">Preview Mode</span>
+            </p>
+          ) : null}
           <p className="mt-1 text-sm text-slate-600">
             Status:
             <span
@@ -113,14 +124,26 @@ export default function PartnerDashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {[
-          ["Today's Chats", "8"],
-          ["Audio Calls", "3"],
-          ["Video Calls", "2"],
-          ["Pending Bookings", "4"],
-          ["Earnings Today", "INR 1,250"],
-          ["Rating", "4.9"],
-        ].map((item) => (
+        {(
+          isDemoSession
+            ? [
+                ["Total Earnings", "₹4,850"],
+                ["Available Balance", "₹2,300"],
+                ["Completed Sessions", "28"],
+                ["Rating", "5.0"],
+                ["Completed Chats", "3"],
+                ["Completed Audio Calls", "2"],
+                ["Completed Video Calls", "1"],
+              ]
+            : [
+                ["Today's Chats", "8"],
+                ["Audio Calls", "3"],
+                ["Video Calls", "2"],
+                ["Pending Bookings", "4"],
+                ["Earnings Today", "₹1,250"],
+                ["Rating", "4.9"],
+              ]
+        ).map((item) => (
           <article key={item[0]} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
             <p className="text-sm text-slate-500">{item[0]}</p>
             <p className="mt-2 text-2xl font-semibold text-slate-900">{item[1]}</p>

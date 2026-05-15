@@ -1,14 +1,10 @@
 "use client";
 
-import { Bell, ChevronDown, Menu, Power } from "lucide-react";
+import { Bell, ChevronDown, Menu } from "lucide-react";
 import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { logoutPartnerAuthSession } from "@/lib/auth/logout";
-import {
-  getPartnerOnlineStatus,
-  getPartnerProfile,
-  setPartnerOnlineStatus,
-} from "@/lib/partnerAuth";
+import { getPartnerProfile } from "@/lib/partnerAuth";
 import { defaultPartnerProfile, type PartnerProfile } from "@/lib/partnerData";
 
 type PartnerTopbarProps = {
@@ -32,16 +28,9 @@ function getTitle(pathname: string) {
 export function PartnerTopbar({ onMenuOpen }: PartnerTopbarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const [online, setOnline] = useState(getPartnerOnlineStatus);
   const [menuOpen, setMenuOpen] = useState(false);
   const profile = getPartnerProfile<PartnerProfile>(defaultPartnerProfile);
   const nameLabel = profile.fullName || "Companion";
-
-  const toggleOnline = () => {
-    const next = !online;
-    setOnline(next);
-    setPartnerOnlineStatus(next);
-  };
 
   const handleLogout = async () => {
     await logoutPartnerAuthSession();
@@ -63,19 +52,6 @@ export function PartnerTopbar({ onMenuOpen }: PartnerTopbarProps) {
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">
-        <button
-          type="button"
-          onClick={toggleOnline}
-          className={`inline-flex h-10 items-center gap-2 rounded-xl border px-3 text-xs font-semibold sm:text-sm ${
-            online
-              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-              : "border-slate-200 bg-slate-100 text-slate-700"
-          }`}
-        >
-          <Power size={14} />
-          {online ? "Online" : "Offline"}
-        </button>
-
         <button
           type="button"
           className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-700"

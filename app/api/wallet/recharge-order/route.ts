@@ -30,7 +30,7 @@ export async function POST(request: Request) {
       status: "Pending",
       gateway: "Demo",
       orderId,
-      description: `Recharge order created for INR ${amount}`,
+      description: `Recharge order created for ₹${amount}`,
     },
   });
 

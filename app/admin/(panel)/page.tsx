@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { AdminMetricCard } from "@/components/admin/AdminMetricCard";
 import { AdminStatusBadge } from "@/components/admin/AdminStatusBadge";
+import { demoAdminStats, isClientDemoAdminSessionActive, isClientDemoEnabled } from "@/lib/clientDemoData";
 import { formatDateTime, formatINR, getAdminApplications, getAdminBookings, getAdminCompanions, getAdminSessions, getAdminSupportTickets, getAdminTransactions, getAdminUsers } from "@/lib/adminStore";
 import type { AdminApplication, AdminBooking, AdminCompanion, AdminSession, AdminTicket, AdminTransaction, AdminUser } from "@/lib/adminData";
 
@@ -22,6 +23,7 @@ function isToday(iso: string) {
 }
 
 export default function AdminDashboardPage() {
+  const isDemoPreview = isClientDemoEnabled() && isClientDemoAdminSessionActive();
   const [users] = useState<AdminUser[]>(() => getAdminUsers());
   const [companions] = useState<AdminCompanion[]>(() => getAdminCompanions());
   const [applications] = useState<AdminApplication[]>(() => getAdminApplications());
@@ -31,6 +33,19 @@ export default function AdminDashboardPage() {
   const [tickets] = useState<AdminTicket[]>(() => getAdminSupportTickets());
 
   const stats = useMemo(() => {
+    if (isDemoPreview) {
+      return {
+        activeCompanions: demoAdminStats.activeCompanions,
+        pendingApplications: demoAdminStats.pendingApplications,
+        liveSessions: 2,
+        totalBookings: demoAdminStats.bookingsToday,
+        walletRecharge: demoAdminStats.walletVolume,
+        pendingPayouts: 0,
+        openSupportTickets: 2,
+        averageRating: "5.0",
+        verificationPending: 0,
+      };
+    }
     const activeCompanions = companions.filter((item) => item.status === "Active").length;
     const pendingApplications = applications.filter((item) => item.status === "Under Review" || item.status === "Needs Info").length;
     const liveSessions = sessions.filter((item) => item.status === "Live").length;
@@ -55,9 +70,19 @@ export default function AdminDashboardPage() {
       averageRating,
       verificationPending,
     };
-  }, [applications, bookings, companions, sessions, tickets, transactions]);
+  }, [applications, bookings, companions, isDemoPreview, sessions, tickets, transactions]);
 
   const todayActivity = useMemo(() => {
+    if (isDemoPreview) {
+      return {
+        todaysUsers: 12,
+        todaysChatSessions: 7,
+        todaysAudioCalls: 4,
+        todaysVideoCalls: 3,
+        todaysHomeVisits: 0,
+        todaysRecharges: 5,
+      };
+    }
     const todaysUsers = users.filter((item) => isToday(item.joinedDate)).length;
     const todaysChatSessions = sessions.filter((item) => item.type === "Chat" && isToday(item.startedAt)).length;
     const todaysAudioCalls = sessions.filter((item) => item.type === "Audio" && isToday(item.startedAt)).length;
@@ -73,7 +98,7 @@ export default function AdminDashboardPage() {
       todaysHomeVisits,
       todaysRecharges,
     };
-  }, [bookings, sessions, transactions, users]);
+  }, [bookings, isDemoPreview, sessions, transactions, users]);
 
   const liveSessions = useMemo(() => sessions.filter((item) => item.status === "Live"), [sessions]);
   const pendingApplications = useMemo(
@@ -90,12 +115,12 @@ export default function AdminDashboardPage() {
   );
 
   const metricCards = [
-    { label: "Total Users", value: users.length.toLocaleString("en-IN"), icon: Users, tone: "blue" as const },
+    { label: "Total Users", value: (isDemoPreview ? demoAdminStats.totalUsers : users.length).toLocaleString("en-IN"), icon: Users, tone: "blue" as const },
     { label: "Active Companions", value: String(stats.activeCompanions), icon: BadgeCheck, tone: "teal" as const },
     { label: "Pending Applications", value: String(stats.pendingApplications), icon: Activity, tone: "amber" as const },
     { label: "Live Sessions", value: String(stats.liveSessions), icon: MessageCircle, tone: "purple" as const },
-    { label: "Total Bookings", value: String(stats.totalBookings), icon: Phone, tone: "slate" as const },
-    { label: "Wallet Recharge", value: formatINR(stats.walletRecharge), icon: Wallet, tone: "teal" as const },
+    { label: "Bookings Today", value: String(stats.totalBookings), icon: Phone, tone: "slate" as const },
+    { label: isDemoPreview ? "Wallet Volume" : "Wallet Recharge", value: formatINR(stats.walletRecharge), icon: Wallet, tone: "teal" as const },
     { label: "Pending Payouts", value: String(stats.pendingPayouts), icon: CreditCard, tone: "amber" as const },
     { label: "Open Support Tickets", value: String(stats.openSupportTickets), icon: Activity, tone: "blue" as const },
     { label: "Average Rating", value: stats.averageRating, icon: BadgeCheck, tone: "purple" as const },
@@ -104,6 +129,11 @@ export default function AdminDashboardPage() {
 
   return (
     <section className="space-y-6">
+      {isDemoPreview ? (
+        <p className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">
+          Client Demo • Preview Mode
+        </p>
+      ) : null}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {metricCards.map((card) => (
           <AdminMetricCard key={card.label} label={card.label} value={card.value} icon={card.icon} tone={card.tone} />

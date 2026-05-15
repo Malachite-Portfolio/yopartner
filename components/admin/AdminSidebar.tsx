@@ -22,6 +22,7 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ADMIN_LOGIN_KEY } from "@/lib/adminData";
+import { clearClientDemoAdminSession } from "@/lib/clientDemoData";
 
 type AdminSidebarProps = {
   onNavigate?: () => void;
@@ -59,6 +60,7 @@ export function AdminSidebar({ onNavigate, onClose }: AdminSidebarProps) {
     if (typeof window !== "undefined") {
       window.localStorage.setItem(ADMIN_LOGIN_KEY, "false");
     }
+    clearClientDemoAdminSession();
     router.replace("/admin/login");
   };
 

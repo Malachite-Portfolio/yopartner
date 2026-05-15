@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { logoutPartnerAuthSession } from "@/lib/auth/logout";
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import {
   getPartnerOnlineStatus,
   setPartnerOnlineStatus,
+  subscribePartnerOnlineStatus,
 } from "@/lib/partnerAuth";
 import { defaultPartnerSettings, getPartnerSettings, savePartnerSettings, type PartnerSettings } from "@/lib/partnerData";
 
@@ -44,6 +45,12 @@ export default function PartnerSettingsPage() {
     savePartnerSettings(next);
     setPartnerOnlineStatus(next.onlineAvailability);
   };
+
+  useEffect(() => {
+    return subscribePartnerOnlineStatus((value) => {
+      setSettings((current) => ({ ...current, onlineAvailability: value }));
+    });
+  }, []);
 
   const handleLogout = async () => {
     await logoutPartnerAuthSession();

@@ -1,6 +1,7 @@
-"use client";
+﻿"use client";
 
 import { useMemo, useState } from "react";
+import { isClientDemoPartnerSessionActive } from "@/lib/clientDemoData";
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { getPartnerEarnings } from "@/lib/partnerData";
 
@@ -11,6 +12,7 @@ function formatINR(value: number) {
 export default function PartnerEarningsPage() {
   const earnings = getPartnerEarnings();
   const [message, setMessage] = useState("");
+  const isDemoSession = isClientDemoPartnerSessionActive();
 
   const stats = useMemo(() => {
     const totalEarnings = earnings.reduce((sum, row) => sum + row.netEarning, 0);
@@ -24,7 +26,7 @@ export default function PartnerEarningsPage() {
     return { totalEarnings, availableBalance, pendingPayout, completedSessions };
   }, [earnings]);
 
-  if (IS_PRODUCTION_READY_MODE) {
+  if (IS_PRODUCTION_READY_MODE && !isDemoSession) {
     return (
       <section className="rounded-xl border border-amber-200 bg-amber-50 p-5">
         <h2 className="text-xl font-semibold text-amber-800">Partner earnings are unavailable</h2>
@@ -35,7 +37,14 @@ export default function PartnerEarningsPage() {
 
   return (
     <section className="space-y-4">
-      <h2 className="text-xl font-semibold text-slate-900">Earnings</h2>
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-xl font-semibold text-slate-900">Earnings</h2>
+        {isDemoSession ? (
+          <p className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">
+            Client Demo • Preview Mode
+          </p>
+        ) : null}
+      </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">

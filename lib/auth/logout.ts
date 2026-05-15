@@ -2,6 +2,7 @@
 
 import { setDemoLoggedIn } from "@/lib/demoAuth";
 import { IS_DEMO_MODE } from "@/lib/config/runtime";
+import { clearClientDemoPartnerSession } from "@/lib/clientDemoData";
 import {
   PARTNER_FIREBASE_PHONE_KEY,
   PARTNER_FIREBASE_TOKEN_KEY,
@@ -48,6 +49,7 @@ export async function logoutPartnerAuthSession() {
   if (IS_DEMO_MODE) {
     setAuthMode("demo");
   }
+  clearClientDemoPartnerSession();
   removeKeys([
     PARTNER_LOGGED_IN_KEY,
     PARTNER_PHONE_KEY,

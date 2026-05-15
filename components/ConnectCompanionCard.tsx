@@ -4,6 +4,7 @@ import { MessageCircle, Phone, Star, Video } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ConnectCompanion } from "@/lib/data";
+import { formatINRPrice } from "@/lib/priceFormat";
 
 type ConnectCompanionCardProps = {
   companion: ConnectCompanion;
@@ -15,11 +16,11 @@ function PricePill({
   variant,
 }: {
   label: "chat" | "voice" | "video";
-  price: number;
+  price?: number;
   variant: "chat" | "voice" | "video";
 }) {
   const base =
-    "inline-flex h-[42px] w-full items-center justify-center gap-1.5 rounded-xl border px-2 text-[12px] font-semibold text-slate-900 sm:h-[45px] sm:gap-2 sm:px-3 sm:text-[15px]";
+    "inline-flex h-[42px] w-full flex-nowrap items-center justify-center gap-1.5 rounded-xl border px-2 text-[12px] font-semibold text-slate-900 sm:h-[45px] sm:gap-2 sm:px-3 sm:text-[15px]";
   const style =
     variant === "chat"
       ? "border-[#FACC15] bg-[#FFFBEA]"
@@ -38,7 +39,7 @@ function PricePill({
         {label === "voice" && <Phone size={13} className="sm:h-4 sm:w-4" />}
         {label === "video" && <Video size={13} className="sm:h-4 sm:w-4" />}
       </span>
-      <span className="truncate">INR {price}</span>
+      <span className="text-sm font-semibold leading-none text-slate-900 sm:text-[15px]">{formatINRPrice(price, "/min")}</span>
     </span>
   );
 }
@@ -65,7 +66,7 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
 
   return (
     <article
-      className="yp-hover-lift self-start cursor-pointer rounded-2xl border border-slate-200 bg-white px-5 pb-3 pt-5 shadow-sm transition hover:border-[#59b0f8] hover:shadow-md"
+      className="yp-hover-lift flex h-full cursor-pointer flex-col rounded-2xl border border-slate-200 bg-white px-5 pb-3 pt-5 shadow-sm transition hover:border-[#59b0f8] hover:shadow-md"
       onClick={() => router.push(profileUrl)}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
@@ -112,10 +113,10 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
         </div>
       </div>
 
-      <div className={`mt-3 grid gap-2.5 ${hasVideo ? "grid-cols-3" : "grid-cols-2"}`}>
+      <div className="mt-auto grid min-h-[104px] grid-cols-1 gap-2 pt-3 sm:grid-cols-2">
         <Link
           href={`/chat/${companion.id}`}
-          className="block"
+          className="block min-w-[112px]"
           onClick={(event) => event.stopPropagation()}
           onKeyDown={(event) => event.stopPropagation()}
           aria-label={`Chat with ${companion.name}`}
@@ -124,7 +125,7 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
         </Link>
         <Link
           href={`/call/audio/${companion.id}`}
-          className="block"
+          className="block min-w-[112px]"
           onClick={(event) => event.stopPropagation()}
           onKeyDown={(event) => event.stopPropagation()}
           aria-label={`Voice call ${companion.name}`}
@@ -134,7 +135,7 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
         {hasVideo && (
           <Link
             href={`/call/video/${companion.id}`}
-            className="block"
+            className="block min-w-[112px] sm:col-span-2"
             onClick={(event) => event.stopPropagation()}
             onKeyDown={(event) => event.stopPropagation()}
             aria-label={`Video call ${companion.name}`}

@@ -9,6 +9,7 @@ export const PARTNER_BOOKINGS_KEY = "yopartner_partner_bookings";
 export const PARTNER_EARNINGS_KEY = "yopartner_partner_earnings";
 export const PARTNER_SETTINGS_KEY = "yopartner_partner_settings";
 export const PARTNER_PROFILE_DRAFT_KEY = "yopartner_partner_profile_draft";
+export const PARTNER_ONLINE_STATUS_EVENT = "yopartner:partner-online-status";
 
 function canUseStorage() {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
@@ -85,5 +86,56 @@ export function getPartnerOnlineStatus() {
 
 export function setPartnerOnlineStatus(value: boolean) {
   if (!canUseStorage()) return;
-  window.localStorage.setItem(PARTNER_ONLINE_KEY, value ? "true" : "false");
+  const previousValue = window.localStorage.getItem(PARTNER_ONLINE_KEY);
+  const nextValue = value ? "true" : "false";
+  window.localStorage.setItem(PARTNER_ONLINE_KEY, nextValue);
+  window.dispatchEvent(new CustomEvent<boolean>(PARTNER_ONLINE_STATUS_EVENT, { detail: value }));
+  try {
+    window.dispatchEvent(
+      new StorageEvent("storage", {
+        key: PARTNER_ONLINE_KEY,
+        oldValue: previousValue,
+        newValue: nextValue,
+        storageArea: window.localStorage,
+      }),
+    );
+  } catch {
+    // Some environments may not allow constructing StorageEvent; custom event above still syncs same-tab UI.
+  }
+}
+
+export function subscribePartnerOnlineStatus(listener: (value: boolean) => void) {
+  if (!canUseStorage()) return () => undefined;
+
+  const syncFromStorage = () => {
+    listener(getPartnerOnlineStatus());
+  };
+
+  const onCustomEvent = (event: Event) => {
+    const customEvent = event as CustomEvent<boolean>;
+    if (typeof customEvent.detail === "boolean") {
+      listener(customEvent.detail);
+      return;
+    }
+    syncFromStorage();
+  };
+
+  const onStorageEvent = (event: StorageEvent) => {
+    if (event.key !== PARTNER_ONLINE_KEY) return;
+    syncFromStorage();
+  };
+
+  const onFocus = () => {
+    syncFromStorage();
+  };
+
+  window.addEventListener(PARTNER_ONLINE_STATUS_EVENT, onCustomEvent as EventListener);
+  window.addEventListener("storage", onStorageEvent);
+  window.addEventListener("focus", onFocus);
+
+  return () => {
+    window.removeEventListener(PARTNER_ONLINE_STATUS_EVENT, onCustomEvent as EventListener);
+    window.removeEventListener("storage", onStorageEvent);
+    window.removeEventListener("focus", onFocus);
+  };
 }

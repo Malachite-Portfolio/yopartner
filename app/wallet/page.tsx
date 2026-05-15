@@ -27,6 +27,7 @@ import {
   getWallet,
   getWalletTransactions as getWalletTransactionsFromApi,
 } from "@/lib/api/wallet";
+import { demoWallet, isClientDemoEnabled } from "@/lib/clientDemoData";
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 
 type WalletTab = "overview" | "transactions" | "recharge";
@@ -147,11 +148,24 @@ export default function WalletPage() {
   const [successMessage, setSuccessMessage] = useState("");
   const [rechargeError, setRechargeError] = useState("");
   const [apiError, setApiError] = useState("");
+  const [isDemoWalletPreview, setIsDemoWalletPreview] = useState(false);
 
   const [balance, setBalance] = useState(0);
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
   const [totalSpent, setTotalSpent] = useState(0);
   const [bellMessage, setBellMessage] = useState("");
+
+  const mapApiTransactions = (input: Awaited<ReturnType<typeof getWalletTransactionsFromApi>>["data"]) =>
+    (input ?? []).map((tx) => ({
+      id: tx.id,
+      type: tx.type === "Booking" ? "booking" : "recharge",
+      amountAdded: tx.amount,
+      paidAmount: Math.abs(tx.amount),
+      bonus: 0,
+      createdAt: tx.createdAt,
+      description: tx.description ?? tx.type,
+      status: tx.status === "Success" ? "success" : "success",
+    })) as WalletTransaction[];
 
   useEffect(() => {
     if (IS_PRODUCTION_READY_MODE) {
@@ -160,23 +174,15 @@ export default function WalletPage() {
           getWallet(),
           getWalletTransactionsFromApi(),
         ]);
-        if (walletResponse.data) {
+        const hasRealWallet = Boolean(walletResponse.data);
+        const hasRealTransactions = Boolean(transactionResponse.data && transactionResponse.data.length > 0);
+
+        if (hasRealWallet && walletResponse.data) {
           setBalance(walletResponse.data.balance);
-        }
-        if (walletResponse.error) {
-          setApiError("Wallet service is not connected yet.");
+          setIsDemoWalletPreview(false);
         }
         if (transactionResponse.data) {
-          const mapped = transactionResponse.data.map((tx) => ({
-            id: tx.id,
-            type: tx.type === "Booking" ? "booking" : "recharge",
-            amountAdded: tx.amount,
-            paidAmount: Math.abs(tx.amount),
-            bonus: 0,
-            createdAt: tx.createdAt,
-            description: tx.description ?? tx.type,
-            status: tx.status === "Success" ? "success" : "success",
-          })) as WalletTransaction[];
+          const mapped = mapApiTransactions(transactionResponse.data);
           setTransactions(mapped);
           setTotalSpent(
             mapped
@@ -184,9 +190,19 @@ export default function WalletPage() {
               .reduce((sum, tx) => sum + Math.abs(tx.amountAdded), 0),
           );
         }
-        if (transactionResponse.error) {
-          setApiError("Wallet service is not connected yet.");
+        if (!hasRealWallet && !hasRealTransactions && isClientDemoEnabled()) {
+          setBalance(demoWallet.balance);
+          setTransactions(demoWallet.transactions);
+          setTotalSpent(
+            demoWallet.transactions
+              .filter((tx) => tx.type === "booking")
+              .reduce((sum, tx) => sum + Math.abs(tx.amountAdded), 0),
+          );
+          setApiError("");
+          setIsDemoWalletPreview(true);
+          return;
         }
+        if (walletResponse.error || transactionResponse.error) setApiError("Wallet service is not connected yet.");
       })();
       return () => undefined;
     }
@@ -288,6 +304,9 @@ export default function WalletPage() {
               <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-600 sm:text-base">
                 View your balance, review transactions, and recharge securely.
               </p>
+              {isDemoWalletPreview ? (
+                <p className="mt-2 text-xs font-semibold text-slate-500">Demo wallet for preview</p>
+              ) : null}
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -299,19 +318,15 @@ export default function WalletPage() {
                         getWallet(),
                         getWalletTransactionsFromApi(),
                       ]);
-                      if (walletResponse.data) setBalance(walletResponse.data.balance);
-                      if (walletResponse.error) setApiError("Wallet service is not connected yet.");
+                      const hasRealWallet = Boolean(walletResponse.data);
+                      const hasRealTransactions = Boolean(txResponse.data && txResponse.data.length > 0);
+
+                      if (hasRealWallet && walletResponse.data) {
+                        setBalance(walletResponse.data.balance);
+                        setIsDemoWalletPreview(false);
+                      }
                       if (txResponse.data) {
-                        const mapped = txResponse.data.map((tx) => ({
-                          id: tx.id,
-                          type: tx.type === "Booking" ? "booking" : "recharge",
-                          amountAdded: tx.amount,
-                          paidAmount: Math.abs(tx.amount),
-                          bonus: 0,
-                          createdAt: tx.createdAt,
-                          description: tx.description ?? tx.type,
-                          status: tx.status === "Success" ? "success" : "success",
-                        })) as WalletTransaction[];
+                        const mapped = mapApiTransactions(txResponse.data);
                         setTransactions(mapped);
                         setTotalSpent(
                           mapped
@@ -319,7 +334,20 @@ export default function WalletPage() {
                             .reduce((sum, tx) => sum + Math.abs(tx.amountAdded), 0),
                         );
                       }
-                      if (txResponse.error) setApiError("Wallet service is not connected yet.");
+                      if (!hasRealWallet && !hasRealTransactions && isClientDemoEnabled()) {
+                        setBalance(demoWallet.balance);
+                        setTransactions(demoWallet.transactions);
+                        setTotalSpent(
+                          demoWallet.transactions
+                            .filter((tx) => tx.type === "booking")
+                            .reduce((sum, tx) => sum + Math.abs(tx.amountAdded), 0),
+                        );
+                        setApiError("");
+                        setIsDemoWalletPreview(true);
+                        setSuccessMessage("Demo wallet loaded.");
+                        return;
+                      }
+                      if (walletResponse.error || txResponse.error) setApiError("Wallet service is not connected yet.");
                       setSuccessMessage("Wallet summary refreshed.");
                     })();
                     return;
