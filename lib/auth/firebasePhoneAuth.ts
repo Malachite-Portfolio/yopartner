@@ -27,6 +27,10 @@ let recaptchaWidgetIdRef: number | null = null;
 let pendingConfirmationResultRef: ConfirmationResult | null = null;
 let activeAuthMode: AuthMode = "demo";
 
+function canUseStorage() {
+  return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+}
+
 export function isFirebaseTestNumbersMode() {
   return process.env.NEXT_PUBLIC_FIREBASE_USE_TEST_NUMBERS === "true";
 }
@@ -45,6 +49,24 @@ export function isFirebaseOtpEnabled() {
 
 export function getPendingConfirmationResult() {
   return pendingConfirmationResultRef;
+}
+
+export function getPartnerStoredFirebaseToken() {
+  if (!canUseStorage()) return null;
+  const token = window.localStorage.getItem(PARTNER_FIREBASE_TOKEN_KEY);
+  if (!token || token.trim().length === 0) return null;
+  return token.trim();
+}
+
+export function setPartnerStoredFirebaseToken(token: string) {
+  if (!canUseStorage()) return;
+  window.localStorage.setItem(PARTNER_FIREBASE_TOKEN_KEY, token);
+}
+
+export function clearPartnerStoredFirebaseToken() {
+  if (!canUseStorage()) return;
+  window.localStorage.removeItem(PARTNER_FIREBASE_TOKEN_KEY);
+  window.localStorage.removeItem(PARTNER_FIREBASE_UID_KEY);
 }
 
 export function setPendingConfirmationResult(confirmationResult: ConfirmationResult | null) {

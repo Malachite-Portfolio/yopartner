@@ -5,7 +5,10 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { onAuthStateChanged, type User } from "firebase/auth";
-import { PARTNER_FIREBASE_TOKEN_KEY } from "@/lib/auth/firebasePhoneAuth";
+import {
+  getPartnerStoredFirebaseToken,
+  setPartnerStoredFirebaseToken,
+} from "@/lib/auth/firebasePhoneAuth";
 import { submitPartnerApplication } from "@/lib/api/partner";
 import { isApiBaseUrlConfigured } from "@/lib/api/client";
 import { IS_DEMO_MODE, IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
@@ -277,38 +280,42 @@ export default function PartnerOnboardingPage() {
           setIsSubmitting(false);
           return;
         }
+        let hadTokenBeforeSubmit = Boolean(getPartnerStoredFirebaseToken());
         const user = await waitForFirebaseUser();
         if (user) {
           try {
             const freshToken = await user.getIdToken(true);
-            if (typeof window !== "undefined") {
-              window.localStorage.setItem(PARTNER_FIREBASE_TOKEN_KEY, freshToken);
-            }
+            setPartnerStoredFirebaseToken(freshToken);
+            hadTokenBeforeSubmit = true;
           } catch {
-            if (typeof window !== "undefined") {
-              const storedToken = window.localStorage.getItem(PARTNER_FIREBASE_TOKEN_KEY);
-              if (!storedToken || storedToken.trim().length === 0) {
-                setErrors({ base: "Please login again as a partner to submit your profile." });
-                setIsSubmitting(false);
-                return;
-              }
-            }
-          }
-        } else {
-          if (typeof window !== "undefined") {
-            const storedToken = window.localStorage.getItem(PARTNER_FIREBASE_TOKEN_KEY);
-            if (!storedToken || storedToken.trim().length === 0) {
-              setErrors({ base: "Your login session expired. Please login again as a partner." });
+            hadTokenBeforeSubmit = Boolean(getPartnerStoredFirebaseToken());
+            if (!hadTokenBeforeSubmit) {
+              setErrors({ base: "Please login again as a partner to submit your profile." });
               setIsSubmitting(false);
               return;
             }
+          }
+        } else {
+          hadTokenBeforeSubmit = Boolean(getPartnerStoredFirebaseToken());
+          if (!hadTokenBeforeSubmit) {
+            setErrors({ base: "Please login again as a partner to submit your profile." });
+            setIsSubmitting(false);
+            return;
           }
         }
         const payload = toPartnerOnboardingPayload(finalProfile);
         const response = await submitPartnerApplication(payload);
         if (response.error) {
           if (response.error.status === 401) {
-            setErrors({ base: "Your login session expired. Please login again as a partner." });
+            if (process.env.NODE_ENV !== "production") {
+              console.warn("[partner onboarding] submit returned 401", { hadTokenBeforeSubmit });
+            }
+            const backendMessage = response.error.message?.trim();
+            if (backendMessage && backendMessage !== "Request failed.") {
+              setErrors({ base: `Submit failed (401): ${backendMessage}` });
+            } else {
+              setErrors({ base: "Your login session expired. Please login again as a partner." });
+            }
             setIsSubmitting(false);
             return;
           }

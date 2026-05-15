@@ -6,10 +6,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   PARTNER_FIREBASE_PHONE_KEY,
-  PARTNER_FIREBASE_TOKEN_KEY,
   PARTNER_FIREBASE_UID_KEY,
   clearPendingConfirmationResult,
   getAuthMode,
+  setPartnerStoredFirebaseToken,
   getPendingConfirmationResult,
   isFirebaseOtpEnabled,
   mapFirebaseAuthError,
@@ -88,7 +88,7 @@ export default function PartnerOtpPage() {
       setError("");
       try {
         const user = await verifyOtp(pendingConfirmation, otpValue);
-        const idToken = await user.getIdToken();
+        const idToken = await user.getIdToken(true);
 
         const sessionResponse = await fetch("/api/auth/session", {
           method: "POST",
@@ -120,7 +120,7 @@ export default function PartnerOtpPage() {
           window.localStorage.setItem(PARTNER_PHONE_KEY, phoneValue);
           window.localStorage.setItem(PARTNER_FIREBASE_UID_KEY, user.uid);
           window.localStorage.setItem(PARTNER_FIREBASE_PHONE_KEY, phoneValue);
-          window.localStorage.setItem(PARTNER_FIREBASE_TOKEN_KEY, idToken);
+          setPartnerStoredFirebaseToken(idToken);
         }
 
         clearPendingConfirmationResult();

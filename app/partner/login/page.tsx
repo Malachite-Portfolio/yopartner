@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  clearPartnerStoredFirebaseToken,
+  clearPendingConfirmationResult,
   getFirebaseErrorDetails,
   isFirebaseOtpEnabled,
   isFirebaseTestNumbersMode,
@@ -49,6 +51,8 @@ export default function PartnerLoginPage() {
     const normalizedPhone = `+91${trimmedPhone}`;
 
     if (typeof window !== "undefined") {
+      clearPartnerStoredFirebaseToken();
+      clearPendingConfirmationResult();
       window.localStorage.setItem(PARTNER_PHONE_KEY, normalizedPhone);
     }
 
