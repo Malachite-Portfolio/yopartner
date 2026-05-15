@@ -14,6 +14,7 @@ import {
   isFirebaseOtpEnabled,
   mapFirebaseAuthError,
   setAuthMode,
+  syncLocalSessionSafely,
   verifyOtp,
 } from "@/lib/auth/firebasePhoneAuth";
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
@@ -90,28 +91,6 @@ export default function PartnerOtpPage() {
         const user = await verifyOtp(pendingConfirmation, otpValue);
         const idToken = await user.getIdToken(true);
 
-        const sessionResponse = await fetch("/api/auth/session", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ idToken, role: "partner" }),
-        });
-
-        if (sessionResponse.status === 503) {
-          setError(
-            IS_PRODUCTION_READY_MODE
-              ? "Authentication service is temporarily unavailable. Please try again."
-              : "Firebase Admin is not configured. Please use Demo OTP mode.",
-          );
-          setIsSubmitting(false);
-          return;
-        }
-
-        if (!sessionResponse.ok) {
-          setError("Unable to create session. Please try again.");
-          setIsSubmitting(false);
-          return;
-        }
-
         loginPartner(phone);
         if (typeof window !== "undefined") {
           const normalizedPhone = phone.replace(/\D/g, "").slice(-10);
@@ -122,6 +101,7 @@ export default function PartnerOtpPage() {
           window.localStorage.setItem(PARTNER_FIREBASE_PHONE_KEY, phoneValue);
           setPartnerStoredFirebaseToken(idToken);
         }
+        void syncLocalSessionSafely(idToken, "partner");
 
         clearPendingConfirmationResult();
         setAuthMode("firebase");
