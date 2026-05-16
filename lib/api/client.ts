@@ -77,17 +77,14 @@ export function notConnectedError(message: string): ApiResult<never> {
 
 export function getStoredAuthToken(path = "") {
   if (typeof window === "undefined") return null;
-  const isAdminRoute = path.includes("/api/admin");
+  const isAdminRoute = path.startsWith("/api/admin");
   const keys = isAdminRoute
     ? [
-        "yopartner_admin_firebase_id_token",
-        "yopartner_partner_firebase_id_token",
-        "yopartner_firebase_id_token",
+        "yopartner_admin_auth_token",
       ]
     : [
         "yopartner_partner_firebase_id_token",
         "yopartner_firebase_id_token",
-        "yopartner_admin_firebase_id_token",
       ];
   for (const key of keys) {
     const token = window.localStorage.getItem(key);

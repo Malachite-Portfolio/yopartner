@@ -1,7 +1,9 @@
-import { ADMIN_LOGIN_KEY } from "@/lib/adminData";
 import { apiRequest } from "@/lib/api/client";
+import { ADMIN_LOGIN_KEY } from "@/lib/adminData";
 import { clearClientDemoAdminSession, isClientDemoAdminSessionActive, isClientDemoEnabled } from "@/lib/clientDemoData";
 
+export const ADMIN_AUTH_TOKEN_KEY = "yopartner_admin_auth_token";
+export const ADMIN_LOGIN_ID_KEY = "yopartner_admin_login_id";
 export const ADMIN_FIREBASE_UID_KEY = "yopartner_admin_firebase_uid";
 export const ADMIN_FIREBASE_PHONE_KEY = "yopartner_admin_phone";
 export const ADMIN_FIREBASE_TOKEN_KEY = "yopartner_admin_firebase_id_token";
@@ -24,39 +26,27 @@ function canUseStorage() {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
 }
 
-function extractRoleFromPayload(payload: unknown): string | null {
-  if (!payload || typeof payload !== "object") return null;
-  const root = payload as Record<string, unknown>;
-  const user = (root.user ?? {}) as Record<string, unknown>;
-  const me = (root.me ?? {}) as Record<string, unknown>;
-  const data = (root.data ?? {}) as Record<string, unknown>;
-  const candidates = [root.role, user.role, me.role, data.role];
-
-  for (const value of candidates) {
-    const role = String(value ?? "").trim().toUpperCase();
-    if (role) return role;
-  }
-  return null;
-}
-
 export function getStoredAdminToken() {
   if (!canUseStorage()) return null;
-  const token = window.localStorage.getItem(ADMIN_FIREBASE_TOKEN_KEY);
+  const token = window.localStorage.getItem(ADMIN_AUTH_TOKEN_KEY);
   if (!token || token.trim().length === 0) return null;
   return token.trim();
 }
 
-export function setAdminAuthSession(params: { idToken: string; uid: string; phone: string }) {
+export function setAdminAuthSession(params: { token: string; loginId?: string }) {
   if (!canUseStorage()) return;
   window.localStorage.setItem(ADMIN_LOGIN_KEY, "true");
-  window.localStorage.setItem(ADMIN_FIREBASE_TOKEN_KEY, params.idToken);
-  window.localStorage.setItem(ADMIN_FIREBASE_UID_KEY, params.uid);
-  window.localStorage.setItem(ADMIN_FIREBASE_PHONE_KEY, params.phone);
+  window.localStorage.setItem(ADMIN_AUTH_TOKEN_KEY, params.token);
+  if (params.loginId) {
+    window.localStorage.setItem(ADMIN_LOGIN_ID_KEY, params.loginId);
+  }
 }
 
 export function clearAdminAuthSession() {
   if (!canUseStorage()) return;
   window.localStorage.setItem(ADMIN_LOGIN_KEY, "false");
+  window.localStorage.removeItem(ADMIN_AUTH_TOKEN_KEY);
+  window.localStorage.removeItem(ADMIN_LOGIN_ID_KEY);
   window.localStorage.removeItem(ADMIN_FIREBASE_TOKEN_KEY);
   window.localStorage.removeItem(ADMIN_FIREBASE_UID_KEY);
   window.localStorage.removeItem(ADMIN_FIREBASE_PHONE_KEY);
@@ -69,32 +59,28 @@ export async function verifyAdminRole(): Promise<AdminRoleCheckResult> {
     return { role: null, status: 401, message: "Admin login required." };
   }
 
-  const meResponse = await apiRequest<Record<string, unknown>>("/api/auth/me");
+  const meResponse = await apiRequest<Record<string, unknown>>("/api/admin/auth/me");
   if (meResponse.data) {
-    const role = extractRoleFromPayload(meResponse.data);
-    if (role) return { role };
+    const admin = (meResponse.data as Record<string, unknown>).admin as Record<string, unknown> | undefined;
+    const role = String(admin?.role ?? "").toUpperCase();
+    if (role === "ADMIN") {
+      return { role: "ADMIN" };
+    }
   }
+
   if (meResponse.error && meResponse.error.status && meResponse.error.status !== 404) {
     return { role: null, status: meResponse.error.status, message: meResponse.error.message };
   }
 
-  const usersResponse = await apiRequest<Record<string, unknown>>("/api/users");
-  if (usersResponse.data) {
-    const role = extractRoleFromPayload(usersResponse.data);
-    if (role) return { role };
-  }
-  if (usersResponse.error && usersResponse.error.status && usersResponse.error.status !== 404) {
-    return { role: null, status: usersResponse.error.status, message: usersResponse.error.message };
-  }
-
-  const adminDashboardResponse = await apiRequest<Record<string, unknown>>("/api/admin/dashboard");
-  if (adminDashboardResponse.data) {
+  const dashboardResponse = await apiRequest<Record<string, unknown>>("/api/admin/dashboard");
+  if (dashboardResponse.data) {
     return { role: "ADMIN" };
   }
+
   return {
     role: null,
-    status: adminDashboardResponse.error?.status,
-    message: adminDashboardResponse.error?.message ?? "Unable to verify admin role.",
+    status: dashboardResponse.error?.status,
+    message: dashboardResponse.error?.message ?? "Unable to verify admin role.",
   };
 }
 
@@ -133,6 +119,7 @@ export async function resolveAdminAccess(): Promise<AdminAccessState> {
   }
 
   if (roleCheck.status === 401) {
+    clearAdminAuthSession();
     return {
       allowed: false,
       isDemo: false,
