@@ -1,13 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AdminActionMenu } from "@/components/admin/AdminActionMenu";
 import { AdminDetailDrawer } from "@/components/admin/AdminDetailDrawer";
 import { AdminStatusBadge } from "@/components/admin/AdminStatusBadge";
 import { AdminTableToolbar } from "@/components/admin/AdminTableToolbar";
-import { listApplications, updateApplicationStatus } from "@/lib/api/admin";
-import { type AdminApplication, type AdminApplicationStatus } from "@/lib/adminData";
-import { formatDateTime, getAdminApplications, getAdminCompanions, setAdminApplications, setAdminCompanions } from "@/lib/adminStore";
+import { clearAdminAuthSession } from "@/lib/adminAuth";
+import {
+  listApplications,
+  type AdminApplicationUpdateStatus,
+  updateAdminApplicationStatus,
+} from "@/lib/api/admin";
+import { type AdminApplicationStatus } from "@/lib/adminData";
+import { formatDateTime } from "@/lib/adminStore";
 import { isClientDemoAdminSessionActive, isClientDemoEnabled } from "@/lib/clientDemoData";
 
 type ApplicationRow = {
@@ -27,6 +33,8 @@ type ApplicationRow = {
   profileTagline: string;
   aboutYourself: string;
 };
+
+type RowAction = "approve" | "reject" | "needs_info";
 
 const statusFilterOptions: Array<"All" | AdminApplicationStatus> = [
   "All",
@@ -100,107 +108,60 @@ function toApplicationRows(data: unknown): ApplicationRow[] {
   });
 }
 
-function toApiStatus(status: AdminApplicationStatus) {
-  if (status === "Needs Info") return "needs_info";
-  if (status === "Under Review") return "under_review";
-  return status.toLowerCase();
+function toUiStatusFromApi(status: AdminApplicationUpdateStatus): AdminApplicationStatus {
+  if (status === "APPROVED") return "Approved";
+  if (status === "REJECTED") return "Rejected";
+  return "Needs Info";
 }
 
 export default function AdminApplicationsPage() {
+  const router = useRouter();
   const isDemoPreview = isClientDemoEnabled() && isClientDemoAdminSessionActive();
-  const demoRows = useMemo<ApplicationRow[]>(
-    () =>
-      isDemoPreview
-        ? getAdminApplications().map((item) => ({
-            id: item.id,
-            applicationId: item.applicationId,
-            partnerName: item.partnerName,
-            phone: item.phone,
-            age: item.age,
-            gender: item.gender,
-            bornCity: item.bornCity,
-            languagesKnown: item.languagesKnown,
-            servicesOffered: item.servicesOffered,
-            submittedDate: item.submittedDate,
-            status: item.status,
-            kycStatus: "Pending",
-            verificationStatus: "Pending",
-            profileTagline: item.profileTagline,
-            aboutYourself: item.aboutYourself,
-          }))
-        : [],
-    [isDemoPreview],
-  );
 
-  const [applications, setApplications] = useState<ApplicationRow[]>(() => demoRows);
+  const [applications, setApplications] = useState<ApplicationRow[]>([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"All" | AdminApplicationStatus>("All");
   const [selected, setSelected] = useState<ApplicationRow | null>(null);
   const [loading, setLoading] = useState(!isDemoPreview);
-  const [apiError, setApiError] = useState("");
+  const [apiError, setApiError] = useState(
+    isDemoPreview ? "Real application actions are unavailable in demo preview." : "",
+  );
   const [actionError, setActionError] = useState("");
-  const [actionApiAvailable, setActionApiAvailable] = useState(isDemoPreview);
+  const [successMessage, setSuccessMessage] = useState("");
+  const [rowActionLoading, setRowActionLoading] = useState<Record<string, RowAction | undefined>>({});
 
-  useEffect(() => {
-    if (isDemoPreview) return;
+  const loadApplications = useCallback(async () => {
+    setLoading(true);
+    setApiError("");
+    const response = await listApplications();
 
-    let active = true;
-    const loadApplications = async () => {
-      setLoading(true);
-      setApiError("");
-      setActionError("");
-
-      const response = await listApplications();
-      if (!active) return;
-
-      if (response.error) {
-        setApiError("Admin data could not be loaded. Please try again.");
-        setApplications([]);
-        setActionApiAvailable(false);
+    if (response.error) {
+      if (response.error.status === 401) {
+        clearAdminAuthSession();
+        setApiError("Admin session expired. Please login again.");
+        router.replace("/admin/login");
         setLoading(false);
         return;
       }
-
-      setApplications(toApplicationRows(response.data));
-
-      // Probe action endpoint safely: empty payload should return 400 when endpoint exists.
-      const probe = await updateApplicationStatus({});
-      if (!active) return;
-      setActionApiAvailable(probe.error?.status === 400 || probe.data !== null);
-
+      setApiError(response.error.message || "Admin data could not be loaded. Please try again.");
+      setApplications([]);
       setLoading(false);
-    };
+      return;
+    }
 
-    void loadApplications();
+    setApplications(toApplicationRows(response.data));
+    setLoading(false);
+  }, [router]);
+
+  useEffect(() => {
+    if (isDemoPreview) return;
+    const timer = window.setTimeout(() => {
+      void loadApplications();
+    }, 0);
     return () => {
-      active = false;
+      window.clearTimeout(timer);
     };
-  }, [isDemoPreview]);
-
-  const persistDemo = (next: ApplicationRow[]) => {
-    setApplications(next);
-    if (!isDemoPreview) return;
-
-    const existing = getAdminApplications();
-    const merged: AdminApplication[] = next.flatMap((row) => {
-      const found = existing.find((item) => item.id === row.id);
-      if (!found) return [];
-      return [{
-        ...found,
-        partnerName: row.partnerName,
-        phone: row.phone,
-        age: row.age,
-        gender: row.gender,
-        bornCity: row.bornCity,
-        languagesKnown: row.languagesKnown,
-        servicesOffered: row.servicesOffered,
-        submittedDate: row.submittedDate,
-        status: row.status,
-      }];
-    });
-
-    setAdminApplications(merged);
-  };
+  }, [isDemoPreview, loadApplications]);
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -212,73 +173,69 @@ export default function AdminApplicationsPage() {
     });
   }, [applications, search, statusFilter]);
 
-  const setStatus = async (target: ApplicationRow, status: AdminApplicationStatus) => {
+  const setRowLoading = (id: string, action?: RowAction) => {
+    setRowActionLoading((current) => ({
+      ...current,
+      [id]: action,
+    }));
+  };
+
+  const applyStatusAction = async (
+    row: ApplicationRow,
+    status: AdminApplicationUpdateStatus,
+    action: RowAction,
+    adminNote?: string,
+  ) => {
     setActionError("");
-    if (isDemoPreview) {
-      const next = applications.map((item) => (item.id === target.id ? { ...item, status } : item));
-      persistDemo(next);
-      setSelected((current) => (current?.id === target.id ? { ...current, status } : current));
-      if (status === "Approved") {
-        const companions = getAdminCompanions();
-        const exists = companions.some((item) => item.phone === target.phone);
-        if (!exists) {
-          setAdminCompanions([
-            {
-              id: `ac-${target.id}`,
-              name: target.partnerName,
-              phone: target.phone,
-              city: target.bornCity || "-",
-              category: "Communication & Emotional Support",
-              languages: target.languagesKnown,
-              services: target.servicesOffered,
-              chatPrice: 0,
-              audioPrice: 0,
-              videoPrice: 0,
-              visitPrice: 0,
-              rating: 0,
-              sessions: 0,
-              earnings: 0,
-              verificationStatus: "Pending",
-              availability: "Offline",
-              status: "Active",
-              tagline: target.profileTagline,
-            },
-            ...companions,
-          ]);
-        }
-      }
-      return;
-    }
+    setSuccessMessage("");
+    setRowLoading(row.id, action);
 
-    if (!actionApiAvailable) {
-      setActionError("Approval action API is not connected yet.");
-      return;
-    }
+    const response = await updateAdminApplicationStatus(row.id, status, adminNote);
+    setRowLoading(row.id, undefined);
 
-    const response = await updateApplicationStatus({
-      id: target.id,
-      status: toApiStatus(status),
-    });
     if (response.error) {
-      setActionError(
-        response.error.status === 404 || response.error.status === 501
-          ? "Approval action API is not connected yet."
-          : response.error.message || "Failed to update application status.",
-      );
+      if (response.error.status === 401) {
+        clearAdminAuthSession();
+        setActionError("Admin session expired. Please login again.");
+        router.replace("/admin/login");
+        return;
+      }
+      setActionError(response.error.message || "Failed to update application status.");
       return;
     }
 
-    const next = applications.map((item) => (item.id === target.id ? { ...item, status } : item));
-    setApplications(next);
-    setSelected((current) => (current?.id === target.id ? { ...current, status } : current));
+    const nextStatus = toUiStatusFromApi(status);
+    setApplications((current) => current.map((item) => (item.id === row.id ? { ...item, status: nextStatus } : item)));
+    setSelected((current) => (current?.id === row.id ? { ...current, status: nextStatus } : current));
+
+    if (status === "APPROVED") {
+      setSuccessMessage("Application approved successfully.");
+    } else if (status === "REJECTED") {
+      setSuccessMessage("Application rejected successfully.");
+    } else {
+      setSuccessMessage("Application moved to Needs Info successfully.");
+    }
+
+    void loadApplications();
   };
 
-  const rejectApplication = async (application: ApplicationRow) => {
-    await setStatus(application, "Rejected");
+  const handleApprove = async (row: ApplicationRow) => {
+    const confirmed = window.confirm("Approve this partner application? This will activate the companion profile.");
+    if (!confirmed) return;
+    await applyStatusAction(row, "APPROVED", "approve");
   };
 
-  const needsInfoApplication = async (application: ApplicationRow) => {
-    await setStatus(application, "Needs Info");
+  const handleReject = async (row: ApplicationRow) => {
+    const confirmed = window.confirm("Reject this partner application?");
+    if (!confirmed) return;
+    const note = window.prompt("Add a rejection note (optional)", "") ?? undefined;
+    await applyStatusAction(row, "REJECTED", "reject", note?.trim() ? note.trim() : undefined);
+  };
+
+  const handleNeedsInfo = async (row: ApplicationRow) => {
+    const note = window.prompt("What information is needed?", "");
+    if (note === null) return;
+    await applyStatusAction(row, "NEEDS_INFO", "needs_info", note.trim() ? note.trim() : undefined);
   };
 
   if (loading) {
@@ -300,6 +257,9 @@ export default function AdminApplicationsPage() {
       ) : null}
       {actionError ? (
         <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-700">{actionError}</p>
+      ) : null}
+      {successMessage ? (
+        <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700">{successMessage}</p>
       ) : null}
 
       <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -332,51 +292,56 @@ export default function AdminApplicationsPage() {
                   <td colSpan={8} className="px-2 py-3 text-slate-500">No applications found.</td>
                 </tr>
               ) : (
-                filtered.map((item) => (
-                  <tr key={item.id} className="border-t border-slate-100 align-top">
-                    <td className="px-2 py-2 font-medium text-slate-800">{item.applicationId}</td>
-                    <td className="px-2 py-2 text-slate-700">{item.partnerName}</td>
-                    <td className="px-2 py-2 text-slate-700">{item.phone}</td>
-                    <td className="px-2 py-2 text-slate-700">{item.servicesOffered.join(", ") || "-"}</td>
-                    <td className="px-2 py-2 text-slate-700">{item.kycStatus}</td>
-                    <td className="px-2 py-2"><AdminStatusBadge status={item.status} /></td>
-                    <td className="px-2 py-2 text-slate-700">{formatDateTime(item.submittedDate)}</td>
-                    <td className="px-2 py-2">
-                      <AdminActionMenu
-                        actions={[
-                          { label: "View", onClick: () => setSelected(item) },
-                          {
-                            label: "Approve",
-                            onClick: () => {
-                              void setStatus(item, "Approved");
+                filtered.map((item) => {
+                  const rowAction = rowActionLoading[item.id];
+                  const isApproved = item.status === "Approved";
+                  const isRejected = item.status === "Rejected";
+                  const isNeedsInfo = item.status === "Needs Info";
+                  const rowBusy = Boolean(rowAction);
+
+                  return (
+                    <tr key={item.id} className="border-t border-slate-100 align-top">
+                      <td className="px-2 py-2 font-medium text-slate-800">{item.applicationId}</td>
+                      <td className="px-2 py-2 text-slate-700">{item.partnerName}</td>
+                      <td className="px-2 py-2 text-slate-700">{item.phone}</td>
+                      <td className="px-2 py-2 text-slate-700">{item.servicesOffered.join(", ") || "-"}</td>
+                      <td className="px-2 py-2 text-slate-700">{item.kycStatus}</td>
+                      <td className="px-2 py-2"><AdminStatusBadge status={item.status} /></td>
+                      <td className="px-2 py-2 text-slate-700">{formatDateTime(item.submittedDate)}</td>
+                      <td className="px-2 py-2">
+                        <AdminActionMenu
+                          actions={[
+                            { label: "View", onClick: () => setSelected(item) },
+                            {
+                              label: rowAction === "approve" ? "Approving..." : "Approve",
+                              onClick: () => {
+                                void handleApprove(item);
+                              },
+                              tone: "success",
+                              disabled: rowBusy || isApproved,
                             },
-                            tone: "success",
-                            disabled: !isDemoPreview && !actionApiAvailable,
-                            title: !isDemoPreview && !actionApiAvailable ? "Approval action API is not connected yet." : undefined,
-                          },
-                          {
-                            label: "Reject",
-                            onClick: () => {
-                              void rejectApplication(item);
+                            {
+                              label: rowAction === "reject" ? "Rejecting..." : "Reject",
+                              onClick: () => {
+                                void handleReject(item);
+                              },
+                              tone: "danger",
+                              disabled: rowBusy || isRejected,
                             },
-                            tone: "danger",
-                            disabled: !isDemoPreview && !actionApiAvailable,
-                            title: !isDemoPreview && !actionApiAvailable ? "Approval action API is not connected yet." : undefined,
-                          },
-                          {
-                            label: "Needs Info",
-                            onClick: () => {
-                              void needsInfoApplication(item);
+                            {
+                              label: rowAction === "needs_info" ? "Saving..." : "Needs Info",
+                              onClick: () => {
+                                void handleNeedsInfo(item);
+                              },
+                              tone: "warning",
+                              disabled: rowBusy || isNeedsInfo,
                             },
-                            tone: "warning",
-                            disabled: !isDemoPreview && !actionApiAvailable,
-                            title: !isDemoPreview && !actionApiAvailable ? "Approval action API is not connected yet." : undefined,
-                          },
-                        ]}
-                      />
-                    </td>
-                  </tr>
-                ))
+                          ]}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

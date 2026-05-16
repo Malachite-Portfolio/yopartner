@@ -11,6 +11,22 @@ async function adminUpdate<T>(path: string, payload: Record<string, unknown>) {
   });
 }
 
+export type AdminApplicationUpdateStatus = "APPROVED" | "REJECTED" | "NEEDS_INFO";
+
+export async function updateAdminApplicationStatus(
+  id: string,
+  status: AdminApplicationUpdateStatus,
+  adminNote?: string,
+) {
+  return apiRequest<{ application: Record<string, unknown> }>(`/api/admin/applications/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      status,
+      ...(typeof adminNote === "string" ? { adminNote } : {}),
+    }),
+  });
+}
+
 export const getAdminDashboard = () => adminGet<Record<string, unknown>>("/api/admin/dashboard");
 export const listApplications = () => adminGet<Record<string, unknown>>("/api/admin/applications");
 export const updateApplicationStatus = (payload: Record<string, unknown>) => adminUpdate("/api/admin/applications", payload);
