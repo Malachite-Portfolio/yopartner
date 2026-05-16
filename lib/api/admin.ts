@@ -1,20 +1,14 @@
 import { apiRequest } from "@/lib/api/client";
 
-const ADMIN_NOT_CONNECTED = "Admin API is not connected.";
-
 async function adminGet<T>(path: string) {
-  const result = await apiRequest<T>(path);
-  if (result.error) return { data: null, error: { ...result.error, message: ADMIN_NOT_CONNECTED } };
-  return result;
+  return apiRequest<T>(path);
 }
 
 async function adminUpdate<T>(path: string, payload: Record<string, unknown>) {
-  const result = await apiRequest<T>(path, {
+  return apiRequest<T>(path, {
     method: "POST",
     body: JSON.stringify(payload),
   });
-  if (result.error) return { data: null, error: { ...result.error, message: ADMIN_NOT_CONNECTED } };
-  return result;
 }
 
 export const getAdminDashboard = () => adminGet<Record<string, unknown>>("/api/admin/dashboard");

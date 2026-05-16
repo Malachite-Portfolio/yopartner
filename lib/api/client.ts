@@ -22,7 +22,7 @@ export function isApiBaseUrlConfigured() {
 
 export async function apiRequest<T>(input: string, init?: RequestInit): Promise<ApiResult<T>> {
   try {
-    const token = getStoredAuthToken();
+    const token = getStoredAuthToken(input);
     const headers = new Headers(init?.headers);
     headers.set("Content-Type", "application/json");
     if (token) {
@@ -75,12 +75,20 @@ export function notConnectedError(message: string): ApiResult<never> {
   };
 }
 
-export function getStoredAuthToken() {
+export function getStoredAuthToken(path = "") {
   if (typeof window === "undefined") return null;
-  const keys = [
-    "yopartner_partner_firebase_id_token",
-    "yopartner_firebase_id_token",
-  ];
+  const isAdminRoute = path.includes("/api/admin");
+  const keys = isAdminRoute
+    ? [
+        "yopartner_admin_firebase_id_token",
+        "yopartner_partner_firebase_id_token",
+        "yopartner_firebase_id_token",
+      ]
+    : [
+        "yopartner_partner_firebase_id_token",
+        "yopartner_firebase_id_token",
+        "yopartner_admin_firebase_id_token",
+      ];
   for (const key of keys) {
     const token = window.localStorage.getItem(key);
     if (token && token.trim().length > 0) return token.trim();

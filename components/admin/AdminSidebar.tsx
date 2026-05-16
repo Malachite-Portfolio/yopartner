@@ -21,8 +21,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ADMIN_LOGIN_KEY } from "@/lib/adminData";
-import { clearClientDemoAdminSession } from "@/lib/clientDemoData";
+import { clearAdminAuthSession } from "@/lib/adminAuth";
 
 type AdminSidebarProps = {
   onNavigate?: () => void;
@@ -57,10 +56,7 @@ export function AdminSidebar({ onNavigate, onClose }: AdminSidebarProps) {
   const router = useRouter();
 
   const handleLogout = () => {
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(ADMIN_LOGIN_KEY, "false");
-    }
-    clearClientDemoAdminSession();
+    clearAdminAuthSession();
     router.replace("/admin/login");
   };
 

@@ -2,6 +2,8 @@ type AdminAction = {
   label: string;
   onClick: () => void;
   tone?: "default" | "success" | "danger" | "warning";
+  disabled?: boolean;
+  title?: string;
 };
 
 type AdminActionMenuProps = {
@@ -25,7 +27,9 @@ export function AdminActionMenu({ actions }: AdminActionMenuProps) {
             key={action.label}
             type="button"
             onClick={action.onClick}
-            className={`rounded-lg border px-2 py-1 text-xs font-medium transition ${toneStyles[tone]}`}
+            disabled={action.disabled}
+            title={action.title}
+            className={`rounded-lg border px-2 py-1 text-xs font-medium transition ${toneStyles[tone]} disabled:cursor-not-allowed disabled:opacity-50`}
           >
             {action.label}
           </button>
