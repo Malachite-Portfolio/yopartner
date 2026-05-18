@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { ComponentType } from "react";
-import { BadgeCheck, CheckCircle2, MessageCircle, PhoneCall, Video } from "lucide-react";
+import { BadgeCheck, CheckCircle2, HeartHandshake, MessageCircle, PhoneCall, Video } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createBooking } from "@/lib/api/bookings";
@@ -16,15 +16,15 @@ type ProfileBookingPanelProps = {
   initialType?: SessionType;
 };
 
-type SessionType = "chat" | "audio" | "video";
+type SessionType = "chat" | "audio" | "video" | "visit";
 
 type SessionOption = {
   type: SessionType;
   label: string;
   icon: ComponentType<{ size?: number; className?: string }>;
-  unit: "/min";
+  unit: "/min" | "/session";
   price: number;
-  badge: "CHAT" | "AUDIO" | "VIDEO";
+  badge: "CHAT" | "AUDIO" | "VIDEO" | "HOME VISIT";
 };
 
 function SessionCard({
@@ -44,14 +44,14 @@ function SessionCard({
       onClick={onSelect}
       className={`rounded-xl border p-3 text-left transition sm:p-3.5 ${
         selected
-          ? "border-slate-300 bg-slate-50 text-slate-900 shadow-sm"
-          : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+          ? "border-[#0f766e] bg-[#eef8f5] text-slate-900 shadow-sm"
+          : "border-[#dceae5] bg-white text-slate-700 hover:border-[#0f766e]/40"
       }`}
     >
       <div className="flex items-start justify-between gap-2">
         <span
           className={`inline-flex h-7 w-7 items-center justify-center rounded-md ${
-            selected ? "bg-[#eff6ff] text-[#2563EB]" : "bg-slate-100 text-slate-600"
+            selected ? "bg-white text-[#0f766e]" : "bg-slate-100 text-slate-600"
           }`}
         >
           <Icon size={15} />
@@ -72,12 +72,25 @@ export function ProfileBookingPanel({
 }: ProfileBookingPanelProps) {
   const router = useRouter();
   const options = useMemo<SessionOption[]>(
-    () => [
+    () => {
+      const base: SessionOption[] = [
       { type: "chat", label: "Start chat", icon: MessageCircle, unit: "/min", price: companion.chatPrice, badge: "CHAT" },
       { type: "audio", label: "Audio call", icon: PhoneCall, unit: "/min", price: companion.voicePrice, badge: "AUDIO" },
       { type: "video", label: "Video call", icon: Video, unit: "/min", price: companion.videoPrice ?? 20, badge: "VIDEO" },
-    ],
-    [companion.chatPrice, companion.voicePrice, companion.videoPrice],
+      ];
+      if (companion.visitPrice > 0) {
+        base.push({
+          type: "visit",
+          label: "Safe visit",
+          icon: HeartHandshake,
+          unit: "/session",
+          price: companion.visitPrice,
+          badge: "HOME VISIT",
+        });
+      }
+      return base;
+    },
+    [companion.chatPrice, companion.voicePrice, companion.videoPrice, companion.visitPrice],
   );
 
   const [selectedType, setSelectedType] = useState<SessionType>(initialType ?? "chat");
@@ -106,6 +119,10 @@ export function ProfileBookingPanel({
   const hasSufficientBalance = walletBalance >= requiredAmount;
 
   const handlePrimaryAction = () => {
+    if (selectedType === "visit") {
+      router.push(`/home-visit/${companion.id}?booking=1`);
+      return;
+    }
     if (!hasSufficientBalance) return;
 
     if (IS_PRODUCTION_READY_MODE) {
@@ -153,11 +170,13 @@ export function ProfileBookingPanel({
       ? "Start chat"
       : selectedType === "audio"
         ? "Audio call"
-        : "Video call";
+        : selectedType === "video"
+          ? "Video call"
+          : "Request safe visit";
 
   return (
     <div className="space-y-3.5 lg:sticky lg:top-4">
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 text-slate-900 shadow-sm">
+      <section className="rounded-3xl border border-[#dceae5] bg-white p-5 text-slate-900 shadow-sm">
         <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Book safely</p>
         <h3 className="mt-1 text-xl font-semibold">Book your conversation</h3>
 
@@ -168,7 +187,13 @@ export function ProfileBookingPanel({
               key={option.type}
               option={option}
               selected={option.type === selectedType}
-              onSelect={() => setSelectedType(option.type)}
+              onSelect={() => {
+                if (option.type === "visit") {
+                  router.push(`/home-visit/${companion.id}?booking=1`);
+                  return;
+                }
+                setSelectedType(option.type);
+              }}
             />
           ))}
         </div>
@@ -176,20 +201,20 @@ export function ProfileBookingPanel({
         <div className="mt-3.5 rounded-xl bg-white p-4 text-slate-900">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Session Price</p>
-              <p className="mt-1 text-[40px] font-semibold leading-none text-[#2563EB] sm:text-[44px]">
+              <p className="text-xs font-semibold uppercase text-slate-500">Conversation price</p>
+              <p className="mt-1 text-[34px] font-semibold leading-none text-[#0f766e] sm:text-[38px]">
                 {formatINR(selectedOption.price)}
               </p>
               <p className="mt-1 text-xs font-medium text-slate-500">{selectedOption.unit}</p>
             </div>
-            <span className="inline-flex rounded-full border border-[#bfdbfe] bg-[#eff6ff] px-2.5 py-1 text-[11px] font-semibold text-[#1e3a8a]">
+            <span className="inline-flex rounded-full border border-[#dceae5] bg-[#eef8f5] px-2.5 py-1 text-[11px] font-semibold text-[#0f766e]">
               {selectedOption.badge}
             </span>
           </div>
         </div>
 
-        <div className="mt-3.5 rounded-xl border border-rose-100 bg-white p-4 text-sm text-slate-900">
-              <p className="font-semibold">Wallet balance</p>
+        <div className="mt-3.5 rounded-3xl border border-[#dceae5] bg-[#f7fbf8] p-4 text-sm text-slate-900">
+              <p className="font-semibold">Available balance</p>
           <p className="mt-1 text-[36px] font-semibold leading-none">{formatINR(walletBalance)}</p>
           <p className="mt-0.5 text-sm text-slate-600">available</p>
 
@@ -207,9 +232,9 @@ export function ProfileBookingPanel({
               <p className="text-[13px] text-red-500">Shortfall: {formatINR(shortfall)}</p>
               <Link
                 href="/wallet"
-                className="mt-3 inline-flex h-11 w-full items-center justify-center rounded-lg bg-red-600 px-3 text-sm font-semibold text-white"
+                className="mt-3 inline-flex h-11 w-full items-center justify-center rounded-full bg-[#0f766e] px-3 text-sm font-semibold text-white"
               >
-                Go to Wallet
+                Go to balance
               </Link>
             </>
           )}
@@ -221,7 +246,7 @@ export function ProfileBookingPanel({
           <button
             type="button"
             onClick={handlePrimaryAction}
-            className="mt-3.5 h-12 w-full rounded-xl bg-emerald-600 text-sm font-semibold text-white disabled:opacity-70"
+            className="mt-3.5 h-12 w-full rounded-full bg-[#0f766e] text-sm font-semibold text-white disabled:opacity-70"
           >
             {primaryActionLabel}
           </button>
@@ -229,14 +254,14 @@ export function ProfileBookingPanel({
           <button
             type="button"
             disabled
-            className="mt-3.5 h-12 w-full rounded-xl bg-[#2563EB] text-sm font-semibold text-white/95 disabled:cursor-not-allowed disabled:opacity-85"
+            className="mt-3.5 h-12 w-full rounded-full bg-slate-400 text-sm font-semibold text-white/95 disabled:cursor-not-allowed disabled:opacity-85"
           >
             Insufficient Balance
           </button>
         )}
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm">
+      <section className="rounded-3xl border border-[#dceae5] bg-white p-3.5 shadow-sm">
         <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500">Languages</h4>
         <div className="mt-2.5 flex flex-wrap gap-2">
           {companion.languages.map((language) => (
@@ -247,7 +272,7 @@ export function ProfileBookingPanel({
         </div>
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm">
+      <section className="rounded-3xl border border-[#dceae5] bg-white p-3.5 shadow-sm">
         <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500">Service Areas</h4>
         <div className="mt-2.5 flex flex-wrap gap-2">
           {companion.serviceAreas.map((area) => (
@@ -258,7 +283,7 @@ export function ProfileBookingPanel({
         </div>
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm">
+      <section className="rounded-3xl border border-[#dceae5] bg-white p-3.5 shadow-sm">
         <h4 className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500">
           <BadgeCheck size={13} className="text-emerald-600" />
           Trust &amp; Safety

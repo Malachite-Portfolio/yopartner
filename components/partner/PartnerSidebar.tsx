@@ -20,11 +20,12 @@ type PartnerSidebarProps = {
 };
 
 const links = [
-  { label: "Dashboard", href: "/partner/dashboard", icon: LayoutDashboard },
+  { label: "Overview", href: "/partner/dashboard", icon: LayoutDashboard },
   { label: "Conversations", href: "/partner/chats", icon: MessageCircle },
   { label: "Requests", href: "/partner/bookings", icon: CalendarCheck2 },
   { label: "Earnings", href: "/partner/earnings", icon: CreditCard },
-  { label: "Profile", href: "/partner/profile", icon: User },
+  { label: "My Profile", href: "/partner/profile", icon: User },
+  { label: "Safety & KYC", href: "/partner/application-status", icon: User },
   { label: "Settings", href: "/partner/settings", icon: Settings },
 ];
 
@@ -42,8 +43,8 @@ export function PartnerSidebar({ onNavigate, onClose }: PartnerSidebarProps) {
   };
 
   return (
-    <aside className="flex h-full w-[272px] flex-col border-r border-slate-200 bg-white">
-      <div className="flex h-[72px] items-center justify-between border-b border-slate-200 px-4">
+    <aside className="flex h-full w-[272px] flex-col border-r border-[#dceae5] bg-[#fffdf8]">
+      <div className="flex h-[72px] items-center justify-between border-b border-[#dceae5] px-4">
         <Link href="/partner/dashboard" className="inline-flex items-center gap-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/images/logo.png" alt="YoPartner" className="h-auto max-h-10 w-[118px] object-contain" />
@@ -61,7 +62,7 @@ export function PartnerSidebar({ onNavigate, onClose }: PartnerSidebarProps) {
       </div>
 
       <p className="px-4 pt-4 text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-        YoPartner Companion
+        Companion workspace
       </p>
 
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
@@ -75,8 +76,8 @@ export function PartnerSidebar({ onNavigate, onClose }: PartnerSidebarProps) {
               onClick={onNavigate}
               className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition ${
                 active
-                  ? "bg-gradient-to-r from-[#1d4ed8] via-[#2563eb] to-[#0ea5a6] font-semibold text-white"
-                  : "text-slate-700 hover:bg-slate-100"
+                  ? "bg-[#0f766e] font-semibold text-white"
+                  : "text-slate-700 hover:bg-[#eef8f5]"
               }`}
             >
               <Icon size={17} />

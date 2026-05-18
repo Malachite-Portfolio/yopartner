@@ -8,7 +8,7 @@ export function PartnerShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="flex min-h-screen bg-[#f8fafc] text-slate-900">
+    <div className="flex min-h-screen bg-[#fffdf8] text-slate-900">
       <div className="hidden lg:block">
         <PartnerSidebar />
       </div>

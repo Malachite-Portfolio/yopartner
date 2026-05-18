@@ -29,9 +29,9 @@ type AdminSidebarProps = {
 };
 
 const links = [
-  { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
-  { label: "Partner Applications", href: "/admin/applications", icon: FileText },
-  { label: "Partners", href: "/admin/companions", icon: UserSquare2 },
+  { label: "Overview", href: "/admin", icon: LayoutDashboard },
+  { label: "Partner Reviews", href: "/admin/applications", icon: FileText },
+  { label: "Active Partners", href: "/admin/companions", icon: UserSquare2 },
   { label: "Members", href: "/admin/users", icon: Users },
   { label: "Conversations", href: "/admin/sessions", icon: MonitorPlay },
   { label: "Bookings", href: "/admin/bookings", icon: BookOpenCheck },
@@ -39,7 +39,7 @@ const links = [
   { label: "Payouts", href: "/admin/payouts", icon: Receipt },
   { label: "Reviews", href: "/admin/reviews", icon: BadgeCheck },
   { label: "KYC Review", href: "/admin/verification", icon: UserCheck },
-  { label: "Support", href: "/admin/support", icon: CircleHelp },
+  { label: "Support Inbox", href: "/admin/support", icon: CircleHelp },
   { label: "Media", href: "/admin/media", icon: Image },
   { label: "Client Diaries", href: "/admin/client-diaries", icon: BriefcaseBusiness },
   { label: "Reports", href: "/admin/reports", icon: LifeBuoy },
@@ -61,8 +61,8 @@ export function AdminSidebar({ onNavigate, onClose }: AdminSidebarProps) {
   };
 
   return (
-    <aside className="flex h-full w-[286px] flex-col border-r border-slate-200 bg-white">
-      <div className="flex h-[72px] items-center justify-between border-b border-slate-200 px-5">
+    <aside className="flex h-full w-[286px] flex-col border-r border-[#dceae5] bg-[#fffdf8]">
+      <div className="flex h-[72px] items-center justify-between border-b border-[#dceae5] px-5">
         <Link href="/admin" className="inline-flex items-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/images/logo.png" alt="YoPartner" className="h-auto max-h-10 w-[120px] object-contain" />
@@ -88,10 +88,10 @@ export function AdminSidebar({ onNavigate, onClose }: AdminSidebarProps) {
               key={item.href}
               href={item.href}
               onClick={onNavigate}
-              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition ${
+              className={`flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm transition ${
                 active
-                  ? "bg-gradient-to-r from-[#2563eb] to-[#0891b2] font-semibold text-white"
-                  : "text-slate-700 hover:bg-slate-100"
+                  ? "bg-[#0f766e] font-semibold text-white shadow-sm shadow-teal-900/10"
+                  : "text-slate-700 hover:bg-white"
               }`}
             >
               <Icon size={17} />
@@ -101,7 +101,7 @@ export function AdminSidebar({ onNavigate, onClose }: AdminSidebarProps) {
         })}
       </nav>
 
-      <div className="border-t border-slate-200 p-3">
+      <div className="border-t border-[#dceae5] p-3">
         <button
           type="button"
           onClick={handleLogout}

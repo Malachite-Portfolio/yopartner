@@ -119,7 +119,7 @@ function TransactionList({ transactions }: { transactions: WalletTransaction[] }
         >
           <div>
             <p className="text-sm font-semibold text-slate-900">
-              {tx.type === "booking" ? "Session Booking" : "Wallet Recharge"}
+              {tx.type === "booking" ? "Conversation payment" : "Balance recharge"}
             </p>
             <p className="text-xs text-slate-500">{tx.description}</p>
             <p className="mt-1 text-xs text-slate-500">{new Date(tx.createdAt).toLocaleString("en-IN")}</p>
@@ -297,14 +297,14 @@ export default function WalletPage() {
   const recentTransactions = transactions.slice(0, 5);
 
   return (
-    <div className="min-h-screen bg-[#f8fafc]">
+    <div className="min-h-screen bg-[#fffdf8]">
       <section className="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8">
-        <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <article className="rounded-3xl border border-[#dceae5] bg-white p-6 shadow-sm shadow-teal-900/5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-semibold text-slate-900">Wallet</h1>
+              <h1 className="text-3xl font-semibold text-slate-900">Your balance</h1>
               <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-600 sm:text-base">
-                Platform-protected payments for your conversations with verified companions.
+                Platform-protected payments for calm conversations with verified companions.
               </p>
               {isDemoWalletPreview ? (
                 <p className="mt-2 text-xs font-semibold text-slate-500">Demo wallet for preview</p>
@@ -352,7 +352,7 @@ export default function WalletPage() {
                       if (walletResponse.error || txResponse.error) {
                         setApiError("We couldn't load wallet details right now. Please retry.");
                       }
-                      setSuccessMessage("Wallet summary refreshed.");
+                      setSuccessMessage("Balance refreshed.");
                     })();
                     return;
                   }
@@ -360,7 +360,7 @@ export default function WalletPage() {
                   setBalance(summary.balance);
                   setTransactions(summary.transactions);
                   setTotalSpent(summary.totalSpent);
-                  setSuccessMessage("Wallet summary refreshed.");
+                  setSuccessMessage("Balance refreshed.");
                 }}
                 className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 hover:border-slate-300"
               >
@@ -381,7 +381,7 @@ export default function WalletPage() {
           {bellMessage ? <p className="mt-3 text-xs text-slate-500">{bellMessage}</p> : null}
         </article>
 
-        <article className="mt-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <article className="mt-5 rounded-3xl border border-[#dceae5] bg-white p-6 shadow-sm shadow-teal-900/5">
           <div className="grid gap-5 lg:grid-cols-[1fr_390px]">
             <div>
               <div className="flex items-center gap-2 text-slate-500">
@@ -403,14 +403,14 @@ export default function WalletPage() {
             </div>
 
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <h2 className="text-base font-semibold text-slate-900">Add Money to Wallet</h2>
+              <h2 className="text-base font-semibold text-slate-900">Add money to your balance</h2>
               <p className="mt-1 text-sm leading-6 text-slate-600">
                 Recharge will appear as &quot;Malachite Technologies PVT Ltd&quot; in your Bank/UPI statement.
               </p>
               <button
                 type="button"
                 onClick={openModal}
-                className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-[#2563eb] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#1d4ed8]"
+                className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-[#0f766e] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#115e59]"
               >
                 <Plus size={15} />
                 Add Money
@@ -420,7 +420,7 @@ export default function WalletPage() {
 
           <div className="mt-6 grid gap-3 sm:grid-cols-3">
             <div className="rounded-xl border border-slate-200 bg-white p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Recharged</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Total added</p>
               <p className="mt-2 text-2xl font-semibold text-slate-900">{formatINR(totalRecharged)}</p>
               <span className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-emerald-600">
                 <ArrowUpRight size={14} />
@@ -428,7 +428,7 @@ export default function WalletPage() {
               </span>
             </div>
             <div className="rounded-xl border border-slate-200 bg-white p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Spent</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Conversation spend</p>
               <p className="mt-2 text-2xl font-semibold text-slate-900">{formatINR(totalSpent)}</p>
               <span className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-rose-600">
                 <ArrowDownLeft size={14} />
@@ -436,7 +436,7 @@ export default function WalletPage() {
               </span>
             </div>
             <div className="rounded-xl border border-slate-200 bg-white p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Transactions</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Balance activity</p>
               <p className="mt-2 text-2xl font-semibold text-slate-900">{transactions.length}</p>
               <span className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-slate-600">
                 <ReceiptText size={14} />
@@ -462,7 +462,7 @@ export default function WalletPage() {
           </p>
         ) : null}
 
-        <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <div className="mt-5 rounded-3xl border border-[#dceae5] bg-white p-4 shadow-sm sm:p-5">
           <div className="flex flex-wrap items-center gap-2">
             {([
               { key: "overview", label: "Overview" },
@@ -476,7 +476,7 @@ export default function WalletPage() {
                   type="button"
                   onClick={() => setActiveTab(tab.key)}
                   className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-                    active ? "bg-black text-white" : "border border-slate-300 text-slate-700 hover:bg-slate-50"
+                    active ? "bg-[#0f766e] text-white" : "border border-[#dceae5] text-slate-700 hover:bg-[#eef8f5]"
                   }`}
                 >
                   {tab.label}
@@ -488,7 +488,7 @@ export default function WalletPage() {
           <div className="mt-5">
             {activeTab === "overview" && (
               <div>
-                <h3 className="mb-3 text-lg font-semibold text-slate-900">Recent Activity</h3>
+                <h3 className="mb-3 text-lg font-semibold text-slate-900">Recent balance activity</h3>
                 {recentTransactions.length === 0 ? (
                   <EmptyState title="No recent transactions" />
                 ) : (
@@ -499,7 +499,7 @@ export default function WalletPage() {
 
             {activeTab === "transactions" && (
               <div>
-                <h3 className="mb-3 text-lg font-semibold text-slate-900">Transaction History</h3>
+                <h3 className="mb-3 text-lg font-semibold text-slate-900">Balance history</h3>
                 <TransactionList transactions={transactions} />
               </div>
             )}
@@ -507,7 +507,7 @@ export default function WalletPage() {
             {activeTab === "recharge" && (
               <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
                 <div className="mb-4 flex items-center justify-between gap-3">
-                  <h3 className="text-xl font-semibold text-slate-900">Recharge Plans</h3>
+                  <h3 className="text-xl font-semibold text-slate-900">Recharge plans</h3>
                   <button
                     type="button"
                     onClick={openModal}
@@ -543,7 +543,7 @@ export default function WalletPage() {
               <div>
                 <p className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500">
                   <Wallet size={16} />
-                  Add Money to Wallet
+                  Add money to balance
                 </p>
                 <p className="mt-1 text-sm leading-6 text-slate-600">
                   Recharge will appear as &quot;Malachite Technologies PVT Ltd&quot; in your Bank/UPI statement.
@@ -605,7 +605,7 @@ export default function WalletPage() {
               onClick={handleProceed}
               disabled={!canProceed}
               className={`mt-5 h-12 w-full rounded-xl text-sm font-semibold text-white ${
-                canProceed ? "bg-[#2563EB] hover:opacity-95" : "bg-slate-300"
+                canProceed ? "bg-[#0f766e] hover:opacity-95" : "bg-slate-300"
               }`}
             >
               {proceedCreditAmount ? `Proceed with ${formatINR(proceedCreditAmount)}` : "Proceed"}

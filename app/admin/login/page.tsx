@@ -66,13 +66,15 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <section className="flex min-h-screen items-center justify-center bg-[#f8fafc] px-4">
-      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
+    <section className="flex min-h-screen items-center justify-center bg-[#fffdf8] px-4">
+      <div className="w-full max-w-md rounded-3xl border border-[#dceae5] bg-white p-6 shadow-xl shadow-teal-900/5 sm:p-7">
         <div className="mb-6 text-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/images/logo.png" alt="YoPartner" className="mx-auto h-auto max-h-12 w-auto object-contain" />
-          <h1 className="mt-4 text-2xl font-semibold text-slate-900">Admin Console</h1>
-          <p className="mt-1 text-sm text-slate-600">Sign in to manage partners, members, and safety reviews.</p>
+          <h1 className="mt-4 text-2xl font-semibold text-slate-900">YoPartner Admin Console</h1>
+          <p className="mt-1 text-sm leading-6 text-slate-600">
+            Manage partner reviews, safety checks, members, and conversations.
+          </p>
         </div>
 
         <form className="space-y-4" onSubmit={handleLogin}>
@@ -83,7 +85,7 @@ export default function AdminLoginPage() {
               value={loginId}
               onChange={(event) => setLoginId(event.target.value)}
               autoComplete="username"
-              className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm text-slate-800 outline-none transition focus:border-[#2563eb]"
+              className="h-11 w-full rounded-2xl border border-[#dceae5] px-3 text-sm text-slate-800 outline-none transition focus:border-[#0f766e]"
               placeholder="Enter admin ID"
             />
           </label>
@@ -95,7 +97,7 @@ export default function AdminLoginPage() {
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               autoComplete="current-password"
-              className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm text-slate-800 outline-none transition focus:border-[#2563eb]"
+              className="h-11 w-full rounded-2xl border border-[#dceae5] px-3 text-sm text-slate-800 outline-none transition focus:border-[#0f766e]"
               placeholder="Enter password"
             />
           </label>
@@ -108,7 +110,7 @@ export default function AdminLoginPage() {
                 value={pin}
                 onChange={(event) => setPin(event.target.value.replace(/[^\d]/g, "").slice(0, 4))}
                 placeholder="Enter 4-digit PIN"
-                className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm text-slate-800 outline-none transition focus:border-[#2563eb]"
+                className="h-11 w-full rounded-2xl border border-[#dceae5] px-3 text-sm text-slate-800 outline-none transition focus:border-[#0f766e]"
               />
             </label>
           ) : null}
@@ -118,9 +120,9 @@ export default function AdminLoginPage() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="h-11 w-full rounded-xl bg-[#2563eb] text-sm font-semibold text-white transition hover:bg-[#1d4ed8] disabled:cursor-not-allowed disabled:bg-slate-400"
+            className="h-11 w-full rounded-full bg-[#0f766e] text-sm font-semibold text-white transition hover:bg-[#115e59] disabled:cursor-not-allowed disabled:bg-slate-400"
           >
-            {isSubmitting ? "Signing in..." : "Login"}
+            {isSubmitting ? "Signing in..." : "Sign in securely"}
           </button>
 
           {isClientDemoEnabled() ? (

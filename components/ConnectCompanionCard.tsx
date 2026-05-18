@@ -1,50 +1,15 @@
 "use client";
 
-import { MessageCircle, Phone, Star, Video } from "lucide-react";
+import { BadgeCheck, HeartHandshake, MessageCircle, Phone, ShieldCheck, Star, Video } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import type { ReactNode } from "react";
 import type { ConnectCompanion } from "@/lib/data";
 import { formatINRPrice } from "@/lib/priceFormat";
 
 type ConnectCompanionCardProps = {
   companion: ConnectCompanion;
 };
-
-function PricePill({
-  label,
-  price,
-  variant,
-}: {
-  label: "Start chat" | "Audio call" | "Video call";
-  price?: number;
-  variant: "chat" | "voice" | "video";
-}) {
-  const base =
-    "inline-flex h-[42px] w-full flex-nowrap items-center justify-center gap-1.5 rounded-xl border px-2 text-[12px] font-semibold text-slate-900 sm:h-[45px] sm:gap-2 sm:px-3 sm:text-[15px]";
-  const style =
-    variant === "chat"
-      ? "border-[#FACC15] bg-[#FFFBEA]"
-      : variant === "voice"
-        ? "border-[#93C5FD] bg-[#F5F9FF]"
-        : "border-[#F9A8D4] bg-[#FFF4FB]";
-
-  return (
-    <span className={`${base} ${style}`}>
-      <span
-        className={`inline-flex h-[24px] w-[24px] items-center justify-center rounded-full text-white sm:h-[30px] sm:w-[30px] ${
-          variant === "chat" ? "bg-[#FACC15]" : variant === "voice" ? "bg-[#2563EB]" : "bg-[#F472B6]"
-        }`}
-      >
-        {variant === "chat" && <MessageCircle size={13} className="sm:h-4 sm:w-4" />}
-        {variant === "voice" && <Phone size={13} className="sm:h-4 sm:w-4" />}
-        {variant === "video" && <Video size={13} className="sm:h-4 sm:w-4" />}
-      </span>
-      <span className="text-sm font-semibold leading-none text-slate-900 sm:text-[15px]">
-        {label} • {formatINRPrice(price, "/min")}
-      </span>
-    </span>
-  );
-}
 
 function Initials({ name }: { name: string }) {
   const text = name
@@ -55,20 +20,50 @@ function Initials({ name }: { name: string }) {
     .toUpperCase();
 
   return (
-    <span className="inline-flex h-[90px] w-[90px] shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-sky-100/85 to-violet-100/85 text-xl font-semibold text-slate-700">
+    <span className="inline-flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[#eef8f5] text-lg font-semibold text-[#0f766e] sm:h-[72px] sm:w-[72px]">
       {text}
     </span>
+  );
+}
+
+function SupportAction({
+  href,
+  label,
+  price,
+  icon,
+}: {
+  href: string;
+  label: string;
+  price?: number;
+  icon: ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className="flex min-h-[52px] items-center justify-between gap-2 rounded-2xl border border-[#dceae5] bg-white px-3 text-left text-sm font-semibold leading-tight text-slate-800 hover:border-[#0f766e]/40 hover:bg-[#eef8f5]"
+      onClick={(event) => event.stopPropagation()}
+      onKeyDown={(event) => event.stopPropagation()}
+    >
+      <span className="inline-flex min-w-0 items-center gap-2">
+        {icon}
+        <span className="truncate">{label}</span>
+      </span>
+      {typeof price === "number" ? (
+        <span className="shrink-0 text-xs font-semibold text-[#0f766e]">{formatINRPrice(price, "/min")}</span>
+      ) : null}
+    </Link>
   );
 }
 
 export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
   const router = useRouter();
   const hasVideo = typeof companion.videoPrice === "number";
+  const hasHomeVisit = typeof companion.visitPrice === "number" && companion.visitPrice > 0;
   const profileUrl = `/connect-now/${companion.id}`;
 
   return (
     <article
-      className="yp-hover-lift flex h-full cursor-pointer flex-col rounded-2xl border border-slate-200 bg-white px-5 pb-3 pt-5 shadow-sm transition hover:border-[#59b0f8] hover:shadow-md"
+      className="flex h-full cursor-pointer flex-col rounded-[28px] border border-[#dceae5] bg-white p-4 shadow-sm shadow-teal-900/5 transition hover:-translate-y-0.5 hover:border-[#0f766e]/35"
       onClick={() => router.push(profileUrl)}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
@@ -86,7 +81,7 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
           <img
             src={companion.image}
             alt={companion.name}
-            className="h-[90px] w-[90px] shrink-0 rounded-full border border-white object-cover shadow-sm"
+            className="h-16 w-16 shrink-0 rounded-2xl object-cover shadow-sm sm:h-[72px] sm:w-[72px]"
           />
         ) : (
           <Initials name={companion.name} />
@@ -94,71 +89,70 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
 
         <div className="min-w-0 grow">
           <div className="flex items-start justify-between gap-2">
-            <h3 className="text-[20px] font-semibold leading-tight text-slate-900">{companion.name}</h3>
-            {companion.online && (
-              <span className="inline-flex h-6 items-center gap-1 rounded-lg bg-green-50 px-2.5 text-[12px] font-semibold text-green-700">
-                <span className="h-2 w-2 rounded-full bg-green-500" />
-                Online
-              </span>
-            )}
+            <h3 className="text-lg font-semibold leading-tight text-slate-950">{companion.name}</h3>
+            <span
+              className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                companion.online ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"
+              }`}
+            >
+              <span className={`h-2 w-2 rounded-full ${companion.online ? "bg-emerald-500" : "bg-slate-400"}`} />
+              {companion.online ? "Available" : "Away"}
+            </span>
           </div>
 
-          <p className="mt-1 text-[15px] leading-6 text-slate-600">{companion.tagline}</p>
+          <p className="mt-1 line-clamp-1 text-sm leading-5 text-slate-600">{companion.tagline}</p>
 
-          <div className="mt-2 flex items-center gap-0.5 text-[#F5BF1B]">
-            {Array.from({ length: 5 }).map((_, index) => (
-              <Star key={`${companion.id}-${index}`} size={15} fill="currentColor" />
-            ))}
-            <span className="ml-1 text-[13px] font-semibold text-slate-900">{companion.rating.toFixed(1)}/5</span>
-            <span className="text-[13px] text-slate-500">| {companion.experience}</span>
-          </div>
-
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-semibold text-slate-700">
-              Calm listener
-            </span>
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-semibold text-slate-700">
-              {companion.languages.slice(0, 2).join(" & ")}
-            </span>
-            <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700">
-              {companion.online ? "Available now" : "Available soon"}
-            </span>
+          <div className="mt-2 flex items-center gap-1 text-amber-500">
+            <Star size={15} fill="currentColor" />
+            <span className="text-sm font-semibold text-slate-900">{companion.rating.toFixed(1)}</span>
+            <span className="text-xs text-slate-500">rating</span>
           </div>
         </div>
       </div>
 
-      <div className="mt-auto grid min-h-[104px] grid-cols-1 gap-2 pt-3 sm:grid-cols-2">
-        <Link
-          href={`/chat/${companion.id}`}
-          className="block min-w-[112px]"
-          onClick={(event) => event.stopPropagation()}
-          onKeyDown={(event) => event.stopPropagation()}
-          aria-label={`Chat with ${companion.name}`}
-        >
-          <PricePill label="Start chat" price={companion.chatPrice} variant="chat" />
-        </Link>
-        <Link
-          href={`/call/audio/${companion.id}`}
-          className="block min-w-[112px]"
-          onClick={(event) => event.stopPropagation()}
-          onKeyDown={(event) => event.stopPropagation()}
-          aria-label={`Voice call ${companion.name}`}
-        >
-          <PricePill label="Audio call" price={companion.voicePrice} variant="voice" />
-        </Link>
-        {hasVideo && (
+      <div className="mt-3 flex flex-wrap gap-2">
+        <span className="inline-flex items-center gap-1 rounded-full border border-[#dceae5] bg-[#eef8f5] px-2.5 py-1 text-xs font-semibold text-[#0f766e]">
+          <BadgeCheck size={13} />
+          Verified
+        </span>
+        <span className="inline-flex items-center gap-1 rounded-full border border-[#dceae5] bg-white px-2.5 py-1 text-xs font-semibold text-slate-700">
+          <ShieldCheck size={13} />
+          Strictly platonic
+        </span>
+        <span className="rounded-full border border-[#dceae5] bg-white px-2.5 py-1 text-xs font-semibold text-slate-700">
+          {companion.languages.slice(0, 2).join(" & ")}
+        </span>
+      </div>
+
+      <div className="mt-3 rounded-2xl bg-[#f7fbf8] p-3">
+        <p className="text-xs font-semibold uppercase text-slate-500">Good for</p>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {["Calm listening", "Overthinking", "Daily support"].map((item) => (
+            <span key={item} className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-700">
+              {item}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-auto grid grid-cols-2 gap-2 pt-4">
+        <SupportAction href={`/chat/${companion.id}`} label="Start chat" price={companion.chatPrice} icon={<MessageCircle size={15} />} />
+        <SupportAction href={`/call/audio/${companion.id}`} label="Audio call" price={companion.voicePrice} icon={<Phone size={15} />} />
+        {hasVideo ? (
+          <SupportAction href={`/call/video/${companion.id}`} label="Video call" price={companion.videoPrice} icon={<Video size={15} />} />
+        ) : null}
+        {hasHomeVisit ? (
           <Link
-            href={`/call/video/${companion.id}`}
-            className="block min-w-[112px] sm:col-span-2"
+        href={`/home-visit/${companion.id}?booking=1`}
+            className="flex min-h-[52px] items-center justify-center gap-2 rounded-2xl border border-orange-200 bg-[#fff7ed] px-3 text-center text-sm font-semibold leading-tight text-orange-700 hover:bg-[#ffedd5]"
             onClick={(event) => event.stopPropagation()}
             onKeyDown={(event) => event.stopPropagation()}
-            aria-label={`Video call ${companion.name}`}
           >
-            <PricePill label="Video call" price={companion.videoPrice as number} variant="video" />
+            <HeartHandshake size={15} />
+            Safe visit
           </Link>
-        )}
+        ) : null}
       </div>
     </article>
   );
 }
-

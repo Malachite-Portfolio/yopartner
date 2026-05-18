@@ -5,13 +5,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const companyLinks = [
-  { label: "Connect Now", href: "/connect-now" },
+  { label: "Talk Now", href: "/connect-now" },
   { label: "About Us", href: "/about" },
   { label: "Become a Companion", href: "/partner/login" },
 ];
 
 const serviceLinks = [
-  { label: "Connect", href: "/connect-now" },
+  { label: "Find Support", href: "/connect-now" },
   { label: "Home Visit", href: "/home-visit" },
   { label: "Media", href: "/media" },
   { label: "Client Diaries", href: "/client-diaries" },
@@ -19,8 +19,8 @@ const serviceLinks = [
 
 const supportLinks = [
   { label: "Support", href: "/support" },
-  { label: "Wallet", href: "/wallet" },
-  { label: "Your Booking", href: "/bookings" },
+  { label: "Balance", href: "/wallet" },
+  { label: "My Conversations", href: "/bookings" },
   { label: "Login", href: "/login" },
 ];
 
@@ -47,14 +47,14 @@ export function Footer() {
     <footer className="bg-[var(--footer-bg)] text-[#e7f6f8]">
       <div className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
         <div className="rounded-2xl border border-white/20 bg-white/10 p-6 sm:p-8">
-          <p className="text-sm uppercase tracking-[0.2em] text-[#9ee9e1]">Join our network</p>
+          <p className="text-sm uppercase text-[#9ee9e1]">Join our network</p>
           <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <h3 className="text-2xl font-semibold">Become a Companion</h3>
+            <h3 className="text-2xl font-semibold">Use your empathy to help people feel heard</h3>
             <Link
               href="/partner/login"
-              className="rounded-full bg-gradient-to-r from-brand to-brand-purple px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
+              className="rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-[#0f766e] transition hover:bg-[#eef8f5]"
             >
-              Start Application
+              Apply as a companion
             </Link>
           </div>
         </div>
@@ -66,7 +66,7 @@ export function Footer() {
               <img src="/images/logo.png" alt="YoPartner" className="h-auto max-h-14 w-auto object-contain" />
             </Link>
             <p className="mt-3 max-w-sm text-sm leading-7 text-[#b7d8de]">
-              Verified, judgment-free, strictly platonic companionship for meaningful human connection.
+              Safe, verified, strictly platonic companionship for calm conversations and everyday emotional support.
             </p>
             <p className="mt-3 text-sm text-[#b7d8de]">yopartner.com | yopartner.in</p>
           </div>

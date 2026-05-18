@@ -1,14 +1,13 @@
-﻿import { CompanionSection } from "@/components/CompanionSection";
+import { FAQSection } from "@/components/FAQSection";
 import { HeroSection } from "@/components/HeroSection";
-import { TrustSafety } from "@/components/TrustSafety";
+import { HomeWellnessSections } from "@/components/HomeWellnessSections";
 
 export default function HomePage() {
   return (
     <>
       <HeroSection />
-      <CompanionSection variant="compact" />
-      <TrustSafety />
+      <HomeWellnessSections />
+      <FAQSection />
     </>
   );
 }
-

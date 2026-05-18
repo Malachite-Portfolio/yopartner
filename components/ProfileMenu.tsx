@@ -106,7 +106,7 @@ export function ProfileMenu({ triggerClassName, avatarClassName }: ProfileMenuPr
             >
               <span className="inline-flex items-center gap-2">
                 <Wallet size={16} className="text-slate-500" />
-                Wallet
+                Balance
               </span>
               <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">
                 {formatINR(balance)}
@@ -119,7 +119,7 @@ export function ProfileMenu({ triggerClassName, avatarClassName }: ProfileMenuPr
               onClick={() => setOpen(false)}
             >
               <CalendarDays size={16} className="text-slate-500" />
-              Your Booking
+              My Conversations
             </Link>
           </div>
 

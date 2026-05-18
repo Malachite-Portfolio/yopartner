@@ -12,11 +12,12 @@ type PartnerTopbarProps = {
 };
 
 const titleMap: Record<string, string> = {
-  "/partner/dashboard": "Dashboard",
+  "/partner/dashboard": "Overview",
   "/partner/chats": "Conversations",
   "/partner/bookings": "Requests",
   "/partner/earnings": "Earnings",
-  "/partner/profile": "Profile",
+  "/partner/profile": "My Profile",
+  "/partner/application-status": "Safety & KYC",
   "/partner/settings": "Settings",
 };
 
@@ -38,7 +39,7 @@ export function PartnerTopbar({ onMenuOpen }: PartnerTopbarProps) {
   };
 
   return (
-    <header className="sticky top-0 z-20 flex h-[72px] items-center justify-between border-b border-slate-200 bg-white px-4 sm:px-6">
+    <header className="sticky top-0 z-20 flex h-[72px] items-center justify-between border-b border-[#dceae5] bg-[#fffdf8]/95 px-4 backdrop-blur sm:px-6">
       <div className="flex items-center gap-3">
         <button
           type="button"

@@ -5,13 +5,11 @@ import Link from "next/link";
 import { listCompanions } from "@/lib/api/companions";
 import { ConnectAppHeader } from "@/components/ConnectAppHeader";
 import { ConnectCompanionCard } from "@/components/ConnectCompanionCard";
-import { connectCategoryGroups, ConnectFilters } from "@/components/ConnectFilters";
+import { ConnectFilters } from "@/components/ConnectFilters";
 import { ConnectTabs, type ConnectServiceTab } from "@/components/ConnectTabs";
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { connectCompanions } from "@/lib/data";
 import { demoHosts, isClientDemoEnabled } from "@/lib/clientDemoData";
-
-const allCategoryItems = connectCategoryGroups.flatMap((group) => group.items);
 
 export default function ConnectNowPage() {
   const [selectedTab, setSelectedTab] = useState<ConnectServiceTab>("Chat");
@@ -22,6 +20,7 @@ export default function ConnectNowPage() {
   const [isLoadingCompanions, setIsLoadingCompanions] = useState(IS_PRODUCTION_READY_MODE);
   const [apiError, setApiError] = useState("");
   const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   useEffect(() => {
     if (!IS_PRODUCTION_READY_MODE) return;
@@ -35,7 +34,7 @@ export default function ConnectNowPage() {
           setIsLoadingCompanions(false);
           return;
         }
-        setApiError("Companions are currently unavailable. Please try again later.");
+        setApiError("Verified companions are currently unavailable. Please try again later.");
         setCompanions([]);
         setIsLoadingCompanions(false);
         return;
@@ -58,18 +57,18 @@ export default function ConnectNowPage() {
     const term = searchTerm.trim().toLowerCase();
     return companions.filter((companion) => {
       if (availability === "online" && !companion.online) return false;
-
       if (selectedTab === "Video Call" && typeof companion.videoPrice !== "number") return false;
 
       if (selectedCategory) {
-        const inServices = companion.servicesOffered.some((service) =>
-          service.toLowerCase().includes(selectedCategory.toLowerCase()),
-        );
-        if (!inServices) return false;
+        const selected = selectedCategory.toLowerCase();
+        const inServices = companion.servicesOffered.some((service) => service.toLowerCase().includes(selected));
+        const inLanguages = companion.languages.some((language) => language.toLowerCase().includes(selected));
+        const inProfile = `${companion.category} ${companion.tagline}`.toLowerCase().includes(selected);
+        if (!inServices && !inLanguages && !inProfile) return false;
       }
 
       if (!term) return true;
-      const haystack = `${companion.name} ${companion.tagline} ${companion.category}`.toLowerCase();
+      const haystack = `${companion.name} ${companion.tagline} ${companion.category} ${companion.languages.join(" ")}`.toLowerCase();
       return haystack.includes(term);
     });
   }, [availability, companions, searchTerm, selectedCategory, selectedTab]);
@@ -82,18 +81,28 @@ export default function ConnectNowPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#f8fafc]">
+    <main className="min-h-screen bg-[#fffdf8]">
       <ConnectAppHeader />
 
-      <div className="mx-auto flex min-h-[calc(100vh-72px)] w-full max-w-[1900px]">
-        <aside className="hidden w-[330px] shrink-0 border-r border-slate-200 bg-white lg:block">
+      <div className="border-b border-[#dceae5] bg-[#f7fbf8]">
+        <div className="mx-auto w-full max-w-[1500px] px-4 py-8 sm:px-6 lg:px-8">
+          <p className="text-sm font-semibold uppercase text-[#0f766e]">Find Support</p>
+          <h1 className="mt-2 text-3xl font-semibold leading-tight text-slate-950 sm:text-4xl">
+            Who would you like to talk to today?
+          </h1>
+          <p className="mt-3 max-w-2xl text-base leading-7 text-slate-600">
+            Choose a verified companion based on mood, language, and comfort. Real conversations. No judgment.
+          </p>
+        </div>
+      </div>
+
+      <div className="mx-auto flex min-h-[calc(100vh-72px)] w-full max-w-[1500px]">
+        <aside className="hidden w-[260px] shrink-0 border-r border-[#dceae5] bg-[#fffdf8] lg:block">
           <ConnectFilters
             selectedAvailability={availability}
             selectedCategory={selectedCategory}
             onAvailabilityChange={setAvailability}
-            onCategoryChange={(value) =>
-              setSelectedCategory((current) => (current === value ? null : value))
-            }
+            onCategoryChange={(value) => setSelectedCategory((current) => (current === value ? null : value))}
             onClearAll={handleClearAll}
           />
         </aside>
@@ -107,71 +116,66 @@ export default function ConnectNowPage() {
           />
 
           <div className="p-4 sm:p-5 lg:p-6">
-            <div className="mb-4 lg:hidden">
-              <details className="rounded-xl border border-slate-200 bg-white" open>
-                <summary className="cursor-pointer px-4 py-3 text-[15px] font-semibold text-slate-900">
-                  Filters
-                </summary>
-                <div className="border-t border-slate-200">
+            <div className="mb-4 space-y-3 lg:hidden">
+              <button
+                type="button"
+                onClick={() => setFiltersOpen((current) => !current)}
+                className="flex min-h-11 w-full items-center justify-between rounded-2xl border border-[#dceae5] bg-white px-4 text-[15px] font-semibold text-slate-900"
+              >
+                Filters
+                <span className="text-xs text-slate-500">{filtersOpen ? "Hide" : "Show"}</span>
+              </button>
+              {filtersOpen ? (
                   <ConnectFilters
                     mobile
                     selectedAvailability={availability}
                     selectedCategory={selectedCategory}
                     onAvailabilityChange={setAvailability}
-                    onCategoryChange={(value) =>
-                      setSelectedCategory((current) => (current === value ? null : value))
-                    }
+                    onCategoryChange={(value) => setSelectedCategory((current) => (current === value ? null : value))}
                     onClearAll={handleClearAll}
                   />
-                </div>
-              </details>
+              ) : null}
             </div>
 
-            {selectedCategory && !allCategoryItems.includes(selectedCategory) ? (
-              <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
-                Selected category not found. Please clear filters.
-              </p>
-            ) : null}
-
-            <div className="mb-4 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
-              <p className="font-medium text-slate-900">Home Visit</p>
+            <div className="mb-4 rounded-3xl border border-orange-200 bg-[#fff7ed] px-4 py-3 text-sm text-slate-700 sm:px-5 sm:py-4">
+              <p className="font-semibold text-slate-950">Home Visit is safety-gated</p>
               <p className="mt-1">
-                Verified in-person companionship for everyday support. Available only after verification and platform approval.
+                Verified in-person support is available only after manual safety approval. Platform rules apply.
               </p>
               <p className="mt-1 text-xs text-slate-500">
-                Strictly platonic • Platform-protected payments • Respectful communication only
+                Strictly platonic | Platform-protected payments | No outside contact sharing
               </p>
-              <Link href="/home-visit" className="mt-2 inline-flex text-sm font-semibold text-[#2563eb]">
-                Explore Home Visit
+              <Link href="/home-visit" className="mt-2 inline-flex text-sm font-semibold text-[#0f766e]">
+                Learn about safe Home Visit
               </Link>
             </div>
 
-            <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2 xl:grid-cols-3 xl:gap-5">
+            <div className="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {filteredCompanions.map((companion) => (
                 <ConnectCompanionCard key={companion.id} companion={companion} />
               ))}
             </div>
 
             {isPreviewMode ? (
-              <p className="mt-4 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">
-                <span>Demo Mode Enabled</span>
-                <span className="text-slate-400">API fallback preview</span>
+              <p className="mt-4 inline-flex items-center gap-2 rounded-full border border-[#dceae5] bg-white px-3 py-1 text-xs font-semibold text-slate-600">
+                <span>Demo mode enabled</span>
+                <span className="text-slate-400">local preview</span>
               </p>
             ) : null}
 
             {apiError ? (
-              <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-8 text-center text-sm text-amber-700">
+              <div className="mt-6 rounded-3xl border border-amber-200 bg-amber-50 px-4 py-8 text-center text-sm text-amber-700">
                 {apiError}
               </div>
             ) : null}
 
             {filteredCompanions.length === 0 ? (
-              <div className="mt-6 rounded-xl border border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-600">
+              <div className="mt-6 rounded-3xl border border-[#dceae5] bg-white px-4 py-10 text-center text-sm text-slate-600">
                 {isLoadingCompanions
-                  ? "Loading companions..."
+                  ? "Finding verified companions..."
                   : IS_PRODUCTION_READY_MODE
-                    ? "No companions available right now. Please check back soon."
-                    : "No companions matched your current search or filters."}
+                    ? "No verified companions are available right now. Please check back soon."
+                    : "No companions matched your current mood, language, or listener style."}
               </div>
             ) : null}
           </div>

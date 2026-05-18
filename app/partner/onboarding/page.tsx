@@ -58,13 +58,13 @@ type OnboardingProfile = Omit<PartnerProfile, "servicesOffered"> & {
 type ValidationErrors = Partial<Record<keyof OnboardingProfile | "base", string>>;
 
 const stepTitles = [
-  "Basic Details",
-  "Education",
-  "Languages & Style",
-  "About Yourself",
-  "Services & Pricing",
-  "Verification Documents",
-  "Safety & Review",
+  "Basic details",
+  "Background",
+  "Languages & comfort style",
+  "About your support style",
+  "Services & pricing",
+  "KYC documents",
+  "Safety agreement",
 ];
 
 function toggleArrayValue(values: string[], value: string) {
@@ -426,8 +426,8 @@ export default function PartnerOnboardingPage() {
             onClick={() => onToggle(option)}
             className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
               selected
-                ? "border-[#2563eb] bg-[#eff6ff] text-[#1d4ed8]"
-                : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                ? "border-[#0f766e] bg-[#eef8f5] text-[#0f766e]"
+                : "border-slate-200 bg-white text-slate-700 hover:bg-[#f7fbf8]"
             }`}
           >
             {option}
@@ -438,32 +438,40 @@ export default function PartnerOnboardingPage() {
   );
 
   return (
-    <section className="min-h-screen bg-[#f8fafc]">
-      <div className="border-b border-slate-200 bg-white">
+    <section className="min-h-screen bg-[#fffdf8]">
+      <div className="border-b border-[#dceae5] bg-[#fffdf8]">
         <div className="mx-auto flex h-[72px] w-full max-w-5xl items-center justify-between px-4 sm:px-6">
           <Link href="/" className="inline-flex items-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/images/logo.png" alt="YoPartner" className="h-auto max-h-12 w-auto object-contain" />
           </Link>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">YoPartner Companion</p>
+          <p className="text-xs font-semibold uppercase text-slate-500">YoPartner Companion</p>
         </div>
       </div>
 
       <div className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
+        <div className="mb-6 rounded-3xl border border-[#dceae5] bg-white p-5 shadow-sm">
+          <p className="text-sm font-semibold uppercase text-[#0f766e]">Become a YoPartner companion</p>
+          <h1 className="mt-2 text-3xl font-semibold text-slate-950">Help people feel heard through safe, respectful conversations.</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-600">
+            This application helps our safety team understand your background, communication style, KYC readiness, and platform boundaries.
+          </p>
+        </div>
+
         <div className="mb-5">
           <p className="text-sm font-medium text-slate-500">
             Step {step + 1} of {stepTitles.length}
           </p>
-          <h1 className="mt-1 text-2xl font-semibold text-slate-900">{stepTitles[step]}</h1>
+          <h2 className="mt-1 text-2xl font-semibold text-slate-900">{stepTitles[step]}</h2>
           <div className="mt-4 h-2 rounded-full bg-slate-200">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-[#1d4ed8] to-[#0ea5a6]"
+              className="h-full rounded-full bg-[#0f766e]"
               style={{ width: `${((step + 1) / stepTitles.length) * 100}%` }}
             />
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <div className="rounded-3xl border border-[#dceae5] bg-white p-5 shadow-sm sm:p-6">
           {step === 0 ? (
             <div className="grid gap-4 sm:grid-cols-2">
               <label>
@@ -918,7 +926,7 @@ export default function PartnerOnboardingPage() {
               <button
                 type="button"
                 onClick={handleContinue}
-                className="inline-flex h-10 items-center gap-1 rounded-xl bg-gradient-to-r from-[#1d4ed8] to-[#0ea5a6] px-4 text-sm font-semibold text-white"
+                className="inline-flex h-10 items-center gap-1 rounded-full bg-[#0f766e] px-4 text-sm font-semibold text-white"
               >
                 Continue
                 <ChevronRight size={16} />
@@ -928,7 +936,7 @@ export default function PartnerOnboardingPage() {
                   type="button"
                   onClick={handleSubmit}
                   disabled={isSubmitting}
-                  className="inline-flex h-10 items-center gap-1 rounded-xl bg-gradient-to-r from-[#1d4ed8] to-[#0ea5a6] px-4 text-sm font-semibold text-white"
+                  className="inline-flex h-10 items-center gap-1 rounded-full bg-[#0f766e] px-4 text-sm font-semibold text-white"
                 >
                   <ShieldCheck size={16} />
                   {isSubmitting ? "Submitting..." : "Submit for Review"}

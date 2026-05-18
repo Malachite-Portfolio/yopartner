@@ -1,99 +1,130 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { BadgeCheck, MapPin, ShieldCheck } from "lucide-react";
+import { BadgeCheck, MapPin, ShieldCheck, Star } from "lucide-react";
 import { ConnectAppHeader } from "@/components/ConnectAppHeader";
+import { HomeVisitBookingFlow } from "@/components/HomeVisitBookingFlow";
 import {
   getClientDemoHomeVisitCompanions,
   isClientDemoEnabled,
 } from "@/lib/clientDemoData";
-import { homeVisitCompanions } from "@/lib/data";
-
-const homeVisitSafetyMessage =
-  "Home Visit is available only for verified companions. Please contact support to enable this service.";
+import { connectCompanions, homeVisitCompanions, type ConnectCompanion, type HomeVisitCompanion } from "@/lib/data";
+import { formatINR } from "@/lib/wallet";
 
 type HomeVisitProfilePageProps = {
   params: Promise<{ id: string }>;
 };
 
+function toHomeVisitCompanion(companion: ConnectCompanion): HomeVisitCompanion {
+  return {
+    id: companion.id,
+    name: companion.name,
+    tagline: companion.tagline,
+    image:
+      companion.image ??
+      "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=320&q=80",
+    rating: companion.rating,
+    experience: companion.experience,
+    verified: true,
+    price: companion.visitPrice,
+    category: companion.category,
+    services: companion.servicesOffered,
+    city: companion.bornCity,
+    connectProfileId: companion.id,
+  };
+}
+
+function getHomeVisitSource() {
+  const connectHomeVisitCompanions = connectCompanions
+    .filter((companion) => companion.visitPrice > 0)
+    .map(toHomeVisitCompanion);
+  const demoCompanions = isClientDemoEnabled() ? getClientDemoHomeVisitCompanions() : [];
+  const byId = new Map<string, HomeVisitCompanion>();
+  [...connectHomeVisitCompanions, ...homeVisitCompanions, ...demoCompanions].forEach((item) => {
+    byId.set(item.id, item);
+  });
+  return [...byId.values()];
+}
+
 export default async function HomeVisitProfilePage({ params }: HomeVisitProfilePageProps) {
   const { id } = await params;
-  const source = [
-    ...homeVisitCompanions,
-    ...(isClientDemoEnabled() ? getClientDemoHomeVisitCompanions() : []),
-  ];
-  const companion = source.find((item) => item.id === id);
+  const companion = getHomeVisitSource().find((item) => item.id === id);
 
   if (!companion) {
     notFound();
   }
 
   return (
-    <main className="min-h-screen bg-[#f4f7fb]">
+    <main className="min-h-screen bg-[#fffdf8]">
       <ConnectAppHeader />
-      <div className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6">
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+      <div className="mx-auto w-full max-w-5xl px-4 py-5 sm:px-6 lg:px-8">
+        <section className="rounded-[28px] border border-[#dceae5] bg-white p-4 shadow-sm shadow-teal-900/5 sm:p-6">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={companion.image}
               alt={companion.name}
-              className="h-24 w-24 rounded-full border border-white object-cover shadow-sm"
+              className="h-24 w-24 rounded-3xl border border-white object-cover shadow-sm"
             />
 
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-2xl font-semibold text-slate-900">{companion.name}</h1>
+                <h1 className="text-2xl font-semibold text-slate-950 sm:text-3xl">{companion.name}</h1>
                 {companion.verified ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700">
+                  <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
                     <BadgeCheck size={14} />
-                    Verified for in-person support
+                    Safety approved
                   </span>
                 ) : null}
               </div>
-              <p className="mt-1 text-sm text-slate-600">{companion.tagline}</p>
-              <p className="mt-2 inline-flex items-center gap-1 text-sm text-slate-600">
-                <MapPin size={14} />
-                {companion.city}
-              </p>
+              <p className="mt-1 text-sm leading-6 text-slate-600">{companion.tagline}</p>
+              <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-slate-600">
+                <span className="inline-flex items-center gap-1">
+                  <MapPin size={14} />
+                  {companion.city}
+                </span>
+                <span className="inline-flex items-center gap-1 text-amber-500">
+                  <Star size={14} fill="currentColor" />
+                  <span className="font-semibold text-slate-900">{companion.rating.toFixed(1)}/5</span>
+                </span>
+              </div>
 
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <div className="rounded-2xl border border-[#dceae5] bg-[#f7fbf8] p-3">
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Category</p>
                   <p className="mt-1 text-sm font-medium text-slate-900">{companion.category}</p>
                 </div>
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Home Visit Price</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-900">₹{companion.price}/session</p>
+                <div className="rounded-2xl border border-[#dceae5] bg-[#f7fbf8] p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Home Visit price</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-900">{formatINR(companion.price)} / session</p>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-            <p className="inline-flex items-center gap-1 text-sm font-semibold text-emerald-800">
+          <div className="mt-5 rounded-3xl border border-orange-200 bg-[#fff7ed] p-4">
+            <p className="inline-flex items-center gap-1 text-sm font-semibold text-orange-800">
               <ShieldCheck size={15} />
-              Strictly platonic safety policy
+              Home Visit safety rules
             </p>
-            <p className="mt-1 text-sm text-emerald-700">
-              {homeVisitSafetyMessage}
-            </p>
+            <ul className="mt-2 space-y-1.5 text-sm leading-6 text-slate-700">
+              <li>Strictly platonic in-person support</li>
+              <li>Manual verification required before confirmation</li>
+              <li>Platform payment only</li>
+              <li>No outside contact or cash payment</li>
+              <li>Safety support can review bookings</li>
+            </ul>
           </div>
 
-          <div className="mt-5 flex flex-wrap gap-3">
+          <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+            <HomeVisitBookingFlow companion={companion} />
             {companion.connectProfileId ? (
               <Link
                 href={`/connect-now/${companion.connectProfileId}`}
-                className="inline-flex h-11 items-center rounded-xl bg-[#2563eb] px-4 text-sm font-semibold text-white"
+                className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-[#dceae5] bg-white px-5 text-sm font-semibold text-slate-700"
               >
-                View Companion Profile
+                View companion profile
               </Link>
             ) : null}
-            <Link
-              href="/support"
-              className="inline-flex h-11 items-center rounded-xl border border-slate-300 px-4 text-sm font-semibold text-slate-700"
-            >
-              Contact Support
-            </Link>
           </div>
         </section>
       </div>

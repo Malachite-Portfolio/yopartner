@@ -111,16 +111,18 @@ export default function BookingsPage() {
   }, [bookings]);
 
   return (
-    <section className="min-h-screen bg-[#f7fafc]">
+    <section className="min-h-screen bg-[#fffdf8]">
       <div className="mx-auto w-full max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <p className="inline-flex items-center gap-2 rounded-full border border-[#dbeafe] bg-[#eff6ff] px-3 py-1 text-xs font-semibold text-[#1d4ed8]">
+            <p className="inline-flex items-center gap-2 rounded-full border border-[#dceae5] bg-white px-3 py-1 text-xs font-semibold text-[#0f766e]">
               <ShieldCheck size={14} />
-              User
+              Private and platform-protected
             </p>
             <h1 className="mt-3 text-3xl font-semibold text-slate-900 sm:text-4xl">My Conversations</h1>
-            <p className="mt-2 text-sm text-slate-600 sm:text-base">Track your confirmed and upcoming companion sessions</p>
+            <p className="mt-2 text-sm text-slate-600 sm:text-base">
+              Track your upcoming and completed conversations with verified companions.
+            </p>
           </div>
 
           <button
@@ -133,7 +135,7 @@ export default function BookingsPage() {
           </button>
         </div>
 
-        <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <div className="mt-6 rounded-3xl border border-[#dceae5] bg-white p-4 shadow-sm sm:p-5">
           <div className="flex flex-col gap-3 sm:flex-row">
             <label className="relative flex-1">
               <Search size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -141,8 +143,8 @@ export default function BookingsPage() {
                 type="text"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search by name or booking ID..."
-                className="h-12 w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-[#2563eb]"
+                placeholder="Search by companion name or conversation ID..."
+                className="h-12 w-full rounded-2xl border border-[#dceae5] bg-white pl-11 pr-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-[#0f766e]"
               />
             </label>
 
@@ -179,19 +181,19 @@ export default function BookingsPage() {
         </div>
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <article className="rounded-3xl border border-[#dceae5] bg-white p-5 shadow-sm">
             <p className="text-sm font-medium text-slate-500">Total</p>
             <p className="mt-2 text-3xl font-semibold text-slate-900">{stats.total}</p>
           </article>
-          <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <article className="rounded-3xl border border-[#dceae5] bg-white p-5 shadow-sm">
             <p className="text-sm font-medium text-slate-500">Confirmed</p>
             <p className="mt-2 text-3xl font-semibold text-emerald-600">{stats.confirmed}</p>
           </article>
-          <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <article className="rounded-3xl border border-[#dceae5] bg-white p-5 shadow-sm">
             <p className="text-sm font-medium text-slate-500">Pending</p>
             <p className="mt-2 text-3xl font-semibold text-amber-500">{stats.pending}</p>
           </article>
-          <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <article className="rounded-3xl border border-[#dceae5] bg-white p-5 shadow-sm">
             <p className="text-sm font-medium text-slate-500">Completed</p>
             <p className="mt-2 text-3xl font-semibold text-[#1e3a8a]">{stats.completed}</p>
           </article>
@@ -204,22 +206,22 @@ export default function BookingsPage() {
         ) : null}
 
         {filteredBookings.length === 0 ? (
-          <div className="mt-6 rounded-2xl border border-slate-200 bg-white px-4 py-16 text-center shadow-sm sm:px-6 sm:py-20">
+          <div className="mt-6 rounded-3xl border border-[#dceae5] bg-white px-4 py-16 text-center shadow-sm sm:px-6 sm:py-20">
             <span className="mx-auto inline-flex h-20 w-20 items-center justify-center rounded-full bg-slate-100 text-slate-400">
               <CalendarDays size={36} />
             </span>
             <h2 className="mt-5 text-2xl font-semibold text-slate-900">No conversations yet</h2>
             <p className="mt-2 text-sm text-slate-500 sm:text-base">
-              No bookings found.
+              No conversations found yet. When you talk to a companion, it will appear here.
             </p>
           </div>
         ) : (
           <div className="mt-6 space-y-3">
             {filteredBookings.map((booking) => (
-              <article key={booking.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <article key={booking.id} className="rounded-3xl border border-[#dceae5] bg-white p-5 shadow-sm">
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Booking ID</p>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Conversation ID</p>
                     <p className="mt-1 text-sm font-semibold text-slate-900">{booking.bookingId}</p>
                   </div>
                   <div>

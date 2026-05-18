@@ -112,11 +112,13 @@ export default function PartnerDashboardPage() {
 
   return (
     <section className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="rounded-3xl border border-[#dceae5] bg-white p-5 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-2xl font-semibold text-slate-900">
             Welcome back, {profile.fullName || "YoPartner Companion"}
           </h2>
+          <p className="mt-1 text-sm text-slate-600">Your companion workspace for safe, respectful conversations.</p>
           {demoEnabled && isDemoSession ? (
             <p className="mt-2 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">
               <span>Demo session</span>
@@ -138,26 +140,36 @@ export default function PartnerDashboardPage() {
             ) : null}
           </p>
           {!isApproved ? (
-            <p className="mt-2 text-sm text-amber-700">
-              Your profile is being reviewed by our safety team. You can start accepting requests after KYC verification and admin approval.
-            </p>
+            <div className="mt-4 rounded-3xl border border-amber-200 bg-amber-50 p-4">
+              <p className="text-sm font-semibold text-amber-900">KYC Pending</p>
+              <p className="mt-1 text-sm leading-6 text-amber-800">
+                Your profile is being reviewed by our safety team. You can start accepting requests after KYC verification and admin approval.
+              </p>
+              <div className="mt-3 grid gap-2 text-xs font-semibold text-amber-900 sm:grid-cols-2">
+                <span>Profile submitted</span>
+                <span>Documents uploaded</span>
+                <span>KYC review pending</span>
+                <span>Admin approval required</span>
+              </div>
+            </div>
           ) : null}
         </div>
         <button
           type="button"
           onClick={toggleOnline}
           disabled={!isApproved}
-          className="rounded-xl bg-[#2563eb] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#1d4ed8] disabled:cursor-not-allowed disabled:bg-slate-400"
+          className="rounded-full bg-[#0f766e] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#115e59] disabled:cursor-not-allowed disabled:bg-slate-400"
         >
           {isApproved ? (online ? "Pause requests" : "Start accepting requests") : "Start accepting requests"}
         </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {(
           isDemoSession
             ? [
-                ["Total Earnings", "₹4,850"],
+                ["Total earnings", "₹4,850"],
                 ["Available Balance", "₹2,300"],
                 ["Completed Conversations", "28"],
                 ["Rating", "5.0"],
@@ -166,15 +178,15 @@ export default function PartnerDashboardPage() {
                 ["Completed Video Calls", "1"],
               ]
             : [
-                ["Today's Chats", "8"],
-                ["Audio Calls", "3"],
-                ["Video Calls", "2"],
-                ["Pending Bookings", "4"],
-                ["Today's Earnings", "₹1,250"],
-                ["Rating", "4.9"],
+                ["People supported today", "8"],
+                ["Audio conversations", "3"],
+                ["Video conversations", "2"],
+                ["Pending requests", "4"],
+                ["Today's earnings", "₹1,250"],
+                ["Average rating", "4.9"],
               ]
         ).map((item) => (
-          <article key={item[0]} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <article key={item[0]} className="rounded-3xl border border-[#dceae5] bg-white p-4 shadow-sm">
             <p className="text-sm text-slate-500">{item[0]}</p>
             <p className="mt-2 text-2xl font-semibold text-slate-900">{item[1]}</p>
           </article>
@@ -182,14 +194,14 @@ export default function PartnerDashboardPage() {
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-        <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h3 className="text-base font-semibold text-slate-900">New requests</h3>
+        <article className="rounded-3xl border border-[#dceae5] bg-white p-4 shadow-sm">
+          <h3 className="text-base font-semibold text-slate-900">People waiting to talk</h3>
           <div className="mt-3 space-y-3">
             {requests.length === 0 ? (
               <p className="text-sm text-slate-500">No pending requests.</p>
             ) : (
               requests.map((request) => (
-                <div key={request.id} className="rounded-lg border border-slate-200 p-3">
+                <div key={request.id} className="rounded-2xl border border-[#dceae5] p-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
                       <p className="text-sm font-semibold text-slate-900">{request.userMaskedPhone}</p>
@@ -202,7 +214,7 @@ export default function PartnerDashboardPage() {
                         type="button"
                         onClick={() => handleAccept(request)}
                         disabled={!isApproved}
-                        className="rounded-lg bg-[#1d4ed8] px-3 py-1.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-400"
+                        className="rounded-full bg-[#0f766e] px-3 py-1.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-400"
                       >
                         Accept request
                       </button>
@@ -221,11 +233,11 @@ export default function PartnerDashboardPage() {
           </div>
         </article>
 
-        <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <article className="rounded-3xl border border-[#dceae5] bg-white p-4 shadow-sm">
           <h3 className="text-base font-semibold text-slate-900">Ongoing conversations</h3>
           <div className="mt-3 space-y-2">
             {sessions.map((session) => (
-              <div key={session.id} className="flex items-center justify-between rounded-lg border border-slate-200 p-2.5">
+              <div key={session.id} className="flex items-center justify-between rounded-2xl border border-[#dceae5] p-2.5">
                 <div>
                   <p className="text-sm font-semibold text-slate-900">{session.userMaskedPhone}</p>
                   <p className="text-xs text-slate-500">
@@ -251,7 +263,7 @@ export default function PartnerDashboardPage() {
         </article>
       </div>
 
-      <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <article className="rounded-3xl border border-[#dceae5] bg-white p-4 shadow-sm">
         <h3 className="text-base font-semibold text-slate-900">Recent Activity</h3>
         <ul className="mt-3 space-y-2">
           {activityItems.map((item) => (

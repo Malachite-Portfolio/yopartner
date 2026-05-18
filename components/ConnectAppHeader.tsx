@@ -10,11 +10,10 @@ import { logoutUserAuthSession } from "@/lib/auth/logout";
 import { getDemoLoggedIn, subscribeDemoAuthUpdates } from "@/lib/demoAuth";
 
 const navItems = [
-  { label: "Find a Companion", href: "/connect-now" },
+  { label: "Talk Now", href: "/connect-now" },
   { label: "Home Visit", href: "/home-visit" },
-  { label: "Media", href: "/media" },
-  { label: "Client Diaries", href: "/client-diaries" },
-  { label: "About Us", href: "/about" },
+  { label: "Safety", href: "/trust-safety" },
+  { label: "Stories", href: "/client-diaries" },
   { label: "Support", href: "/support" },
 ];
 
@@ -33,11 +32,11 @@ export function ConnectAppHeader() {
   }, []);
 
   return (
-    <header className="sticky top-0 z-50 h-[72px] border-b border-slate-200 bg-white">
-      <div className="mx-auto flex h-full w-full max-w-[1600px] items-center justify-between px-4 lg:px-8">
+    <header className="sticky top-0 z-50 h-16 border-b border-[#dceae5] bg-[#fffdf8]/95 backdrop-blur sm:h-[72px]">
+      <div className="mx-auto flex h-full w-full max-w-[1500px] items-center justify-between px-4 lg:px-8">
         <Link href="/" className="inline-flex items-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/images/logo.png" alt="YoPartner" className="h-auto max-h-12 w-[130px] object-contain" />
+          <img src="/images/logo.png" alt="YoPartner" className="h-auto max-h-10 w-[112px] object-contain sm:max-h-12 sm:w-[130px]" />
         </Link>
 
         <nav className="hidden items-center gap-7 text-[15px] text-slate-600 xl:flex">
@@ -45,7 +44,7 @@ export function ConnectAppHeader() {
             <Link
               key={item.label}
               href={item.href}
-              className={`transition hover:text-[#2563EB] ${isActive(pathname, item.href) ? "font-semibold text-slate-900" : ""}`}
+              className={`transition hover:text-[#0f766e] ${isActive(pathname, item.href) ? "font-semibold text-slate-900" : ""}`}
             >
               {item.label}
             </Link>
@@ -56,9 +55,9 @@ export function ConnectAppHeader() {
           {loggedIn ? (
             <>
               <WalletPill
-                className="inline-flex h-10 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 text-[14px] font-semibold text-slate-700 transition hover:border-[#2563EB]/35 hover:bg-[#eff6ff]"
+                className="inline-flex h-10 items-center gap-1.5 rounded-full border border-[#dceae5] bg-white px-3 text-[14px] font-semibold text-slate-700 transition hover:border-[#0f766e]/35 hover:bg-[#eef8f5]"
                 iconSize={15}
-                iconClassName="text-[#2563EB]"
+                iconClassName="text-[#0f766e]"
               />
               <ProfileMenu
                 triggerClassName="inline-flex h-10 items-center gap-2 rounded-full border border-slate-200 bg-white px-2.5 text-[14px] font-semibold text-slate-700 transition hover:border-[#9B5DE5]/40 hover:bg-[#f5f3ff]"
@@ -67,10 +66,10 @@ export function ConnectAppHeader() {
           ) : (
             <Link
               href="/login"
-              className="inline-flex h-10 items-center gap-1.5 rounded-full bg-[#2563eb] px-4 text-sm font-semibold text-white transition hover:bg-[#1d4ed8]"
+              className="inline-flex h-10 items-center gap-1.5 rounded-full bg-[#0f766e] px-4 text-sm font-semibold text-white transition hover:bg-[#115e59]"
             >
               <LogIn size={15} />
-              Login
+              Talk to someone
             </Link>
           )}
         </div>
@@ -80,15 +79,15 @@ export function ConnectAppHeader() {
             <WalletPill
               className="inline-flex h-9 max-w-[120px] min-w-0 items-center gap-1 overflow-hidden rounded-full border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700"
               iconSize={14}
-              iconClassName="text-[#2563EB]"
+              iconClassName="text-[#0f766e]"
             />
           ) : (
             <Link
               href="/login"
-              className="inline-flex h-9 items-center gap-1 rounded-full bg-[#2563eb] px-3 text-xs font-semibold text-white transition hover:bg-[#1d4ed8]"
+              className="inline-flex h-9 items-center gap-1 rounded-full bg-[#0f766e] px-3 text-xs font-semibold text-white transition hover:bg-[#115e59]"
             >
               <LogIn size={13} />
-              Login
+              Talk
             </Link>
           )}
 
@@ -134,14 +133,14 @@ export function ConnectAppHeader() {
                   className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-3 py-2 text-center text-sm font-medium text-slate-700"
                   onClick={() => setOpen(false)}
                 >
-                  Wallet
+                  Balance
                 </Link>
                 <Link
                   href="/bookings"
                   className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-3 py-2 text-center text-sm font-medium text-slate-700"
                   onClick={() => setOpen(false)}
                 >
-                  My Bookings
+                  My Conversations
                 </Link>
                 <button
                   type="button"
@@ -157,10 +156,10 @@ export function ConnectAppHeader() {
             ) : (
               <Link
                 href="/login"
-                className="col-span-2 inline-flex items-center justify-center rounded-xl bg-[#2563eb] px-3 py-2 text-center text-sm font-medium text-white transition hover:bg-[#1d4ed8]"
+                className="col-span-2 inline-flex items-center justify-center rounded-xl bg-[#0f766e] px-3 py-2 text-center text-sm font-medium text-white transition hover:bg-[#115e59]"
                 onClick={() => setOpen(false)}
               >
-                Login
+                Talk to someone
               </Link>
             )}
           </div>

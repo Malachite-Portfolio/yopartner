@@ -60,9 +60,9 @@ export default function PartnerApplicationStatusPage() {
   const labels = getPartnerApprovalLabel(approvalState);
 
   return (
-    <section className="min-h-screen bg-[#f8fafc] px-4 py-8 sm:px-6">
-      <div className="mx-auto w-full max-w-3xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
-        <h1 className="text-2xl font-semibold text-slate-900">Profile submitted for review</h1>
+    <section className="min-h-screen bg-[#fffdf8] px-4 py-8 sm:px-6">
+      <div className="mx-auto w-full max-w-3xl rounded-3xl border border-[#dceae5] bg-white p-6 shadow-sm sm:p-7">
+        <h1 className="text-2xl font-semibold text-slate-900">Your profile is being reviewed by our safety team</h1>
         <p className="mt-2 text-sm text-slate-600">
           Your profile is being reviewed by our safety team. You&apos;ll be able to start accepting requests after KYC verification and admin approval.
         </p>
@@ -72,8 +72,8 @@ export default function PartnerApplicationStatusPage() {
           {statusPill(labels.review, isApproved ? "green" : "blue")}
         </div>
 
-        <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
-          <p className="text-sm font-semibold text-slate-900">Review checklist</p>
+        <div className="mt-5 rounded-3xl border border-[#dceae5] bg-[#f7fbf8] p-4">
+          <p className="text-sm font-semibold text-slate-900">Safety review checklist</p>
           <ul className="mt-2 space-y-1 text-sm text-slate-700">
             <li>Profile details submitted</li>
             <li>Safety checklist accepted</li>
@@ -86,10 +86,10 @@ export default function PartnerApplicationStatusPage() {
         </div>
 
         <div className="mt-6 flex flex-wrap gap-2">
-          <Link href="/partner/dashboard" className="rounded-xl bg-[#2563eb] px-4 py-2 text-sm font-semibold text-white">
-            Go to Dashboard
+          <Link href="/partner/dashboard" className="rounded-full bg-[#0f766e] px-4 py-2 text-sm font-semibold text-white">
+            Go to overview
           </Link>
-          <Link href="/partner/onboarding?edit=true" className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700">
+          <Link href="/partner/onboarding?edit=true" className="rounded-full border border-[#dceae5] px-4 py-2 text-sm font-semibold text-slate-700">
             Edit Profile
           </Link>
         </div>

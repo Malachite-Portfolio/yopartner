@@ -30,7 +30,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   if (!accessState) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+      <div className="flex min-h-screen items-center justify-center bg-[#fffdf8]">
         <p className="text-sm font-medium text-slate-600">Loading admin console...</p>
       </div>
     );
@@ -38,7 +38,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   if (accessState.needsLogin) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+      <div className="flex min-h-screen items-center justify-center bg-[#fffdf8]">
         <p className="text-sm font-medium text-slate-600">Redirecting to admin login...</p>
       </div>
     );
@@ -46,8 +46,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   if (!accessState.allowed && accessState.forbidden) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
-        <div className="w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
+      <div className="flex min-h-screen items-center justify-center bg-[#fffdf8] px-4">
+        <div className="w-full max-w-xl rounded-3xl border border-[#dceae5] bg-white p-6 text-center shadow-sm">
           <p className="text-base font-semibold text-slate-900">You do not have permission to access the admin panel.</p>
           <p className="mt-2 text-sm text-slate-600">
             {accessState.message ?? "Please login with an authorized admin account."}
@@ -55,7 +55,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           <button
             type="button"
             onClick={() => router.replace("/admin/login")}
-            className="mt-4 rounded-xl bg-[#2563eb] px-4 py-2 text-sm font-semibold text-white hover:bg-[#1d4ed8]"
+            className="mt-4 rounded-full bg-[#0f766e] px-4 py-2 text-sm font-semibold text-white hover:bg-[#115e59]"
           >
             Go to Admin Login
           </button>
@@ -66,21 +66,21 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   if (!accessState.allowed) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+      <div className="flex min-h-screen items-center justify-center bg-[#fffdf8]">
         <p className="text-sm font-medium text-slate-600">Loading admin console...</p>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen bg-[#f8fafc] text-slate-900">
+    <div className="flex min-h-screen bg-[#fffdf8] text-slate-900">
       <div className="hidden lg:block">
         <AdminSidebar />
       </div>
 
       {sidebarOpen ? (
         <div className="fixed inset-0 z-40 bg-slate-900/35 lg:hidden">
-          <div className="h-full w-[286px] bg-white">
+          <div className="h-full w-[286px] bg-[#fffdf8]">
             <AdminSidebar onNavigate={() => setSidebarOpen(false)} onClose={() => setSidebarOpen(false)} />
           </div>
           <button

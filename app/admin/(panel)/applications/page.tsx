@@ -241,9 +241,9 @@ export default function AdminApplicationsPage() {
   if (loading) {
     return (
       <section className="space-y-4">
-        <h2 className="text-xl font-semibold text-slate-900">Partner Applications</h2>
-        <article className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600 shadow-sm">
-          Loading partner applications...
+        <h2 className="text-xl font-semibold text-slate-900">Partner review queue</h2>
+        <article className="rounded-3xl border border-[#dceae5] bg-white p-4 text-sm text-slate-600 shadow-sm">
+          Loading partner reviews...
         </article>
       </section>
     );
@@ -251,7 +251,13 @@ export default function AdminApplicationsPage() {
 
   return (
     <section className="space-y-4">
-      <h2 className="text-xl font-semibold text-slate-900">Partner Applications</h2>
+      <div className="rounded-3xl border border-[#dceae5] bg-white p-5 shadow-sm shadow-teal-900/5">
+        <p className="text-sm font-semibold text-[#0f766e]">KYC Review</p>
+        <h2 className="mt-2 text-2xl font-semibold text-slate-950">Partner review queue</h2>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+          Review companion applications, KYC status, services, and safety readiness before a partner can accept requests.
+        </p>
+      </div>
       {apiError ? (
         <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">{apiError}</p>
       ) : null}
@@ -262,7 +268,7 @@ export default function AdminApplicationsPage() {
         <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700">{successMessage}</p>
       ) : null}
 
-      <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <article className="rounded-3xl border border-[#dceae5] bg-white p-4 shadow-sm">
         <AdminTableToolbar
           searchValue={search}
           onSearchChange={setSearch}
@@ -277,7 +283,7 @@ export default function AdminApplicationsPage() {
             <thead className="text-xs uppercase text-slate-500">
               <tr>
                 <th className="px-2 py-2">Application ID</th>
-                <th className="px-2 py-2">Name</th>
+                <th className="px-2 py-2">Partner name</th>
                 <th className="px-2 py-2">Phone</th>
                 <th className="px-2 py-2">Services</th>
                 <th className="px-2 py-2">KYC</th>
@@ -311,7 +317,7 @@ export default function AdminApplicationsPage() {
                       <td className="px-2 py-2">
                         <AdminActionMenu
                           actions={[
-                            { label: "View Profile", onClick: () => setSelected(item) },
+                            { label: "View profile", onClick: () => setSelected(item) },
                             {
                               label: rowAction === "approve" ? "Approving..." : "Approve",
                               onClick: () => {

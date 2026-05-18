@@ -10,11 +10,10 @@ import { logoutUserAuthSession } from "@/lib/auth/logout";
 import { getDemoLoggedIn, subscribeDemoAuthUpdates } from "@/lib/demoAuth";
 
 const navItems = [
-  { label: "Connect Now", href: "/connect-now" },
-  { label: "Home Visit", href: "/home-visit" },
-  { label: "Media", href: "/media" },
-  { label: "Client Diaries", href: "/client-diaries" },
-  { label: "About Us", href: "/about" },
+  { label: "Talk Now", href: "/connect-now" },
+  { label: "How it Works", href: "/how-it-works" },
+  { label: "Safety", href: "/trust-safety" },
+  { label: "Become a Companion", href: "/partner/login" },
   { label: "Support", href: "/support" },
 ];
 
@@ -47,7 +46,7 @@ export function AppHeader() {
   }
 
   return (
-    <header className="sticky top-0 z-50 h-[72px] border-b border-slate-200 bg-white">
+    <header className="sticky top-0 z-50 h-[72px] border-b border-[#dceae5] bg-[#fffdf8]/95 backdrop-blur">
       <div className="mx-auto flex h-full w-full max-w-[1600px] items-center justify-between px-4 lg:px-8">
         <Link href="/" className="inline-flex items-center" onClick={() => setOpen(false)}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -61,7 +60,7 @@ export function AppHeader() {
               <Link
                 key={item.label}
                 href={item.href}
-                className={`transition hover:text-[#2563EB] ${active ? "font-semibold text-slate-900" : ""}`}
+                className={`transition hover:text-[#0f766e] ${active ? "font-semibold text-slate-900" : ""}`}
               >
                 {item.label}
               </Link>
@@ -73,21 +72,21 @@ export function AppHeader() {
           {loggedIn ? (
             <>
               <WalletPill
-                className="inline-flex h-10 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 text-[14px] font-semibold text-slate-700 transition hover:border-[#2563EB]/35 hover:bg-[#eff6ff]"
+                className="inline-flex h-10 items-center gap-1.5 rounded-full border border-[#dceae5] bg-white px-3 text-[14px] font-semibold text-slate-700 transition hover:border-[#0f766e]/35 hover:bg-[#eef8f5]"
                 iconSize={15}
-                iconClassName="text-[#2563EB]"
+                iconClassName="text-[#0f766e]"
               />
               <ProfileMenu
-                triggerClassName="inline-flex h-10 items-center gap-2 rounded-full border border-slate-200 bg-white px-2.5 text-[14px] font-semibold text-slate-700 transition hover:border-[#9B5DE5]/40 hover:bg-[#f5f3ff]"
+                triggerClassName="inline-flex h-10 items-center gap-2 rounded-full border border-[#dceae5] bg-white px-2.5 text-[14px] font-semibold text-slate-700 transition hover:border-[#0f766e]/40 hover:bg-[#eef8f5]"
               />
             </>
           ) : (
             <Link
               href="/login"
-              className="inline-flex h-10 items-center gap-1.5 rounded-full bg-gradient-to-r from-[#2563EB] to-[#00A6B2] px-4 text-sm font-semibold text-white"
+              className="inline-flex h-10 items-center gap-1.5 rounded-full bg-[#0f766e] px-4 text-sm font-semibold text-white shadow-sm hover:bg-[#115e59]"
             >
               <LogIn size={15} />
-              Login
+              Talk to someone
             </Link>
           )}
         </div>
@@ -154,14 +153,14 @@ export function AppHeader() {
                   className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-3 py-2 text-center text-sm font-medium text-slate-700"
                   onClick={() => setOpen(false)}
                 >
-                  Your Booking
+                My Conversations
                 </Link>
                 <Link
                   href="/wallet"
                   className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-3 py-2 text-center text-sm font-medium text-slate-700"
                   onClick={() => setOpen(false)}
                 >
-                  Wallet
+                  Balance
                 </Link>
                 <button
                   type="button"
@@ -177,10 +176,10 @@ export function AppHeader() {
             ) : (
               <Link
                 href="/login"
-                className="col-span-2 inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-[#2563EB] to-[#00A6B2] px-3 py-2 text-center text-sm font-medium text-white"
+                className="col-span-2 inline-flex items-center justify-center rounded-xl bg-[#0f766e] px-3 py-2 text-center text-sm font-medium text-white"
                 onClick={() => setOpen(false)}
               >
-                Login
+                Talk to someone
               </Link>
             )}
           </div>

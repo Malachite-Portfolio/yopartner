@@ -348,14 +348,14 @@ export default function AdminDashboardPage() {
   }, [isDemoPreview]);
 
   const metricCards = [
-    { label: "Total Members", value: stats.totalUsers.toLocaleString("en-IN"), icon: Users, tone: "blue" as const },
-    { label: "Active Partners", value: String(stats.activeCompanions), icon: BadgeCheck, tone: "teal" as const },
-    { label: "Pending Applications", value: String(stats.pendingApplications), icon: Activity, tone: "amber" as const },
-    { label: "Live Conversations", value: String(stats.liveSessions), icon: MessageCircle, tone: "purple" as const },
-    { label: "Total Bookings", value: String(stats.totalBookings), icon: Phone, tone: "slate" as const },
-    { label: "Wallet Volume", value: formatINR(stats.walletVolume), icon: Wallet, tone: "teal" as const },
+    { label: "Members", value: stats.totalUsers.toLocaleString("en-IN"), icon: Users, tone: "blue" as const },
+    { label: "Active partners", value: String(stats.activeCompanions), icon: BadgeCheck, tone: "teal" as const },
+    { label: "Partner reviews pending", value: String(stats.pendingApplications), icon: Activity, tone: "amber" as const },
+    { label: "Conversations today", value: String(stats.liveSessions), icon: MessageCircle, tone: "purple" as const },
+    { label: "Bookings", value: String(stats.totalBookings), icon: Phone, tone: "slate" as const },
+    { label: "Wallet volume", value: formatINR(stats.walletVolume), icon: Wallet, tone: "teal" as const },
     { label: "Pending Payouts", value: String(stats.pendingPayouts), icon: CreditCard, tone: "amber" as const },
-    { label: "Open Support Tickets", value: String(stats.openSupportTickets), icon: Activity, tone: "blue" as const },
+    { label: "Open support cases", value: String(stats.openSupportTickets), icon: Activity, tone: "blue" as const },
   ];
 
   const liveSessions = useMemo(
@@ -378,8 +378,8 @@ export default function AdminDashboardPage() {
   if (loading) {
     return (
       <section className="space-y-4">
-        <h2 className="text-xl font-semibold text-slate-900">Operations Dashboard</h2>
-        <article className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600 shadow-sm">
+        <h2 className="text-xl font-semibold text-slate-900">Operations overview</h2>
+        <article className="rounded-3xl border border-[#dceae5] bg-white p-4 text-sm text-slate-600 shadow-sm">
           Loading admin data...
         </article>
       </section>
@@ -388,6 +388,14 @@ export default function AdminDashboardPage() {
 
   return (
     <section className="space-y-6">
+      <div className="rounded-3xl border border-[#dceae5] bg-white p-5 shadow-sm shadow-teal-900/5">
+        <p className="text-sm font-semibold text-[#0f766e]">Trust & operations console</p>
+        <h2 className="mt-2 text-2xl font-semibold text-slate-950">Operations overview</h2>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+          Monitor member care, partner readiness, safety reviews, wallet activity, and support issues from one calm workspace.
+        </p>
+      </div>
+
       {apiError ? (
         <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">
           {apiError}
@@ -401,15 +409,15 @@ export default function AdminDashboardPage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h2 className="text-base font-semibold text-slate-900">Live Conversations Monitor</h2>
+        <article className="rounded-3xl border border-[#dceae5] bg-white p-4 shadow-sm">
+          <h2 className="text-base font-semibold text-slate-900">Conversation monitor</h2>
           <div className="mt-3 overflow-x-auto">
             <table className="min-w-full text-left text-sm">
               <thead className="text-xs uppercase text-slate-500">
                 <tr>
-                  <th className="px-2 py-2">Session ID</th>
-                  <th className="px-2 py-2">User</th>
-                  <th className="px-2 py-2">Companion</th>
+                  <th className="px-2 py-2">Conversation ID</th>
+                  <th className="px-2 py-2">Member</th>
+                  <th className="px-2 py-2">Partner</th>
                   <th className="px-2 py-2">Type</th>
                   <th className="px-2 py-2">Status</th>
                 </tr>
@@ -435,8 +443,8 @@ export default function AdminDashboardPage() {
           </div>
         </article>
 
-        <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h2 className="text-base font-semibold text-slate-900">Pending Partner Applications</h2>
+        <article className="rounded-3xl border border-[#dceae5] bg-white p-4 shadow-sm">
+          <h2 className="text-base font-semibold text-slate-900">Partner reviews pending</h2>
           <div className="mt-3 overflow-x-auto">
             <table className="min-w-full text-left text-sm">
               <thead className="text-xs uppercase text-slate-500">
@@ -471,14 +479,14 @@ export default function AdminDashboardPage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h2 className="text-base font-semibold text-slate-900">Recent Transactions</h2>
+        <article className="rounded-3xl border border-[#dceae5] bg-white p-4 shadow-sm">
+          <h2 className="text-base font-semibold text-slate-900">Recent wallet activity</h2>
           <div className="mt-3 overflow-x-auto">
             <table className="min-w-full text-left text-sm">
               <thead className="text-xs uppercase text-slate-500">
                 <tr>
                   <th className="px-2 py-2">Transaction ID</th>
-                  <th className="px-2 py-2">User</th>
+                  <th className="px-2 py-2">Member</th>
                   <th className="px-2 py-2">Type</th>
                   <th className="px-2 py-2">Amount</th>
                   <th className="px-2 py-2">Status</th>
@@ -507,8 +515,8 @@ export default function AdminDashboardPage() {
           </div>
         </article>
 
-        <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h2 className="text-base font-semibold text-slate-900">Support Queue</h2>
+        <article className="rounded-3xl border border-[#dceae5] bg-white p-4 shadow-sm">
+          <h2 className="text-base font-semibold text-slate-900">Support inbox</h2>
           <div className="mt-3 overflow-x-auto">
             <table className="min-w-full text-left text-sm">
               <thead className="text-xs uppercase text-slate-500">
