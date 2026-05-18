@@ -3,10 +3,9 @@
 import { useEffect } from "react";
 import { getCurrentFirebaseUser, subscribeFirebaseAuthState } from "@/lib/auth/firebasePhoneAuth";
 import { useRouter } from "next/navigation";
-import { fetchPartnerApprovalState, isPartnerApproved, isPartnerUnderReview } from "@/lib/partnerApproval";
+import { resolvePartnerLandingRoute } from "@/lib/partnerApproval";
 import {
   isPartnerLoggedIn,
-  isPartnerOnboardingComplete,
 } from "@/lib/partnerAuth";
 
 export default function PartnerEntryPage() {
@@ -19,20 +18,8 @@ export default function PartnerEntryPage() {
         router.replace("/partner/login");
         return;
       }
-      if (!isPartnerOnboardingComplete()) {
-        router.replace("/partner/onboarding");
-        return;
-      }
-      const approvalState = await fetchPartnerApprovalState();
-      if (isPartnerApproved(approvalState)) {
-        router.replace("/partner/dashboard");
-        return;
-      }
-      if (isPartnerUnderReview(approvalState)) {
-        router.replace("/partner/application-status");
-        return;
-      }
-      router.replace("/partner/onboarding");
+      const landing = await resolvePartnerLandingRoute();
+      router.replace(landing.route);
     };
 
     void sync();

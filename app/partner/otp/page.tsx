@@ -24,11 +24,11 @@ import {
   isClientDemoPartnerPhone,
 } from "@/lib/clientDemoData";
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
+import { resolvePartnerLandingRoute } from "@/lib/partnerApproval";
 import {
   PARTNER_LOGGED_IN_KEY,
   PARTNER_PHONE_KEY,
   getPartnerPhone,
-  isPartnerOnboardingComplete,
   loginPartner,
 } from "@/lib/partnerAuth";
 import { maskIndianPhoneNumber } from "@/lib/phoneMask";
@@ -128,11 +128,8 @@ export default function PartnerOtpPage() {
 
         clearPendingConfirmationResult();
         setAuthMode("firebase");
-        if (isPartnerOnboardingComplete()) {
-          router.replace("/partner/dashboard");
-          return;
-        }
-        router.replace("/partner/onboarding");
+        const landing = await resolvePartnerLandingRoute();
+        router.replace(landing.route);
       } catch (verifyError) {
         setError(mapFirebaseAuthError(verifyError));
       } finally {
@@ -144,11 +141,8 @@ export default function PartnerOtpPage() {
     setError("");
     loginPartner(phone);
     setAuthMode("demo");
-    if (isPartnerOnboardingComplete()) {
-      router.replace("/partner/dashboard");
-      return;
-    }
-    router.replace("/partner/onboarding");
+    const landing = await resolvePartnerLandingRoute();
+    router.replace(landing.route);
   };
 
   return (

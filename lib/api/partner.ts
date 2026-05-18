@@ -29,6 +29,11 @@ export type PartnerDashboardPayload = {
   companion?: Record<string, unknown> | null;
 };
 
+export type PartnerAvailabilityPayload = {
+  isOnline: boolean;
+  companion?: Record<string, unknown> | null;
+};
+
 export async function submitPartnerApplication(payload: Record<string, unknown>) {
   return apiRequest<{ success: boolean; message?: string }>("/api/partner/applications", {
     method: "POST",
@@ -105,6 +110,15 @@ export async function updatePartnerSettings(payload: Record<string, unknown>) {
   const result = await apiRequest<{ success: boolean }>("/api/partner/settings", {
     method: "PATCH",
     body: JSON.stringify(payload),
+  });
+  if (result.error) return { data: null, error: result.error };
+  return result;
+}
+
+export async function updatePartnerAvailability(isOnline: boolean) {
+  const result = await apiRequest<PartnerAvailabilityPayload>("/api/partner/availability", {
+    method: "PATCH",
+    body: JSON.stringify({ isOnline }),
   });
   if (result.error) return { data: null, error: result.error };
   return result;

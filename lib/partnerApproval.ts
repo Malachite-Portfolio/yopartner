@@ -12,6 +12,11 @@ export type PartnerApprovalState = {
   reviewStatus?: string;
 };
 
+export type PartnerLandingRoute =
+  | "/partner/dashboard"
+  | "/partner/application-status"
+  | "/partner/onboarding";
+
 const PARTNER_APPROVAL_STATE_KEY = "yopartner_partner_approval_state";
 const LOCKED_UNDER_REVIEW_STATE: PartnerApprovalState = {
   applicationStatus: "UNDER_REVIEW",
@@ -136,7 +141,7 @@ export async function fetchPartnerApprovalState(): Promise<PartnerApprovalState>
     return demoState;
   }
 
-  let nextState = mergeState(getLocalPartnerApprovalState(), LOCKED_UNDER_REVIEW_STATE);
+  let nextState = getLocalPartnerApprovalState();
   let hasBackendState = false;
 
   const profileResponse = await getPartnerProfile();
@@ -158,10 +163,38 @@ export async function fetchPartnerApprovalState(): Promise<PartnerApprovalState>
   }
 
   if (!hasBackendState) {
-    return IS_PRODUCTION_READY_MODE ? LOCKED_UNDER_REVIEW_STATE : nextState;
+    if (isPartnerApproved(nextState)) {
+      saveLocalPartnerApprovalState(nextState);
+      return nextState;
+    }
+    if (nextState.applicationStatus === "NOT_SUBMITTED") {
+      const noApplicationState: PartnerApprovalState = {
+        applicationStatus: "NOT_SUBMITTED",
+        reviewStatus: "under_review",
+      };
+      saveLocalPartnerApprovalState(noApplicationState);
+      return noApplicationState;
+    }
+    if (IS_PRODUCTION_READY_MODE) {
+      const safeUnderReviewState = mergeState(LOCKED_UNDER_REVIEW_STATE, {
+        applicationStatus: nextState.applicationStatus ?? "UNDER_REVIEW",
+        kycStatus: nextState.kycStatus ?? "PENDING",
+        companionStatus: nextState.companionStatus ?? "UNDER_REVIEW",
+        verificationStatus: nextState.verificationStatus ?? "PENDING",
+        reviewStatus: nextState.reviewStatus ?? "under_review",
+      });
+      saveLocalPartnerApprovalState(safeUnderReviewState);
+      return safeUnderReviewState;
+    }
+    return nextState;
   }
 
-  if (!isPartnerApproved(nextState)) {
+  if (nextState.applicationStatus === "NOT_SUBMITTED") {
+    nextState = {
+      applicationStatus: "NOT_SUBMITTED",
+      reviewStatus: "under_review",
+    };
+  } else if (!isPartnerApproved(nextState)) {
     nextState = mergeState(LOCKED_UNDER_REVIEW_STATE, {
       applicationStatus: nextState.applicationStatus ?? "UNDER_REVIEW",
       kycStatus: nextState.kycStatus ?? "PENDING",
@@ -173,4 +206,30 @@ export async function fetchPartnerApprovalState(): Promise<PartnerApprovalState>
 
   saveLocalPartnerApprovalState(nextState);
   return nextState;
+}
+
+export async function resolvePartnerLandingRoute(): Promise<{
+  route: PartnerLandingRoute;
+  state: PartnerApprovalState;
+}> {
+  const localState = getLocalPartnerApprovalState();
+
+  try {
+    const state = await fetchPartnerApprovalState();
+    if (isPartnerApproved(state)) {
+      return { route: "/partner/dashboard", state };
+    }
+    if (state.applicationStatus === "NOT_SUBMITTED") {
+      return { route: "/partner/onboarding", state };
+    }
+    return { route: "/partner/application-status", state };
+  } catch {
+    if (isPartnerApproved(localState)) {
+      return { route: "/partner/dashboard", state: localState };
+    }
+    if (localState.applicationStatus === "NOT_SUBMITTED") {
+      return { route: "/partner/onboarding", state: localState };
+    }
+    return { route: "/partner/application-status", state: localState };
+  }
 }

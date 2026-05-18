@@ -7,6 +7,7 @@ import {
   acceptPartnerRequest,
   declinePartnerRequest,
   getPartnerDashboard,
+  updatePartnerAvailability,
   type PartnerActiveSession,
   type PartnerIncomingRequest,
 } from "@/lib/api/partner";
@@ -22,7 +23,6 @@ import {
   getPartnerOnlineStatus,
   getPartnerProfile,
   setPartnerOnlineStatus,
-  subscribePartnerOnlineStatus,
 } from "@/lib/partnerAuth";
 import { defaultPartnerProfile, type PartnerProfile } from "@/lib/partnerData";
 
@@ -122,8 +122,10 @@ export default function PartnerDashboardPage() {
   const [activeSessions, setActiveSessions] = useState<PartnerActiveSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusMessage, setStatusMessage] = useState("");
+  const [availabilityError, setAvailabilityError] = useState("");
   const [requestMessage, setRequestMessage] = useState("");
   const [requestAction, setRequestAction] = useState<"accept" | "decline" | null>(null);
+  const [availabilityActionPending, setAvailabilityActionPending] = useState(false);
 
   const isApproved = isPartnerApproved(approvalState);
   const labels = getPartnerApprovalLabel(approvalState);
@@ -148,6 +150,8 @@ export default function PartnerDashboardPage() {
         ...fromDashboard,
       };
       const root = asRecord(dashboardResponse.data);
+      const companion = asRecord(root.companion);
+      const companionOnline = Boolean(companion.isOnline);
       const statsRaw = asRecord(root.stats);
       setStats({
         peopleSupportedToday: asNumber(statsRaw.peopleSupportedToday, 0),
@@ -163,6 +167,8 @@ export default function PartnerDashboardPage() {
       setActiveSessions(
         sessionsRaw.map(normalizeActiveSession).filter((item): item is PartnerActiveSession => Boolean(item)),
       );
+      setOnline(companionOnline);
+      setPartnerOnlineStatus(companionOnline);
       setStatusMessage(
         String(root.message ?? (isPartnerApproved(nextApproval) ? "Partner dashboard ready." : "Your profile is being reviewed by our safety team.")),
       );
@@ -171,6 +177,7 @@ export default function PartnerDashboardPage() {
       setPendingRequests([]);
       setActiveSessions([]);
       setStatusMessage("Your profile is being reviewed by our safety team.");
+      setOnline(getPartnerOnlineStatus());
     }
 
     if (!isPartnerApproved(nextApproval)) {
@@ -189,8 +196,6 @@ export default function PartnerDashboardPage() {
     setApprovalState(nextApproval);
     setLoading(false);
   }, [online]);
-
-  useEffect(() => subscribePartnerOnlineStatus(setOnline), []);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -217,9 +222,20 @@ export default function PartnerDashboardPage() {
     }
   }, [isApproved, online]);
 
-  const toggleOnline = () => {
-    if (!isApproved) return;
-    setPartnerOnlineStatus(!online);
+  const toggleOnline = async () => {
+    if (!isApproved || availabilityActionPending) return;
+    const nextOnline = !online;
+    setAvailabilityError("");
+    setAvailabilityActionPending(true);
+    const response = await updatePartnerAvailability(nextOnline);
+    setAvailabilityActionPending(false);
+    if (response.error) {
+      setAvailabilityError("Could not update availability. Please try again.");
+      return;
+    }
+    setOnline(nextOnline);
+    setPartnerOnlineStatus(nextOnline);
+    await loadDashboard();
   };
 
   const handleAccept = async () => {
@@ -313,14 +329,21 @@ export default function PartnerDashboardPage() {
               </div>
             ) : null}
             {statusMessage ? <p className="mt-3 text-xs text-slate-500">{statusMessage}</p> : null}
+            {availabilityError ? <p className="mt-3 text-xs font-medium text-rose-600">{availabilityError}</p> : null}
           </div>
           <button
             type="button"
-            onClick={toggleOnline}
-            disabled={!isApproved}
+            onClick={() => {
+              void toggleOnline();
+            }}
+            disabled={!isApproved || availabilityActionPending}
             className="rounded-full bg-[#0f766e] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#115e59] disabled:cursor-not-allowed disabled:bg-slate-400"
           >
-            {isApproved ? (online ? "Pause requests" : "Start accepting requests") : "Start accepting requests"}
+            {availabilityActionPending
+              ? "Updating..."
+              : isApproved
+                ? (online ? "Pause requests" : "Start accepting requests")
+                : "Start accepting requests"}
           </button>
         </div>
       </div>
