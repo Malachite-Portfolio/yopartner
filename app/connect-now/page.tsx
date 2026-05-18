@@ -11,6 +11,29 @@ import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { connectCompanions } from "@/lib/data";
 import { demoHosts, isClientDemoEnabled } from "@/lib/clientDemoData";
 
+function safeStringArray(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+}
+
+function safeText(value: unknown, fallback = "") {
+  return typeof value === "string" && value.trim() ? value.trim() : fallback;
+}
+
+function safeNumber(value: unknown) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function hasHomeVisitService(companion: { servicesOffered?: unknown; visitPrice?: unknown; homeVisitPrice?: unknown }) {
+  const services = safeStringArray(companion.servicesOffered);
+  const visitPrice = safeNumber(companion.homeVisitPrice) ?? safeNumber(companion.visitPrice);
+  return (
+    services.some((service) => ["home visit", "home_visit"].includes(service.trim().toLowerCase())) ||
+    typeof visitPrice === "number" && visitPrice > 0
+  );
+}
+
 export default function ConnectNowPage() {
   const [selectedTab, setSelectedTab] = useState<ConnectServiceTab>("Chat");
   const [searchTerm, setSearchTerm] = useState("");
@@ -56,19 +79,37 @@ export default function ConnectNowPage() {
   const filteredCompanions = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
     return companions.filter((companion) => {
-      if (availability === "online" && !companion.online) return false;
-      if (selectedTab === "Video Call" && typeof companion.videoPrice !== "number") return false;
+      const services = safeStringArray(companion.servicesOffered);
+      const languages = safeStringArray(companion.languages);
+      const category = safeText(companion.category);
+      const tagline = safeText(companion.tagline);
+      const name = safeText(companion.name, "Verified Companion");
+      const videoPrice = safeNumber(companion.videoPrice);
+
+      if (process.env.NODE_ENV !== "production" && (!Array.isArray(companion.servicesOffered) || !Array.isArray(companion.languages))) {
+        console.warn("Connect companion data normalized before filtering", {
+          id: companion.id,
+          hasServicesOffered: Array.isArray(companion.servicesOffered),
+          hasLanguages: Array.isArray(companion.languages),
+        });
+      }
+
+      if (availability === "online" && !Boolean(companion.online)) return false;
+      if (selectedTab === "Video Call" && typeof videoPrice !== "number") return false;
+      if ((selectedTab as string) === "Home Visit" && !hasHomeVisitService(companion)) return false;
 
       if (selectedCategory) {
         const selected = selectedCategory.toLowerCase();
-        const inServices = companion.servicesOffered.some((service) => service.toLowerCase().includes(selected));
-        const inLanguages = companion.languages.some((language) => language.toLowerCase().includes(selected));
-        const inProfile = `${companion.category} ${companion.tagline}`.toLowerCase().includes(selected);
-        if (!inServices && !inLanguages && !inProfile) return false;
+        const inServices = services.some((service) => service.toLowerCase().includes(selected));
+        const inLanguages = languages.some((language) => language.toLowerCase().includes(selected));
+        const inProfile = `${category} ${tagline}`.toLowerCase().includes(selected);
+        const inHomeVisit = selected === "home visit" && hasHomeVisitService(companion);
+        if (!inServices && !inLanguages && !inProfile && !inHomeVisit) return false;
+        if (selected === "home visit" && !inHomeVisit) return false;
       }
 
       if (!term) return true;
-      const haystack = `${companion.name} ${companion.tagline} ${companion.category} ${companion.languages.join(" ")}`.toLowerCase();
+      const haystack = `${name} ${tagline} ${category} ${languages.join(" ")} ${services.join(" ")}`.toLowerCase();
       return haystack.includes(term);
     });
   }, [availability, companions, searchTerm, selectedCategory, selectedTab]);
