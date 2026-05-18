@@ -42,7 +42,7 @@ type ApplicationDetails = {
   age: string;
   gender: string;
   city: string;
-  kycStatus: string;
+  kycStatus: "Complete" | "Partial" | "Missing";
   status: string;
   about: string;
   tagline: string;
@@ -173,7 +173,6 @@ function extractApplication(applicationRaw: unknown): ApplicationDetails {
   const application = asRecord(applicationRaw);
   const payload = asRecord(application.payload);
   const applicantUser = asRecord(application.applicantUser);
-  const companion = asRecord(application.companion);
 
   const services = (
     asStringArray(application.servicesOffered).length > 0
@@ -242,17 +241,9 @@ function extractApplication(applicationRaw: unknown): ApplicationDetails {
     }
   }
 
-  const kycStatus = titleCase(
-    asString(
-      application.kycStatus ??
-      application.verificationStatus ??
-      companion.verificationStatus ??
-      payload.kycStatus ??
-      payload.verificationStatus ??
-      "PENDING",
-      "PENDING",
-    ),
-  );
+  const uploadedDocs = [selfie.uploaded, aadhaarFront.uploaded, aadhaarBack.uploaded, pan.uploaded].filter(Boolean).length;
+  const kycStatus: ApplicationDetails["kycStatus"] =
+    uploadedDocs === 4 ? "Complete" : uploadedDocs > 0 ? "Partial" : "Missing";
 
   return {
     id: asString(application.id),
@@ -305,7 +296,7 @@ function extractApplication(applicationRaw: unknown): ApplicationDetails {
         done: safetyNormalized.has("no personal payment/contact sharing") || parseBoolean(payload.safetyNoOutsidePayments),
       },
       {
-        label: "Profile review verification",
+        label: "Profile review accepted",
         done: safetyNormalized.has("profile review and verification") || parseBoolean(payload.safetyReviewVerification),
       },
     ],
@@ -497,6 +488,7 @@ export default function AdminApplicationDetailsPage() {
       ) : null}
 
       <article className="space-y-4 rounded-3xl border border-[#dceae5] bg-white p-4 shadow-sm">
+        <h3 className="text-base font-semibold text-slate-900">Applicant overview</h3>
         <div className="grid gap-3 sm:grid-cols-2">
           <p><span className="font-semibold text-slate-900">Application ID:</span> {details.applicationId}</p>
           <p><span className="font-semibold text-slate-900">Submitted:</span> {formatDateTime(details.submittedDate)}</p>
@@ -508,6 +500,7 @@ export default function AdminApplicationDetailsPage() {
           <p><span className="font-semibold text-slate-900">Application Status:</span> {details.status}</p>
         </div>
 
+        <h3 className="text-base font-semibold text-slate-900">Profile details</h3>
         <div>
           <p className="font-semibold text-slate-900">Tagline</p>
           <p className="mt-1 text-slate-700">{details.tagline}</p>
@@ -547,6 +540,7 @@ export default function AdminApplicationDetailsPage() {
           ) : null}
         </div>
 
+        <h3 className="text-base font-semibold text-slate-900">KYC documents</h3>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <p><span className="font-semibold text-slate-900">Selfie:</span> {details.selfie.uploaded ? "Uploaded" : "Missing"}</p>

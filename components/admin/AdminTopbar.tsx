@@ -9,7 +9,7 @@ type AdminTopbarProps = {
 
 const titleByPath: Record<string, string> = {
   "/admin": "Operations overview",
-  "/admin/applications": "Partner review queue",
+  "/admin/applications": "Partner Reviews",
   "/admin/companions": "Active partners",
   "/admin/users": "Members",
   "/admin/sessions": "Conversations",
@@ -17,7 +17,7 @@ const titleByPath: Record<string, string> = {
   "/admin/wallet": "Wallet Ops",
   "/admin/payouts": "Payouts",
   "/admin/reviews": "Reviews",
-  "/admin/verification": "KYC Review",
+  "/admin/verification": "Partner Reviews",
   "/admin/support": "Support inbox",
   "/admin/media": "Media",
   "/admin/client-diaries": "Client Diaries",

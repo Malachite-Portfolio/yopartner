@@ -20,17 +20,12 @@ type ApplicationRow = {
   applicationId: string;
   partnerName: string;
   phone: string;
-  age: string;
-  gender: string;
-  bornCity: string;
-  languagesKnown: string[];
   servicesOffered: string[];
+  homeVisitRequested: boolean;
   submittedDate: string;
   status: AdminApplicationStatus;
   kycStatus: "Complete" | "Partial" | "Missing";
-  verificationStatus: string;
-  profileTagline: string;
-  aboutYourself: string;
+  bornCity: string;
 };
 
 type RowAction = "approve" | "reject" | "needs_info";
@@ -46,14 +41,6 @@ const statusFilterOptions: Array<"All" | AdminApplicationStatus> = [
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
-}
-
-function titleCase(value: string) {
-  return value
-    .split(/[_\s-]+/g)
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
-    .join(" ");
 }
 
 function toUiStatus(value: unknown): AdminApplicationStatus {
@@ -82,6 +69,20 @@ function hasKycDocument(record: Record<string, unknown>, payload: Record<string,
   return uploaded || Boolean(fileName || storagePath || url);
 }
 
+function parseHomeVisitRequested(record: Record<string, unknown>, payload: Record<string, unknown>, services: string[]) {
+  const fromFlag = parseBoolean(record.homeVisitRequested ?? payload.homeVisitRequested);
+  const fromService = services.some((service) => service.trim().toUpperCase() === "HOME_VISIT");
+  const homeVisitPrice = String(
+    record.homeVisitPrice ??
+      record.homeVisitPricePerSession ??
+      payload.homeVisitPrice ??
+      payload.homeVisitPricePerSession ??
+      "",
+  ).trim();
+  const fromPrice = homeVisitPrice.length > 0 && homeVisitPrice !== "0";
+  return fromFlag || fromService || fromPrice;
+}
+
 function toApplicationRows(data: unknown): ApplicationRow[] {
   const root = asRecord(data);
   const applicationsRaw = Array.isArray(root.applications)
@@ -94,11 +95,6 @@ function toApplicationRows(data: unknown): ApplicationRow[] {
     const record = asRecord(item);
     const payload = asRecord(record.payload);
     const applicantUser = asRecord(record.applicantUser);
-    const languages = Array.isArray(record.languagesKnown)
-      ? record.languagesKnown
-      : Array.isArray(payload.languagesKnown)
-        ? payload.languagesKnown
-        : [];
     const services = Array.isArray(record.servicesOffered)
       ? record.servicesOffered
       : Array.isArray(payload.servicesOffered)
@@ -123,17 +119,12 @@ function toApplicationRows(data: unknown): ApplicationRow[] {
       applicationId: String(record.applicationId ?? record.id ?? `APP-${index + 1}`),
       partnerName: String(record.fullName ?? record.partnerName ?? payload.fullName ?? "-"),
       phone: String(applicantUser.phoneNumber ?? record.phoneNumber ?? record.phone ?? payload.phoneNumber ?? "-"),
-      age: String(record.age ?? payload.age ?? "-"),
-      gender: String(record.gender ?? payload.gender ?? "-"),
-      bornCity: String(record.bornCity ?? record.city ?? payload.bornCity ?? "-"),
-      languagesKnown: languages.map((value) => String(value)),
       servicesOffered: services.map((value) => String(value)),
+      homeVisitRequested: parseHomeVisitRequested(record, payload, services.map((value) => String(value))),
       submittedDate: String(record.submittedAt ?? record.createdAt ?? record.updatedAt ?? new Date().toISOString()),
       status: toUiStatus(record.status),
       kycStatus,
-      verificationStatus: titleCase(String(record.verificationStatus ?? payload.verificationStatus ?? "PENDING")),
-      profileTagline: String(record.profileTagline ?? payload.profileTagline ?? "-"),
-      aboutYourself: String(record.aboutYourself ?? payload.aboutYourself ?? "-"),
+      bornCity: String(record.bornCity ?? record.city ?? payload.bornCity ?? "-"),
     };
   }).sort((a, b) => +new Date(b.submittedDate) - +new Date(a.submittedDate));
 }
@@ -265,7 +256,7 @@ export default function AdminApplicationsPage() {
   if (loading) {
     return (
       <section className="space-y-4">
-        <h2 className="text-xl font-semibold text-slate-900">Partner review queue</h2>
+        <h2 className="text-xl font-semibold text-slate-900">Partner Reviews</h2>
         <article className="rounded-3xl border border-[#dceae5] bg-white p-4 text-sm text-slate-600 shadow-sm">
           Loading partner reviews...
         </article>
@@ -276,10 +267,10 @@ export default function AdminApplicationsPage() {
   return (
     <section className="space-y-4">
       <div className="rounded-3xl border border-[#dceae5] bg-white p-5 shadow-sm shadow-teal-900/5">
-        <p className="text-sm font-semibold text-[#0f766e]">KYC Review</p>
-        <h2 className="mt-2 text-2xl font-semibold text-slate-950">Partner review queue</h2>
+        <p className="text-sm font-semibold text-[#0f766e]">Partner Reviews</p>
+        <h2 className="mt-2 text-2xl font-semibold text-slate-950">Partner Reviews</h2>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-          Review companion applications, KYC status, services, and safety readiness before a partner can accept requests.
+          Review profile details, Aadhaar, PAN, selfie, safety checklist, and approve verified partners.
         </p>
       </div>
       {apiError ? (
@@ -317,12 +308,12 @@ export default function AdminApplicationsPage() {
           <table className="min-w-full text-left text-sm">
             <thead className="text-xs uppercase text-slate-500">
               <tr>
-                <th className="px-2 py-2">Application ID</th>
                 <th className="px-2 py-2">Partner name</th>
-                <th className="px-2 py-2">Phone</th>
+                <th className="px-2 py-2">Login phone</th>
+                <th className="px-2 py-2">KYC status</th>
                 <th className="px-2 py-2">Services</th>
-                <th className="px-2 py-2">KYC</th>
-                <th className="px-2 py-2">Status</th>
+                <th className="px-2 py-2">Home Visit</th>
+                <th className="px-2 py-2">Application status</th>
                 <th className="px-2 py-2">Submitted</th>
                 <th className="px-2 py-2">Actions</th>
               </tr>
@@ -342,10 +333,8 @@ export default function AdminApplicationsPage() {
 
                   return (
                     <tr key={item.id} className="border-t border-slate-100 align-top">
-                      <td className="px-2 py-2 font-medium text-slate-800">{item.applicationId}</td>
                       <td className="px-2 py-2 text-slate-700">{item.partnerName}</td>
                       <td className="px-2 py-2 text-slate-700">{item.phone}</td>
-                      <td className="px-2 py-2 text-slate-700">{item.servicesOffered.join(", ") || "-"}</td>
                       <td className="px-2 py-2 text-slate-700">
                         <span
                           className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${
@@ -359,6 +348,8 @@ export default function AdminApplicationsPage() {
                           {item.kycStatus}
                         </span>
                       </td>
+                      <td className="px-2 py-2 text-slate-700">{item.servicesOffered.join(", ") || "-"}</td>
+                      <td className="px-2 py-2 text-slate-700">{item.homeVisitRequested ? "Requested" : "Not requested"}</td>
                       <td className="px-2 py-2"><AdminStatusBadge status={item.status} /></td>
                       <td className="px-2 py-2 text-slate-700">{formatDateTime(item.submittedDate)}</td>
                       <td className="px-2 py-2">

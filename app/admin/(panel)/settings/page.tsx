@@ -73,10 +73,10 @@ export default function AdminSettingsPage() {
           <h3 className="text-base font-semibold text-slate-900">Partner Settings</h3>
           <div className="mt-3 space-y-3">
             <input value={settings.minimumAge} onChange={(e) => update("minimumAge", e.target.value)} placeholder="Minimum Age" className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm" />
-            <button type="button" onClick={() => update("requireIdVerification", !settings.requireIdVerification)} className={toggleClass}>Require ID Verification <span>{settings.requireIdVerification ? "On" : "Off"}</span></button>
-            <button type="button" onClick={() => update("requirePoliceVerification", !settings.requirePoliceVerification)} className={toggleClass}>Require Police Verification <span>{settings.requirePoliceVerification ? "On" : "Off"}</span></button>
-            <button type="button" onClick={() => update("requireTraining", !settings.requireTraining)} className={toggleClass}>Require Training <span>{settings.requireTraining ? "On" : "Off"}</span></button>
-            <button type="button" onClick={() => update("autoApproveCompanions", !settings.autoApproveCompanions)} className={toggleClass}>Auto Approve Companions <span>{settings.autoApproveCompanions ? "On" : "Off"}</span></button>
+            <button type="button" onClick={() => update("requireIdVerification", !settings.requireIdVerification)} className={toggleClass}>Require KYC documents (Selfie, Aadhaar, PAN) <span>{settings.requireIdVerification ? "On" : "Off"}</span></button>
+            <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+              Partner activation is controlled from Partner Reviews after KYC and safety checklist review.
+            </p>
           </div>
         </article>
 
