@@ -1,61 +1,82 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { isClientDemoEnabled, isClientDemoPartnerSessionActive } from "@/lib/clientDemoData";
-import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
+import { getPartnerBookings as getPartnerBookingsApi } from "@/lib/api/partner";
 import {
   fetchPartnerApprovalState,
   getLocalPartnerApprovalState,
   isPartnerApproved,
   type PartnerApprovalState,
 } from "@/lib/partnerApproval";
-import { getPartnerBookings } from "@/lib/partnerData";
 
 type BookingFilter = "All" | "Upcoming" | "Completed" | "Cancelled";
+
+type BookingRow = {
+  id: string;
+  bookingId: string;
+  userMaskedPhone: string;
+  type: string;
+  date: string;
+  price: number;
+  status: "Upcoming" | "Completed" | "Cancelled";
+};
 
 function formatINR(value: number) {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(value);
 }
 
+function mapStatus(value: unknown): BookingRow["status"] {
+  const normalized = String(value ?? "").trim().toUpperCase();
+  if (normalized === "COMPLETED") return "Completed";
+  if (normalized === "CANCELLED") return "Cancelled";
+  return "Upcoming";
+}
+
+function toBookingRows(data: Record<string, unknown>[] | null) {
+  if (!data) return [];
+  return data.map((booking, index) => ({
+    id: String(booking.id ?? `booking-${index + 1}`),
+    bookingId: String(booking.bookingCode ?? booking.bookingId ?? booking.id ?? `BOOK-${index + 1}`),
+    userMaskedPhone: String(
+      (booking.user as Record<string, unknown> | undefined)?.phoneNumber ??
+        booking.userPhone ??
+        booking.userMaskedPhone ??
+        "Member",
+    ),
+    type: String(booking.serviceType ?? booking.type ?? "Chat"),
+    date: String(booking.scheduledAt ?? booking.createdAt ?? booking.date ?? new Date().toISOString()),
+    price: Number(booking.amount ?? booking.price ?? 0),
+    status: mapStatus(booking.status),
+  }));
+}
+
 export default function PartnerBookingsPage() {
   const [filter, setFilter] = useState<BookingFilter>("All");
-  const bookings = getPartnerBookings();
-  const demoEnabled = isClientDemoEnabled();
-  const isDemoSession = demoEnabled && isClientDemoPartnerSessionActive();
+  const [bookings, setBookings] = useState<BookingRow[]>([]);
+  const [loading, setLoading] = useState(true);
   const [approvalState, setApprovalState] = useState<PartnerApprovalState>(() => getLocalPartnerApprovalState());
   const isApproved = isPartnerApproved(approvalState);
+
+  useEffect(() => {
+    void (async () => {
+      const [approval, bookingsResponse] = await Promise.all([
+        fetchPartnerApprovalState(),
+        getPartnerBookingsApi(),
+      ]);
+      setApprovalState(approval);
+      setBookings(toBookingRows(bookingsResponse.data ?? []));
+      setLoading(false);
+    })();
+  }, []);
 
   const filteredBookings = useMemo(() => {
     if (filter === "All") return bookings;
     return bookings.filter((item) => item.status === filter);
   }, [bookings, filter]);
 
-  useEffect(() => {
-    void (async () => {
-      const state = await fetchPartnerApprovalState();
-      setApprovalState(state);
-    })();
-  }, []);
-
-  if (IS_PRODUCTION_READY_MODE && !isDemoSession) {
-    return (
-      <section className="rounded-xl border border-amber-200 bg-amber-50 p-5">
-        <h2 className="text-xl font-semibold text-amber-800">Partner bookings are unavailable</h2>
-        <p className="mt-2 text-sm text-amber-700">We couldn&apos;t load booking operations right now. Please retry.</p>
-      </section>
-    );
-  }
-
   return (
     <section className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-xl font-semibold text-slate-900">Conversations</h2>
-        {demoEnabled && isDemoSession ? (
-          <p className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">
-            Demo session • local preview
-          </p>
-        ) : null}
-      </div>
+      <h2 className="text-xl font-semibold text-slate-900">Conversations</h2>
 
       <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="mb-3 flex flex-wrap gap-2">
@@ -86,6 +107,13 @@ export default function PartnerBookingsPage() {
               </tr>
             </thead>
             <tbody>
+              {!loading && filteredBookings.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-2 py-4 text-sm text-slate-500">
+                    No bookings yet.
+                  </td>
+                </tr>
+              ) : null}
               {filteredBookings.map((booking) => (
                 <tr key={booking.id} className="border-t border-slate-100">
                   <td className="px-2 py-2 font-medium text-slate-800">{booking.bookingId}</td>
@@ -99,17 +127,12 @@ export default function PartnerBookingsPage() {
                     </span>
                   </td>
                   <td className="px-2 py-2">
-                    <div className="flex gap-1.5">
-                      <button
-                        disabled={!isApproved}
-                        className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-medium text-slate-700 disabled:cursor-not-allowed disabled:text-slate-400"
-                      >
-                        Join
-                      </button>
-                      <button className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-medium text-slate-700">
-                        View
-                      </button>
-                    </div>
+                    <button
+                      disabled={!isApproved}
+                      className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-medium text-slate-700 disabled:cursor-not-allowed disabled:text-slate-400"
+                    >
+                      Join
+                    </button>
                   </td>
                 </tr>
               ))}

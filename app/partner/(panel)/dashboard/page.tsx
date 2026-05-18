@@ -1,15 +1,21 @@
-﻿"use client";
+"use client";
 
-import { Clock3 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { isClientDemoEnabled, isClientDemoPartnerSessionActive } from "@/lib/clientDemoData";
+import { IncomingRequestScreen } from "@/components/partner/IncomingRequestScreen";
+import {
+  acceptPartnerRequest,
+  declinePartnerRequest,
+  getPartnerDashboard,
+  type PartnerActiveSession,
+  type PartnerIncomingRequest,
+} from "@/lib/api/partner";
 import {
   fetchPartnerApprovalState,
   getLocalPartnerApprovalState,
   getPartnerApprovalLabel,
   isPartnerApproved,
-  isPartnerUnderReview,
+  normalizePartnerApprovalState,
   type PartnerApprovalState,
 } from "@/lib/partnerApproval";
 import {
@@ -18,91 +24,192 @@ import {
   setPartnerOnlineStatus,
   subscribePartnerOnlineStatus,
 } from "@/lib/partnerAuth";
-import { defaultPartnerProfile, getPartnerSessions, type PartnerProfile } from "@/lib/partnerData";
+import { defaultPartnerProfile, type PartnerProfile } from "@/lib/partnerData";
 
-type IncomingRequest = {
-  id: string;
-  userMaskedPhone: string;
-  type: "Chat" | "Audio" | "Video";
-  price: number;
-  time: string;
+type DashboardStats = {
+  peopleSupportedToday: number;
+  audioConversations: number;
+  videoConversations: number;
+  pendingRequests: number;
+  earningsToday: number;
+  averageRating: number;
 };
 
-const initialRequests: IncomingRequest[] = [
-  { id: "r1", userMaskedPhone: "+91******9363", type: "Chat", price: 250, time: "Now" },
-  { id: "r2", userMaskedPhone: "+91******7788", type: "Audio", price: 450, time: "2 min ago" },
-  { id: "r3", userMaskedPhone: "+91******2231", type: "Video", price: 600, time: "5 min ago" },
-];
+const defaultStats: DashboardStats = {
+  peopleSupportedToday: 0,
+  audioConversations: 0,
+  videoConversations: 0,
+  pendingRequests: 0,
+  earningsToday: 0,
+  averageRating: 0,
+};
 
-const activityItems = [
-  "New request received",
-  "Audio conversation completed",
-  "Earnings credited to wallet",
-  "Safety review checkpoint completed",
-];
+const lockedState: PartnerApprovalState = {
+  applicationStatus: "UNDER_REVIEW",
+  kycStatus: "PENDING",
+  companionStatus: "UNDER_REVIEW",
+  verificationStatus: "PENDING",
+  reviewStatus: "under_review",
+};
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+}
+
+function asNumber(value: unknown, fallback = 0) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function normalizeRequest(raw: unknown): PartnerIncomingRequest | null {
+  const item = asRecord(raw);
+  const type = String(item.type ?? "").toUpperCase();
+  if (type !== "CHAT" && type !== "AUDIO" && type !== "VIDEO") return null;
+  const id = String(item.id ?? "").trim();
+  if (!id) return null;
+  return {
+    id,
+    type,
+    memberLabel: String(item.memberLabel ?? item.userMaskedPhone ?? "Member"),
+    expectedRate: asNumber(item.expectedRate, 0),
+    createdAt: String(item.createdAt ?? new Date().toISOString()),
+  };
+}
+
+function normalizeActiveSession(raw: unknown): PartnerActiveSession | null {
+  const item = asRecord(raw);
+  const type = String(item.type ?? "").toUpperCase();
+  if (type !== "CHAT" && type !== "AUDIO" && type !== "VIDEO") return null;
+  const id = String(item.id ?? "").trim();
+  if (!id) return null;
+  return {
+    id,
+    type,
+    memberLabel: String(item.memberLabel ?? item.userMaskedPhone ?? "Member"),
+    expectedRate: asNumber(item.expectedRate, 0),
+    startedAt: item.startedAt ? String(item.startedAt) : null,
+    status: String(item.status ?? "LIVE"),
+  };
+}
 
 function formatINR(value: number) {
-  return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(
-    value,
-  );
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(Math.max(value, 0));
+}
+
+function formatRequestType(type: PartnerIncomingRequest["type"]) {
+  if (type === "AUDIO") return "Audio";
+  if (type === "VIDEO") return "Video";
+  return "Chat";
+}
+
+function maskMemberLabel(value: string) {
+  const digits = value.replace(/\D/g, "");
+  if (digits.length >= 4) return `+91******${digits.slice(-4)}`;
+  return value || "Member";
 }
 
 export default function PartnerDashboardPage() {
   const router = useRouter();
-  const demoEnabled = isClientDemoEnabled();
-  const isDemoSession = demoEnabled && isClientDemoPartnerSessionActive();
   const profile = getPartnerProfile<PartnerProfile>(defaultPartnerProfile);
   const [approvalState, setApprovalState] = useState<PartnerApprovalState>(() => getLocalPartnerApprovalState());
   const [online, setOnline] = useState(getPartnerOnlineStatus);
-  const [requests, setRequests] = useState<IncomingRequest[]>(initialRequests);
-  const sessions = getPartnerSessions() as Array<{
-    id: string;
-    userMaskedPhone: string;
-    type: string;
-    duration: string;
-    status: string;
-  }>;
+  const [stats, setStats] = useState<DashboardStats>(defaultStats);
+  const [pendingRequests, setPendingRequests] = useState<PartnerIncomingRequest[]>([]);
+  const [activeSessions, setActiveSessions] = useState<PartnerActiveSession[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [statusMessage, setStatusMessage] = useState("");
+  const [requestMessage, setRequestMessage] = useState("");
+  const [requestAction, setRequestAction] = useState<"accept" | "decline" | null>(null);
+
   const isApproved = isPartnerApproved(approvalState);
   const labels = getPartnerApprovalLabel(approvalState);
-  const statusTone = isApproved ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700";
-  const secondaryStatusTone = isApproved ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-700";
+  const overlayRequest = useMemo(() => {
+    if (!isApproved || !online) return null;
+    return pendingRequests[0] ?? null;
+  }, [isApproved, online, pendingRequests]);
 
-  const handleAccept = (request: IncomingRequest) => {
-    if (!isApproved) return;
-    if (request.type === "Chat") {
-      router.push("/partner/chats/demo-user-1");
-      return;
+  const loadDashboard = useCallback(async () => {
+    const [approval, dashboardResponse] = await Promise.all([
+      fetchPartnerApprovalState(),
+      getPartnerDashboard(),
+    ]);
+
+    let nextApproval = approval;
+    if (dashboardResponse.data) {
+      const fromDashboard = normalizePartnerApprovalState(
+        dashboardResponse.data.approvalState ?? dashboardResponse.data,
+      );
+      nextApproval = {
+        ...nextApproval,
+        ...fromDashboard,
+      };
+      const root = asRecord(dashboardResponse.data);
+      const statsRaw = asRecord(root.stats);
+      setStats({
+        peopleSupportedToday: asNumber(statsRaw.peopleSupportedToday, 0),
+        audioConversations: asNumber(statsRaw.audioConversations, 0),
+        videoConversations: asNumber(statsRaw.videoConversations, 0),
+        pendingRequests: asNumber(statsRaw.pendingRequests, 0),
+        earningsToday: asNumber(statsRaw.earningsToday, 0),
+        averageRating: asNumber(statsRaw.averageRating, 0),
+      });
+      const pendingRaw = Array.isArray(root.pendingRequests) ? root.pendingRequests : [];
+      const sessionsRaw = Array.isArray(root.activeSessions) ? root.activeSessions : [];
+      setPendingRequests(pendingRaw.map(normalizeRequest).filter((item): item is PartnerIncomingRequest => Boolean(item)));
+      setActiveSessions(
+        sessionsRaw.map(normalizeActiveSession).filter((item): item is PartnerActiveSession => Boolean(item)),
+      );
+      setStatusMessage(
+        String(root.message ?? (isPartnerApproved(nextApproval) ? "Partner dashboard ready." : "Your profile is being reviewed by our safety team.")),
+      );
+    } else {
+      setStats(defaultStats);
+      setPendingRequests([]);
+      setActiveSessions([]);
+      setStatusMessage("Your profile is being reviewed by our safety team.");
     }
-    if (request.type === "Audio") {
-      router.push("/partner/calls/audio/demo-user-1");
-      return;
-    }
-    if (request.type === "Video") {
-      router.push("/partner/calls/video/demo-user-1");
-      return;
-    }
-    router.push("/partner/bookings");
-  };
 
-  const toggleOnline = () => {
-    if (!isApproved) return;
-    const next = !getPartnerOnlineStatus();
-    setPartnerOnlineStatus(next);
-  };
-
-  useEffect(() => {
-    return subscribePartnerOnlineStatus(setOnline);
-  }, []);
-
-  useEffect(() => {
-    void (async () => {
-      const state = await fetchPartnerApprovalState();
-      setApprovalState(state);
-      if (!isPartnerApproved(state) && !isPartnerUnderReview(state)) {
-        router.replace("/partner/onboarding");
+    if (!isPartnerApproved(nextApproval)) {
+      nextApproval = {
+        ...lockedState,
+        ...nextApproval,
+      };
+      if (online) {
+        setPartnerOnlineStatus(false);
       }
-    })();
-  }, [router]);
+      setPendingRequests([]);
+      setActiveSessions([]);
+      setStats(defaultStats);
+    }
+
+    setApprovalState(nextApproval);
+    setLoading(false);
+  }, [online]);
+
+  useEffect(() => subscribePartnerOnlineStatus(setOnline), []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void loadDashboard();
+    }, 0);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [loadDashboard]);
+
+  useEffect(() => {
+    if (!isApproved || !online) return;
+    const timer = window.setInterval(() => {
+      void loadDashboard();
+    }, 5000);
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [isApproved, online, loadDashboard]);
 
   useEffect(() => {
     if (!isApproved && online) {
@@ -110,123 +217,158 @@ export default function PartnerDashboardPage() {
     }
   }, [isApproved, online]);
 
+  const toggleOnline = () => {
+    if (!isApproved) return;
+    setPartnerOnlineStatus(!online);
+  };
+
+  const handleAccept = async () => {
+    if (!overlayRequest || requestAction) return;
+    setRequestMessage("");
+    setRequestAction("accept");
+    const response = await acceptPartnerRequest(overlayRequest.id);
+    setRequestAction(null);
+
+    if (response.error) {
+      setRequestMessage("Request handling is being connected.");
+      return;
+    }
+
+    if (overlayRequest.type === "AUDIO") {
+      router.push(`/partner/calls/audio/${overlayRequest.id}`);
+      return;
+    }
+    if (overlayRequest.type === "VIDEO") {
+      router.push(`/partner/calls/video/${overlayRequest.id}`);
+      return;
+    }
+    router.push(`/partner/chats/${overlayRequest.id}`);
+  };
+
+  const handleDecline = async () => {
+    if (!overlayRequest || requestAction) return;
+    setRequestMessage("");
+    setRequestAction("decline");
+    const response = await declinePartnerRequest(overlayRequest.id);
+    setRequestAction(null);
+    if (response.error) {
+      setRequestMessage("Request handling is being connected.");
+      return;
+    }
+    setPendingRequests((current) => current.filter((item) => item.id !== overlayRequest.id));
+    await loadDashboard();
+  };
+
+  const statusTone = isApproved ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700";
+  const secondaryStatusTone = isApproved ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-700";
+
   return (
     <section className="space-y-5">
+      <IncomingRequestScreen
+        request={overlayRequest}
+        accepting={requestAction === "accept"}
+        declining={requestAction === "decline"}
+        message={requestMessage}
+        onAccept={() => {
+          void handleAccept();
+        }}
+        onDecline={() => {
+          void handleDecline();
+        }}
+      />
+
       <div className="rounded-3xl border border-[#dceae5] bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-2xl font-semibold text-slate-900">
-            Welcome back, {profile.fullName || "YoPartner Companion"}
-          </h2>
-          <p className="mt-1 text-sm text-slate-600">Your companion workspace for safe, respectful conversations.</p>
-          {demoEnabled && isDemoSession ? (
-            <p className="mt-2 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">
-              <span>Demo session</span>
-              <span className="text-slate-400">local preview</span>
+          <div>
+            <h2 className="text-2xl font-semibold text-slate-900">
+              Welcome back, {profile.fullName || "YoPartner Companion"}
+            </h2>
+            <p className="mt-1 text-sm text-slate-600">Your companion workspace for safe, respectful conversations.</p>
+            <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-600">
+              Status:
+              <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusTone}`}>{labels.kyc}</span>
+              <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${secondaryStatusTone}`}>{labels.review}</span>
+              {isApproved ? (
+                <span
+                  className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                    online ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-700"
+                  }`}
+                >
+                  {online ? "Online" : "Offline"}
+                </span>
+              ) : null}
             </p>
-          ) : null}
-          <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-600">
-            Status:
-            <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusTone}`}>{labels.kyc}</span>
-            <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${secondaryStatusTone}`}>{labels.review}</span>
-            {isApproved ? (
-              <span
-                className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                  online ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-700"
-                }`}
-              >
-                {online ? "Online" : "Offline"}
-              </span>
-            ) : null}
-          </p>
-          {!isApproved ? (
-            <div className="mt-4 rounded-3xl border border-amber-200 bg-amber-50 p-4">
-              <p className="text-sm font-semibold text-amber-900">KYC Pending</p>
-              <p className="mt-1 text-sm leading-6 text-amber-800">
-                Your profile is being reviewed by our safety team. You can start accepting requests after KYC verification and admin approval.
-              </p>
-              <div className="mt-3 grid gap-2 text-xs font-semibold text-amber-900 sm:grid-cols-2">
-                <span>Profile submitted</span>
-                <span>Documents uploaded</span>
-                <span>KYC review pending</span>
-                <span>Admin approval required</span>
+            {!isApproved ? (
+              <div className="mt-4 rounded-3xl border border-amber-200 bg-amber-50 p-4">
+                <p className="text-sm font-semibold text-amber-900">KYC Pending</p>
+                <p className="mt-1 text-sm leading-6 text-amber-800">
+                  Your profile is being reviewed by our safety team.
+                </p>
+                <div className="mt-3 grid gap-2 text-xs font-semibold text-amber-900 sm:grid-cols-2">
+                  <span>Profile submitted</span>
+                  <span>Documents uploaded</span>
+                  <span>KYC review pending</span>
+                  <span>Admin approval required</span>
+                </div>
               </div>
-            </div>
-          ) : null}
-        </div>
-        <button
-          type="button"
-          onClick={toggleOnline}
-          disabled={!isApproved}
-          className="rounded-full bg-[#0f766e] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#115e59] disabled:cursor-not-allowed disabled:bg-slate-400"
-        >
-          {isApproved ? (online ? "Pause requests" : "Start accepting requests") : "Start accepting requests"}
-        </button>
+            ) : null}
+            {statusMessage ? <p className="mt-3 text-xs text-slate-500">{statusMessage}</p> : null}
+          </div>
+          <button
+            type="button"
+            onClick={toggleOnline}
+            disabled={!isApproved}
+            className="rounded-full bg-[#0f766e] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#115e59] disabled:cursor-not-allowed disabled:bg-slate-400"
+          >
+            {isApproved ? (online ? "Pause requests" : "Start accepting requests") : "Start accepting requests"}
+          </button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {(
-          isDemoSession
-            ? [
-                ["Total earnings", "₹4,850"],
-                ["Available Balance", "₹2,300"],
-                ["Completed Conversations", "28"],
-                ["Rating", "5.0"],
-                ["Completed Chats", "3"],
-                ["Completed Audio Calls", "2"],
-                ["Completed Video Calls", "1"],
-              ]
-            : [
-                ["People supported today", "8"],
-                ["Audio conversations", "3"],
-                ["Video conversations", "2"],
-                ["Pending requests", "4"],
-                ["Today's earnings", "₹1,250"],
-                ["Average rating", "4.9"],
-              ]
-        ).map((item) => (
-          <article key={item[0]} className="rounded-3xl border border-[#dceae5] bg-white p-4 shadow-sm">
-            <p className="text-sm text-slate-500">{item[0]}</p>
-            <p className="mt-2 text-2xl font-semibold text-slate-900">{item[1]}</p>
-          </article>
-        ))}
+        <article className="rounded-3xl border border-[#dceae5] bg-white p-4 shadow-sm">
+          <p className="text-sm text-slate-500">People supported today</p>
+          <p className="mt-2 text-2xl font-semibold text-slate-900">{stats.peopleSupportedToday}</p>
+        </article>
+        <article className="rounded-3xl border border-[#dceae5] bg-white p-4 shadow-sm">
+          <p className="text-sm text-slate-500">Audio conversations</p>
+          <p className="mt-2 text-2xl font-semibold text-slate-900">{stats.audioConversations}</p>
+        </article>
+        <article className="rounded-3xl border border-[#dceae5] bg-white p-4 shadow-sm">
+          <p className="text-sm text-slate-500">Video conversations</p>
+          <p className="mt-2 text-2xl font-semibold text-slate-900">{stats.videoConversations}</p>
+        </article>
+        <article className="rounded-3xl border border-[#dceae5] bg-white p-4 shadow-sm">
+          <p className="text-sm text-slate-500">Pending requests</p>
+          <p className="mt-2 text-2xl font-semibold text-slate-900">{stats.pendingRequests}</p>
+        </article>
+        <article className="rounded-3xl border border-[#dceae5] bg-white p-4 shadow-sm">
+          <p className="text-sm text-slate-500">Today&apos;s earnings</p>
+          <p className="mt-2 text-2xl font-semibold text-slate-900">{formatINR(stats.earningsToday)}</p>
+        </article>
+        <article className="rounded-3xl border border-[#dceae5] bg-white p-4 shadow-sm">
+          <p className="text-sm text-slate-500">Average rating</p>
+          <p className="mt-2 text-2xl font-semibold text-slate-900">
+            {stats.averageRating > 0 ? stats.averageRating.toFixed(1) : "Not rated yet"}
+          </p>
+        </article>
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
         <article className="rounded-3xl border border-[#dceae5] bg-white p-4 shadow-sm">
           <h3 className="text-base font-semibold text-slate-900">People waiting to talk</h3>
           <div className="mt-3 space-y-3">
-            {requests.length === 0 ? (
-              <p className="text-sm text-slate-500">No pending requests.</p>
+            {loading ? (
+              <p className="text-sm text-slate-500">Loading requests...</p>
+            ) : pendingRequests.length === 0 ? (
+              <p className="text-sm text-slate-500">No new requests right now.</p>
             ) : (
-              requests.map((request) => (
+              pendingRequests.map((request) => (
                 <div key={request.id} className="rounded-2xl border border-[#dceae5] p-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900">{request.userMaskedPhone}</p>
-                      <p className="text-xs text-slate-500">
-                        {request.type} - {formatINR(request.price)} - {request.time}
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleAccept(request)}
-                        disabled={!isApproved}
-                        className="rounded-full bg-[#0f766e] px-3 py-1.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-400"
-                      >
-                        Accept request
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setRequests((current) => current.filter((item) => item.id !== request.id))}
-                        className="rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-600"
-                      >
-                        Decline
-                      </button>
-                    </div>
-                  </div>
+                  <p className="text-sm font-semibold text-slate-900">{maskMemberLabel(request.memberLabel)}</p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {formatRequestType(request.type)} • {formatINR(request.expectedRate)}
+                  </p>
                 </div>
               ))
             )}
@@ -236,44 +378,23 @@ export default function PartnerDashboardPage() {
         <article className="rounded-3xl border border-[#dceae5] bg-white p-4 shadow-sm">
           <h3 className="text-base font-semibold text-slate-900">Ongoing conversations</h3>
           <div className="mt-3 space-y-2">
-            {sessions.map((session) => (
-              <div key={session.id} className="flex items-center justify-between rounded-2xl border border-[#dceae5] p-2.5">
-                <div>
-                  <p className="text-sm font-semibold text-slate-900">{session.userMaskedPhone}</p>
+            {loading ? (
+              <p className="text-sm text-slate-500">Loading conversations...</p>
+            ) : activeSessions.length === 0 ? (
+              <p className="text-sm text-slate-500">No ongoing conversations.</p>
+            ) : (
+              activeSessions.map((session) => (
+                <div key={session.id} className="rounded-2xl border border-[#dceae5] p-2.5">
+                  <p className="text-sm font-semibold text-slate-900">{maskMemberLabel(session.memberLabel)}</p>
                   <p className="text-xs text-slate-500">
-                    {session.type} - {session.duration} - {session.status}
+                    {formatRequestType(session.type)} • {session.status}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!isApproved) return;
-                    if (session.type.toLowerCase() === "audio") router.push("/partner/calls/audio/demo-user-1");
-                    else if (session.type.toLowerCase() === "video") router.push("/partner/calls/video/demo-user-1");
-                    else router.push("/partner/chats/demo-user-1");
-                  }}
-                  disabled={!isApproved}
-                  className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-700 disabled:cursor-not-allowed disabled:text-slate-400"
-                >
-                  Join conversation
-                </button>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </article>
       </div>
-
-        <article className="rounded-3xl border border-[#dceae5] bg-white p-4 shadow-sm">
-        <h3 className="text-base font-semibold text-slate-900">Recent Activity</h3>
-        <ul className="mt-3 space-y-2">
-          {activityItems.map((item) => (
-            <li key={item} className="flex items-center gap-2 text-sm text-slate-700">
-              <Clock3 size={14} className="text-[#0ea5a6]" />
-              {item}
-            </li>
-          ))}
-        </ul>
-      </article>
     </section>
   );
 }

@@ -7,6 +7,7 @@ import {
   readJSON,
   writeJSON,
 } from "@/lib/partnerAuth";
+import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 
 export const partnerLanguageOptions = [
   "Hindi",
@@ -303,11 +304,17 @@ export const demoPartnerEarnings: PartnerEarningItem[] = [
   },
 ];
 
+function shouldHideDemoPartnerData() {
+  return IS_PRODUCTION_READY_MODE && process.env.NEXT_PUBLIC_CLIENT_DEMO_ENABLED !== "true";
+}
+
 export function getPartnerInbox() {
+  if (shouldHideDemoPartnerData()) return [];
   return demoPartnerInbox;
 }
 
 export function getPartnerMessages() {
+  if (shouldHideDemoPartnerData()) return {};
   return readJSON<Record<string, PartnerMessage[]>>(PARTNER_MESSAGES_KEY, demoPartnerMessages);
 }
 
@@ -316,6 +323,7 @@ export function savePartnerMessages(value: Record<string, PartnerMessage[]>) {
 }
 
 export function getPartnerBookings() {
+  if (shouldHideDemoPartnerData()) return [];
   return readJSON<PartnerBookingItem[]>(PARTNER_BOOKINGS_KEY, demoPartnerBookings);
 }
 
@@ -324,6 +332,7 @@ export function savePartnerBookings(value: PartnerBookingItem[]) {
 }
 
 export function getPartnerEarnings() {
+  if (shouldHideDemoPartnerData()) return [];
   return readJSON<PartnerEarningItem[]>(PARTNER_EARNINGS_KEY, demoPartnerEarnings);
 }
 
@@ -340,6 +349,7 @@ export function savePartnerSettings(value: PartnerSettings) {
 }
 
 export function getPartnerSessions() {
+  if (shouldHideDemoPartnerData()) return [];
   return readJSON(PARTNER_SESSIONS_KEY, [
     {
       id: "s-1",

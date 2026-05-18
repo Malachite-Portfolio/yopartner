@@ -1,5 +1,6 @@
 import { getPartnerApplications, getPartnerDashboard, getPartnerProfile } from "@/lib/api/partner";
 import { isClientDemoEnabled, isClientDemoPartnerSessionActive } from "@/lib/clientDemoData";
+import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { getPartnerProfile as getLocalPartnerProfile, readJSON, writeJSON } from "@/lib/partnerAuth";
 import { defaultPartnerProfile, type PartnerProfile } from "@/lib/partnerData";
 
@@ -12,6 +13,13 @@ export type PartnerApprovalState = {
 };
 
 const PARTNER_APPROVAL_STATE_KEY = "yopartner_partner_approval_state";
+const LOCKED_UNDER_REVIEW_STATE: PartnerApprovalState = {
+  applicationStatus: "UNDER_REVIEW",
+  kycStatus: "PENDING",
+  companionStatus: "UNDER_REVIEW",
+  verificationStatus: "PENDING",
+  reviewStatus: "under_review",
+};
 
 function normalizeApplicationStatus(value: unknown): PartnerApprovalState["applicationStatus"] | undefined {
   const raw = String(value ?? "").trim().toUpperCase();
@@ -96,7 +104,6 @@ export function saveLocalPartnerApprovalState(state: PartnerApprovalState) {
 export function isPartnerApproved(state: PartnerApprovalState) {
   if (state.applicationStatus === "APPROVED") return true;
   if (state.companionStatus === "ACTIVE" && state.verificationStatus === "VERIFIED") return true;
-  if (state.kycStatus === "VERIFIED" && state.reviewStatus === "approved") return true;
   return false;
 }
 
@@ -129,7 +136,7 @@ export async function fetchPartnerApprovalState(): Promise<PartnerApprovalState>
     return demoState;
   }
 
-  let nextState = getLocalPartnerApprovalState();
+  let nextState = mergeState(getLocalPartnerApprovalState(), LOCKED_UNDER_REVIEW_STATE);
   let hasBackendState = false;
 
   const profileResponse = await getPartnerProfile();
@@ -151,7 +158,17 @@ export async function fetchPartnerApprovalState(): Promise<PartnerApprovalState>
   }
 
   if (!hasBackendState) {
-    return nextState;
+    return IS_PRODUCTION_READY_MODE ? LOCKED_UNDER_REVIEW_STATE : nextState;
+  }
+
+  if (!isPartnerApproved(nextState)) {
+    nextState = mergeState(LOCKED_UNDER_REVIEW_STATE, {
+      applicationStatus: nextState.applicationStatus ?? "UNDER_REVIEW",
+      kycStatus: nextState.kycStatus ?? "PENDING",
+      companionStatus: nextState.companionStatus ?? "UNDER_REVIEW",
+      verificationStatus: nextState.verificationStatus ?? "PENDING",
+      reviewStatus: nextState.reviewStatus ?? "under_review",
+    });
   }
 
   saveLocalPartnerApprovalState(nextState);

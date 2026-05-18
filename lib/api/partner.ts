@@ -1,5 +1,34 @@
 import { apiRequest } from "@/lib/api/client";
 
+export type PartnerRequestType = "CHAT" | "AUDIO" | "VIDEO";
+
+export type PartnerIncomingRequest = {
+  id: string;
+  memberLabel: string;
+  type: PartnerRequestType;
+  expectedRate: number;
+  createdAt: string;
+};
+
+export type PartnerActiveSession = {
+  id: string;
+  memberLabel: string;
+  type: PartnerRequestType;
+  expectedRate: number;
+  startedAt: string | null;
+  status: string;
+};
+
+export type PartnerDashboardPayload = {
+  approvalState?: Record<string, unknown>;
+  approved?: boolean;
+  message?: string;
+  stats?: Record<string, unknown>;
+  pendingRequests?: PartnerIncomingRequest[];
+  activeSessions?: PartnerActiveSession[];
+  companion?: Record<string, unknown> | null;
+};
+
 export async function submitPartnerApplication(payload: Record<string, unknown>) {
   return apiRequest<{ success: boolean; message?: string }>("/api/partner/applications", {
     method: "POST",
@@ -23,7 +52,7 @@ export async function updatePartnerProfile(payload: Record<string, unknown>) {
 }
 
 export async function getPartnerDashboard() {
-  const result = await apiRequest<Record<string, unknown>>("/api/partner/dashboard");
+  const result = await apiRequest<PartnerDashboardPayload>("/api/partner/dashboard");
   if (result.error) return { data: null, error: result.error };
   return result;
 }
@@ -50,6 +79,26 @@ export async function getPartnerEarnings() {
   const result = await apiRequest<{ earnings: Record<string, unknown>[] }>("/api/partner/earnings");
   if (result.error) return { data: [], error: result.error };
   return { data: result.data?.earnings ?? [], error: null };
+}
+
+export async function getPartnerRequests() {
+  const result = await apiRequest<{ pendingRequests: PartnerIncomingRequest[] }>("/api/partner/requests");
+  if (result.error) return { data: [], error: result.error };
+  return { data: result.data?.pendingRequests ?? [], error: null };
+}
+
+export async function acceptPartnerRequest(requestId: string) {
+  return apiRequest<Record<string, unknown>>(`/api/partner/requests/${requestId}/accept`, {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+
+export async function declinePartnerRequest(requestId: string) {
+  return apiRequest<Record<string, unknown>>(`/api/partner/requests/${requestId}/decline`, {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
 }
 
 export async function updatePartnerSettings(payload: Record<string, unknown>) {
