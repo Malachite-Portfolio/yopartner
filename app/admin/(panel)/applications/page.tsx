@@ -27,7 +27,7 @@ type ApplicationRow = {
   servicesOffered: string[];
   submittedDate: string;
   status: AdminApplicationStatus;
-  kycStatus: string;
+  kycStatus: "Complete" | "Partial" | "Missing";
   verificationStatus: string;
   profileTagline: string;
   aboutYourself: string;
@@ -65,6 +65,23 @@ function toUiStatus(value: unknown): AdminApplicationStatus {
   return "Under Review";
 }
 
+function parseBoolean(value: unknown) {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    return normalized === "true" || normalized === "yes" || normalized === "1";
+  }
+  return false;
+}
+
+function hasKycDocument(record: Record<string, unknown>, payload: Record<string, unknown>, key: string) {
+  const uploaded = parseBoolean(record[`${key}Uploaded`] ?? payload[`${key}Uploaded`]);
+  const fileName = String(record[`${key}FileName`] ?? payload[`${key}FileName`] ?? "").trim();
+  const storagePath = String(record[`${key}StoragePath`] ?? payload[`${key}StoragePath`] ?? "").trim();
+  const url = String(record[`${key}Url`] ?? payload[`${key}Url`] ?? "").trim();
+  return uploaded || Boolean(fileName || storagePath || url);
+}
+
 function toApplicationRows(data: unknown): ApplicationRow[] {
   const root = asRecord(data);
   const applicationsRaw = Array.isArray(root.applications)
@@ -88,6 +105,19 @@ function toApplicationRows(data: unknown): ApplicationRow[] {
         ? payload.servicesOffered
         : [];
 
+    const kycStatus: ApplicationRow["kycStatus"] = (() => {
+      const documentFlags = [
+        hasKycDocument(record, payload, "selfie"),
+        hasKycDocument(record, payload, "aadhaarFront"),
+        hasKycDocument(record, payload, "aadhaarBack"),
+        hasKycDocument(record, payload, "pan"),
+      ];
+      const uploadedCount = documentFlags.filter(Boolean).length;
+      if (uploadedCount === 4) return "Complete";
+      if (uploadedCount > 0) return "Partial";
+      return "Missing";
+    })();
+
     return {
       id: String(record.id ?? `application-${index + 1}`),
       applicationId: String(record.applicationId ?? record.id ?? `APP-${index + 1}`),
@@ -100,7 +130,7 @@ function toApplicationRows(data: unknown): ApplicationRow[] {
       servicesOffered: services.map((value) => String(value)),
       submittedDate: String(record.submittedAt ?? record.createdAt ?? record.updatedAt ?? new Date().toISOString()),
       status: toUiStatus(record.status),
-      kycStatus: titleCase(String(record.kycStatus ?? payload.kycStatus ?? "PENDING")),
+      kycStatus,
       verificationStatus: titleCase(String(record.verificationStatus ?? payload.verificationStatus ?? "PENDING")),
       profileTagline: String(record.profileTagline ?? payload.profileTagline ?? "-"),
       aboutYourself: String(record.aboutYourself ?? payload.aboutYourself ?? "-"),
@@ -316,7 +346,19 @@ export default function AdminApplicationsPage() {
                       <td className="px-2 py-2 text-slate-700">{item.partnerName}</td>
                       <td className="px-2 py-2 text-slate-700">{item.phone}</td>
                       <td className="px-2 py-2 text-slate-700">{item.servicesOffered.join(", ") || "-"}</td>
-                      <td className="px-2 py-2 text-slate-700">{item.kycStatus}</td>
+                      <td className="px-2 py-2 text-slate-700">
+                        <span
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${
+                            item.kycStatus === "Complete"
+                              ? "bg-emerald-100 text-emerald-700"
+                              : item.kycStatus === "Partial"
+                                ? "bg-amber-100 text-amber-700"
+                                : "bg-slate-200 text-slate-700"
+                          }`}
+                        >
+                          {item.kycStatus}
+                        </span>
+                      </td>
                       <td className="px-2 py-2"><AdminStatusBadge status={item.status} /></td>
                       <td className="px-2 py-2 text-slate-700">{formatDateTime(item.submittedDate)}</td>
                       <td className="px-2 py-2">

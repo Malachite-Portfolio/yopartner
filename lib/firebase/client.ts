@@ -2,6 +2,7 @@
 
 import { getApp, getApps, initializeApp, type FirebaseApp } from "firebase/app";
 import { getAuth, type Auth } from "firebase/auth";
+import { getStorage, type FirebaseStorage } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -16,19 +17,23 @@ const hasClientConfig = Object.values(firebaseConfig).every((value) => typeof va
 
 let appInstance: FirebaseApp | null = null;
 let authInstance: Auth | null = null;
+let storageInstance: FirebaseStorage | null = null;
 
 if (hasClientConfig) {
   try {
     appInstance = getApps().length ? getApp() : initializeApp(firebaseConfig);
     authInstance = getAuth(appInstance);
+    storageInstance = getStorage(appInstance);
   } catch {
     appInstance = null;
     authInstance = null;
+    storageInstance = null;
   }
 }
 
 export const firebaseApp = appInstance;
 export const firebaseAuth = authInstance;
+export const firebaseStorage = storageInstance;
 
 export function isFirebaseClientConfigured() {
   return hasClientConfig;

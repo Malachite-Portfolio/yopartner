@@ -81,6 +81,8 @@ export type PartnerProfile = {
   videoPricePerMinute: string;
   homeVisitPricePerSession: string;
   selfieFileName: string;
+  aadhaarFrontFileName: string;
+  aadhaarBackFileName: string;
   aadhaarFileName: string;
   panFileName: string;
   categories: string[];
@@ -112,6 +114,8 @@ export const defaultPartnerProfile: PartnerProfile = {
   videoPricePerMinute: "",
   homeVisitPricePerSession: "",
   selfieFileName: "",
+  aadhaarFrontFileName: "",
+  aadhaarBackFileName: "",
   aadhaarFileName: "",
   panFileName: "",
   categories: [],

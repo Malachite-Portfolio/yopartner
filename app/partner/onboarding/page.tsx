@@ -14,6 +14,7 @@ import {
 import { submitPartnerApplication } from "@/lib/api/partner";
 import { isApiBaseUrlConfigured } from "@/lib/api/client";
 import { saveLocalPartnerApprovalState } from "@/lib/partnerApproval";
+import { uploadPartnerKycFile, type PartnerKycUploadResult } from "@/lib/firebaseKycUpload";
 import {
   completeClientDemoPartnerOnboarding,
   isClientDemoPartnerSession,
@@ -58,6 +59,13 @@ type OnboardingProfile = Omit<PartnerProfile, "servicesOffered"> & {
   servicesOffered: OnboardingServiceType[];
 };
 type ValidationErrors = Partial<Record<keyof OnboardingProfile | "base", string>>;
+type KycUploadType = "selfie" | "aadhaar-front" | "aadhaar-back" | "pan";
+type KycUploadState = {
+  selfie: PartnerKycUploadResult | null;
+  aadhaarFront: PartnerKycUploadResult | null;
+  aadhaarBack: PartnerKycUploadResult | null;
+  pan: PartnerKycUploadResult | null;
+};
 
 const stepTitles = [
   "Basic details",
@@ -90,9 +98,8 @@ function sanitizeServices(services: string[]): OnboardingServiceType[] {
   );
 }
 
-function formatVerificationStatus(fileName: string, verifiedInDemo: boolean) {
-  if (verifiedInDemo) return "Verified";
-  return fileName.trim() ? "Uploaded" : "Pending";
+function formatDocumentSelectionStatus(hasDocument: boolean) {
+  return hasDocument ? "Selected" : "Pending";
 }
 
 function toOnboardingProfile(source: PartnerProfile): OnboardingProfile {
@@ -102,7 +109,7 @@ function toOnboardingProfile(source: PartnerProfile): OnboardingProfile {
   };
 }
 
-function toPartnerOnboardingPayload(profile: OnboardingProfile) {
+function toPartnerOnboardingPayload(profile: OnboardingProfile, uploads: KycUploadState) {
   const backendSupportedServices = profile.servicesOffered.filter(
     (service): service is Exclude<OnboardingServiceType, "Home Visit"> => service !== "Home Visit",
   );
@@ -111,6 +118,15 @@ function toPartnerOnboardingPayload(profile: OnboardingProfile) {
   if (profile.safetyRespectfulRules) safetyChecklist.push("respectful communication");
   if (profile.safetyNoOutsidePayments) safetyChecklist.push("no personal payment/contact sharing");
   if (profile.safetyReviewVerification) safetyChecklist.push("profile review and verification");
+
+  const selfieUploaded = Boolean(uploads.selfie?.downloadUrl || uploads.selfie?.storagePath || uploads.selfie?.fileName);
+  const aadhaarFrontUploaded = Boolean(
+    uploads.aadhaarFront?.downloadUrl || uploads.aadhaarFront?.storagePath || uploads.aadhaarFront?.fileName,
+  );
+  const aadhaarBackUploaded = Boolean(
+    uploads.aadhaarBack?.downloadUrl || uploads.aadhaarBack?.storagePath || uploads.aadhaarBack?.fileName,
+  );
+  const panUploaded = Boolean(uploads.pan?.downloadUrl || uploads.pan?.storagePath || uploads.pan?.fileName);
 
   return {
     fullName: profile.fullName.trim(),
@@ -133,6 +149,27 @@ function toPartnerOnboardingPayload(profile: OnboardingProfile) {
     videoPrice: Number(profile.videoPricePerMinute) || 0,
     categories: profile.categories,
     safetyChecklist,
+    selfieUploaded,
+    selfieFileName: uploads.selfie?.fileName || undefined,
+    selfieStoragePath: uploads.selfie?.storagePath || undefined,
+    selfieUrl: uploads.selfie?.downloadUrl || undefined,
+    aadhaarFrontUploaded,
+    aadhaarFrontFileName: uploads.aadhaarFront?.fileName || undefined,
+    aadhaarFrontStoragePath: uploads.aadhaarFront?.storagePath || undefined,
+    aadhaarFrontUrl: uploads.aadhaarFront?.downloadUrl || undefined,
+    aadhaarBackUploaded,
+    aadhaarBackFileName: uploads.aadhaarBack?.fileName || undefined,
+    aadhaarBackStoragePath: uploads.aadhaarBack?.storagePath || undefined,
+    aadhaarBackUrl: uploads.aadhaarBack?.downloadUrl || undefined,
+    panUploaded,
+    panFileName: uploads.pan?.fileName || undefined,
+    panStoragePath: uploads.pan?.storagePath || undefined,
+    panUrl: uploads.pan?.downloadUrl || undefined,
+    aadhaarFileName:
+      uploads.aadhaarFront?.fileName ||
+      uploads.aadhaarBack?.fileName ||
+      profile.aadhaarFileName ||
+      undefined,
   };
 }
 
@@ -180,6 +217,16 @@ export default function PartnerOnboardingPage() {
     if (hasAnyValue(saved)) return toOnboardingProfile({ ...defaultPartnerProfile, ...saved });
     return toOnboardingProfile({ ...defaultPartnerProfile });
   });
+  const [selfieFile, setSelfieFile] = useState<File | null>(null);
+  const [aadhaarFrontFile, setAadhaarFrontFile] = useState<File | null>(null);
+  const [aadhaarBackFile, setAadhaarBackFile] = useState<File | null>(null);
+  const [panFile, setPanFile] = useState<File | null>(null);
+  const [kycUploads, setKycUploads] = useState<KycUploadState>({
+    selfie: null,
+    aadhaarFront: null,
+    aadhaarBack: null,
+    pan: null,
+  });
 
   useEffect(() => {
     if (!isPartnerLoggedIn() || !getPartnerPhone()) {
@@ -222,18 +269,26 @@ export default function PartnerOnboardingPage() {
       { label: "Categories", value: profile.categories.join(", ") || "-" },
       {
         label: "Selfie",
-        value: formatVerificationStatus(profile.selfieFileName, isDemoPartnerSession),
+        value: formatDocumentSelectionStatus(Boolean(selfieFile || kycUploads.selfie || profile.selfieFileName)),
       },
       {
-        label: "Aadhaar",
-        value: formatVerificationStatus(profile.aadhaarFileName, isDemoPartnerSession),
+        label: "Aadhaar Front",
+        value: formatDocumentSelectionStatus(
+          Boolean(aadhaarFrontFile || kycUploads.aadhaarFront || profile.aadhaarFrontFileName),
+        ),
+      },
+      {
+        label: "Aadhaar Back",
+        value: formatDocumentSelectionStatus(
+          Boolean(aadhaarBackFile || kycUploads.aadhaarBack || profile.aadhaarBackFileName),
+        ),
       },
       {
         label: "PAN",
-        value: formatVerificationStatus(profile.panFileName, isDemoPartnerSession),
+        value: formatDocumentSelectionStatus(Boolean(panFile || kycUploads.pan || profile.panFileName)),
       },
     ],
-    [isDemoPartnerSession, profile],
+    [aadhaarBackFile, aadhaarFrontFile, kycUploads, panFile, profile, selfieFile],
   );
 
   const validateStep = (stepIndex: number): ValidationErrors => {
@@ -363,7 +418,42 @@ export default function PartnerOnboardingPage() {
           router.replace("/partner/login?reason=session-expired");
           return;
         }
-        const payload = toPartnerOnboardingPayload(finalProfile);
+        const uid = user.uid;
+        let nextUploads: KycUploadState = { ...kycUploads };
+        try {
+          const uploadIfSelected = async (file: File | null, type: KycUploadType) => {
+            if (!file) return null;
+            return uploadPartnerKycFile({ file, uid, type });
+          };
+
+          const [selfieUpload, aadhaarFrontUpload, aadhaarBackUpload, panUpload] = await Promise.all([
+            uploadIfSelected(selfieFile, "selfie"),
+            uploadIfSelected(aadhaarFrontFile, "aadhaar-front"),
+            uploadIfSelected(aadhaarBackFile, "aadhaar-back"),
+            uploadIfSelected(panFile, "pan"),
+          ]);
+
+          if (selfieUpload) nextUploads = { ...nextUploads, selfie: selfieUpload };
+          if (aadhaarFrontUpload) nextUploads = { ...nextUploads, aadhaarFront: aadhaarFrontUpload };
+          if (aadhaarBackUpload) nextUploads = { ...nextUploads, aadhaarBack: aadhaarBackUpload };
+          if (panUpload) nextUploads = { ...nextUploads, pan: panUpload };
+
+          setKycUploads(nextUploads);
+          setSelfieFile(null);
+          setAadhaarFrontFile(null);
+          setAadhaarBackFile(null);
+          setPanFile(null);
+        } catch (uploadError) {
+          const uploadMessage =
+            uploadError instanceof Error && uploadError.message
+              ? uploadError.message
+              : "Could not upload verification documents. Please try again.";
+          setErrors({ base: uploadMessage || "Could not upload verification documents. Please try again." });
+          setIsSubmitting(false);
+          return;
+        }
+
+        const payload = toPartnerOnboardingPayload(finalProfile, nextUploads);
         const response = await submitPartnerApplication(payload);
         if (response.error) {
           if (response.error.status === 401) {
@@ -385,6 +475,18 @@ export default function PartnerOnboardingPage() {
           setIsSubmitting(false);
           return;
         }
+        const savedProfile: OnboardingProfile = {
+          ...finalProfile,
+          selfieFileName: nextUploads.selfie?.fileName || finalProfile.selfieFileName,
+          aadhaarFrontFileName: nextUploads.aadhaarFront?.fileName || finalProfile.aadhaarFrontFileName,
+          aadhaarBackFileName: nextUploads.aadhaarBack?.fileName || finalProfile.aadhaarBackFileName,
+          aadhaarFileName:
+            nextUploads.aadhaarFront?.fileName ||
+            nextUploads.aadhaarBack?.fileName ||
+            finalProfile.aadhaarFileName,
+          panFileName: nextUploads.pan?.fileName || finalProfile.panFileName,
+        };
+        setProfile(savedProfile);
         saveLocalPartnerApprovalState({
           applicationStatus: "UNDER_REVIEW",
           kycStatus: "PENDING",
@@ -394,8 +496,8 @@ export default function PartnerOnboardingPage() {
         });
         setPartnerOnboardingComplete(true);
         setPartnerOnlineStatus(false);
-        savePartnerProfile(finalProfile);
-        savePartnerDraft(finalProfile);
+        savePartnerProfile(savedProfile);
+        savePartnerDraft(savedProfile);
         setSubmitMessage("Your profile has been submitted for review.");
         window.setTimeout(() => {
           router.push("/partner/application-status");
@@ -787,8 +889,8 @@ export default function PartnerOnboardingPage() {
                 <p className="mt-1 text-xs text-slate-600">
                   Documents are reviewed securely by the YoPartner verification team.
                 </p>
-                <p className="mt-1 text-xs text-amber-700">
-                  Document upload storage will be connected before final approval.
+                <p className="mt-1 text-xs text-slate-500">
+                  Allowed formats: JPG, PNG, WEBP, PDF. Maximum 5 MB per document.
                 </p>
               </div>
 
@@ -801,30 +903,102 @@ export default function PartnerOnboardingPage() {
                     accept="image/png,image/jpeg,image/webp,application/pdf"
                     onChange={(event) => {
                       const file = event.target.files?.[0];
-                      setProfile((current) => ({ ...current, selfieFileName: file?.name ?? "" }));
+                      setSelfieFile(file ?? null);
+                      setKycUploads((current) => ({ ...current, selfie: null }));
+                      setProfile((current) => ({ ...current, selfieFileName: file?.name ?? current.selfieFileName }));
                     }}
                     className="mt-3 block w-full text-xs text-slate-600 file:mr-3 file:rounded-lg file:border file:border-slate-200 file:bg-white file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-slate-700"
                   />
-                  <p className="mt-2 text-xs text-slate-600">Selected: {profile.selfieFileName || "Pending"}</p>
-                  <p className="mt-1 text-xs text-slate-500">Used only for profile verification.</p>
+                  <p className="mt-2 text-xs text-slate-600">
+                    Selected: {selfieFile?.name || kycUploads.selfie?.fileName || profile.selfieFileName || "Pending"}
+                  </p>
+                  {selfieFile || profile.selfieFileName ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelfieFile(null);
+                        setKycUploads((current) => ({ ...current, selfie: null }));
+                        setProfile((current) => ({ ...current, selfieFileName: "" }));
+                      }}
+                      className="mt-2 text-xs font-semibold text-rose-600"
+                    >
+                      Remove file
+                    </button>
+                  ) : null}
                 </label>
 
                 <label className="rounded-xl border border-slate-200 p-3">
-                  <p className="text-sm font-medium text-slate-800">Aadhaar card</p>
+                  <p className="text-sm font-medium text-slate-800">Aadhaar front</p>
                   <p className="mt-1 text-xs text-slate-500">
-                    Upload Aadhaar front/back scan or PDF for verification review.
+                    Upload Aadhaar front image or PDF.
                   </p>
                   <input
                     type="file"
                     accept="image/png,image/jpeg,image/webp,application/pdf"
                     onChange={(event) => {
                       const file = event.target.files?.[0];
-                      setProfile((current) => ({ ...current, aadhaarFileName: file?.name ?? "" }));
+                      setAadhaarFrontFile(file ?? null);
+                      setKycUploads((current) => ({ ...current, aadhaarFront: null }));
+                      setProfile((current) => ({
+                        ...current,
+                        aadhaarFrontFileName: file?.name ?? current.aadhaarFrontFileName,
+                        aadhaarFileName: file?.name ?? current.aadhaarFileName,
+                      }));
                     }}
                     className="mt-3 block w-full text-xs text-slate-600 file:mr-3 file:rounded-lg file:border file:border-slate-200 file:bg-white file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-slate-700"
                   />
-                  <p className="mt-2 text-xs text-slate-600">Selected: {profile.aadhaarFileName || "Pending"}</p>
-                  <p className="mt-1 text-xs text-slate-500">Used only for profile verification.</p>
+                  <p className="mt-2 text-xs text-slate-600">
+                    Selected: {aadhaarFrontFile?.name || kycUploads.aadhaarFront?.fileName || profile.aadhaarFrontFileName || "Pending"}
+                  </p>
+                  {aadhaarFrontFile || profile.aadhaarFrontFileName ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAadhaarFrontFile(null);
+                        setKycUploads((current) => ({ ...current, aadhaarFront: null }));
+                        setProfile((current) => ({ ...current, aadhaarFrontFileName: "" }));
+                      }}
+                      className="mt-2 text-xs font-semibold text-rose-600"
+                    >
+                      Remove file
+                    </button>
+                  ) : null}
+                </label>
+
+                <label className="rounded-xl border border-slate-200 p-3">
+                  <p className="text-sm font-medium text-slate-800">Aadhaar back</p>
+                  <p className="mt-1 text-xs text-slate-500">Upload Aadhaar back image or PDF.</p>
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,application/pdf"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      setAadhaarBackFile(file ?? null);
+                      setKycUploads((current) => ({ ...current, aadhaarBack: null }));
+                      setProfile((current) => ({
+                        ...current,
+                        aadhaarBackFileName: file?.name ?? current.aadhaarBackFileName,
+                        aadhaarFileName: file?.name ?? current.aadhaarFileName,
+                      }));
+                    }}
+                    className="mt-3 block w-full text-xs text-slate-600 file:mr-3 file:rounded-lg file:border file:border-slate-200 file:bg-white file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-slate-700"
+                  />
+                  <p className="mt-2 text-xs text-slate-600">
+                    Selected: {aadhaarBackFile?.name || kycUploads.aadhaarBack?.fileName || profile.aadhaarBackFileName || "Pending"}
+                  </p>
+                  {aadhaarBackFile || profile.aadhaarBackFileName ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAadhaarBackFile(null);
+                        setKycUploads((current) => ({ ...current, aadhaarBack: null }));
+                        setProfile((current) => ({ ...current, aadhaarBackFileName: "" }));
+                      }}
+                      className="mt-2 text-xs font-semibold text-rose-600"
+                    >
+                      Remove file
+                    </button>
+                  ) : null}
                 </label>
 
                 <label className="rounded-xl border border-slate-200 p-3 sm:col-span-2">
@@ -835,12 +1009,28 @@ export default function PartnerOnboardingPage() {
                     accept="image/png,image/jpeg,image/webp,application/pdf"
                     onChange={(event) => {
                       const file = event.target.files?.[0];
-                      setProfile((current) => ({ ...current, panFileName: file?.name ?? "" }));
+                      setPanFile(file ?? null);
+                      setKycUploads((current) => ({ ...current, pan: null }));
+                      setProfile((current) => ({ ...current, panFileName: file?.name ?? current.panFileName }));
                     }}
                     className="mt-3 block w-full text-xs text-slate-600 file:mr-3 file:rounded-lg file:border file:border-slate-200 file:bg-white file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-slate-700"
                   />
-                  <p className="mt-2 text-xs text-slate-600">Selected: {profile.panFileName || "Pending"}</p>
-                  <p className="mt-1 text-xs text-slate-500">Used only for profile verification.</p>
+                  <p className="mt-2 text-xs text-slate-600">
+                    Selected: {panFile?.name || kycUploads.pan?.fileName || profile.panFileName || "Pending"}
+                  </p>
+                  {panFile || profile.panFileName ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPanFile(null);
+                        setKycUploads((current) => ({ ...current, pan: null }));
+                        setProfile((current) => ({ ...current, panFileName: "" }));
+                      }}
+                      className="mt-2 text-xs font-semibold text-rose-600"
+                    >
+                      Remove file
+                    </button>
+                  ) : null}
                 </label>
               </div>
             </div>

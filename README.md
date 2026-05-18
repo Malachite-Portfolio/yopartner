@@ -34,3 +34,23 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Firebase Storage Note
+
+Partner KYC files upload to Firebase Storage under:
+
+- `YoPartner/partner-kyc/{uid}/selfie/...`
+- `YoPartner/partner-kyc/{uid}/aadhaar-front/...`
+- `YoPartner/partner-kyc/{uid}/aadhaar-back/...`
+- `YoPartner/partner-kyc/{uid}/pan/...`
+
+Recommended Firebase Storage rules direction:
+
+```txt
+match /YoPartner/partner-kyc/{uid}/{allPaths=**} {
+  allow write: if request.auth != null && request.auth.uid == uid;
+  allow read: if request.auth != null;
+}
+```
+
+Admin document viewing uses tokenized download URLs from `getDownloadURL`.

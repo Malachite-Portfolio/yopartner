@@ -411,6 +411,8 @@ export const clientDemoPartnerProfile: PartnerProfile = {
   videoPricePerMinute: "40",
   homeVisitPricePerSession: "499",
   selfieFileName: "client-demo-selfie.jpg",
+  aadhaarFrontFileName: "client-demo-aadhaar-front.pdf",
+  aadhaarBackFileName: "client-demo-aadhaar-back.pdf",
   aadhaarFileName: "client-demo-aadhaar.pdf",
   panFileName: "client-demo-pan.pdf",
   categories: ["Communication & Emotional Support"],

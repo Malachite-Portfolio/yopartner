@@ -58,7 +58,8 @@ type ApplicationDetails = {
   homeVisitRequested: boolean;
   homeVisitPrice: string;
   selfie: DocumentInfo;
-  aadhaar: DocumentInfo;
+  aadhaarFront: DocumentInfo;
+  aadhaarBack: DocumentInfo;
   pan: DocumentInfo;
   safetyChecklist: SafetyRow[];
   adminNote: string;
@@ -144,6 +145,30 @@ function getDocumentInfo(...values: unknown[]): DocumentInfo {
   };
 }
 
+function getDocumentInfoFromFields(
+  application: Record<string, unknown>,
+  payload: Record<string, unknown>,
+  key: "selfie" | "aadhaarFront" | "aadhaarBack" | "pan",
+  fallbacks: unknown[] = [],
+) {
+  const uploaded = parseBoolean(application[`${key}Uploaded`] ?? payload[`${key}Uploaded`]);
+  const fileName = asString(application[`${key}FileName`] ?? payload[`${key}FileName`], "");
+  const storagePath = asString(application[`${key}StoragePath`] ?? payload[`${key}StoragePath`], "");
+  const url = asString(application[`${key}Url`] ?? payload[`${key}Url`], "");
+  const fromFallback = getDocumentInfo(...fallbacks);
+  const hasMetadata = Boolean(fileName || storagePath || url);
+
+  if (uploaded || hasMetadata) {
+    return {
+      uploaded: true,
+      fileName: fileName || fromFallback.fileName,
+      url: url || fromFallback.url,
+    };
+  }
+
+  return fromFallback;
+}
+
 function extractApplication(applicationRaw: unknown): ApplicationDetails {
   const application = asRecord(applicationRaw);
   const payload = asRecord(application.payload);
@@ -179,30 +204,43 @@ function extractApplication(applicationRaw: unknown): ApplicationDetails {
     parseBoolean(application.homeVisitRequested ?? payload.homeVisitRequested) ||
     (homeVisitPrice !== "-" && homeVisitPrice !== "0");
 
-  const selfie = getDocumentInfo(
+  const selfie = getDocumentInfoFromFields(application, payload, "selfie", [
     application.selfieDocument,
     payload.selfieDocument,
-    application.selfieUrl,
-    payload.selfieUrl,
-    application.selfieFileName,
-    payload.selfieFileName,
-  );
-  const aadhaar = getDocumentInfo(
-    application.aadhaarDocument,
-    payload.aadhaarDocument,
-    application.aadhaarUrl,
-    payload.aadhaarUrl,
-    application.aadhaarFileName,
-    payload.aadhaarFileName,
-  );
-  const pan = getDocumentInfo(
+  ]);
+  const aadhaarFront = getDocumentInfoFromFields(application, payload, "aadhaarFront", [
+    application.aadhaarFrontDocument,
+    payload.aadhaarFrontDocument,
+  ]);
+  const aadhaarBack = getDocumentInfoFromFields(application, payload, "aadhaarBack", [
+    application.aadhaarBackDocument,
+    payload.aadhaarBackDocument,
+  ]);
+  const pan = getDocumentInfoFromFields(application, payload, "pan", [
     application.panDocument,
     payload.panDocument,
-    application.panUrl,
-    payload.panUrl,
-    application.panFileName,
-    payload.panFileName,
-  );
+  ]);
+
+  if (!aadhaarFront.uploaded || !aadhaarBack.uploaded) {
+    const legacyAadhaar = getDocumentInfo(
+      application.aadhaarDocument,
+      payload.aadhaarDocument,
+      application.aadhaarUrl,
+      payload.aadhaarUrl,
+      application.aadhaarFileName,
+      payload.aadhaarFileName,
+    );
+    if (!aadhaarFront.uploaded && legacyAadhaar.uploaded) {
+      aadhaarFront.uploaded = true;
+      aadhaarFront.fileName = aadhaarFront.fileName || legacyAadhaar.fileName;
+      aadhaarFront.url = aadhaarFront.url || legacyAadhaar.url;
+    }
+    if (!aadhaarBack.uploaded && legacyAadhaar.uploaded) {
+      aadhaarBack.uploaded = true;
+      aadhaarBack.fileName = aadhaarBack.fileName || legacyAadhaar.fileName;
+      aadhaarBack.url = aadhaarBack.url || legacyAadhaar.url;
+    }
+  }
 
   const kycStatus = titleCase(
     asString(
@@ -250,7 +288,8 @@ function extractApplication(applicationRaw: unknown): ApplicationDetails {
     homeVisitRequested,
     homeVisitPrice,
     selfie,
-    aadhaar,
+    aadhaarFront,
+    aadhaarBack,
     pan,
     safetyChecklist: [
       {
@@ -508,11 +547,11 @@ export default function AdminApplicationDetailsPage() {
           ) : null}
         </div>
 
-        <div className="grid gap-2 sm:grid-cols-3">
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <p><span className="font-semibold text-slate-900">Selfie:</span> {details.selfie.uploaded ? "Uploaded" : "Missing"}</p>
             {details.selfie.url ? (
-              <a href={details.selfie.url} target="_blank" rel="noreferrer" className="text-xs font-medium text-[#0f766e] underline">
+              <a href={details.selfie.url} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-[#0f766e] underline">
                 View Document
               </a>
             ) : details.selfie.fileName ? (
@@ -520,19 +559,29 @@ export default function AdminApplicationDetailsPage() {
             ) : null}
           </div>
           <div>
-            <p><span className="font-semibold text-slate-900">Aadhaar:</span> {details.aadhaar.uploaded ? "Uploaded" : "Missing"}</p>
-            {details.aadhaar.url ? (
-              <a href={details.aadhaar.url} target="_blank" rel="noreferrer" className="text-xs font-medium text-[#0f766e] underline">
+            <p><span className="font-semibold text-slate-900">Aadhaar Front:</span> {details.aadhaarFront.uploaded ? "Uploaded" : "Missing"}</p>
+            {details.aadhaarFront.url ? (
+              <a href={details.aadhaarFront.url} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-[#0f766e] underline">
                 View Document
               </a>
-            ) : details.aadhaar.fileName ? (
-              <p className="text-xs text-slate-600">{details.aadhaar.fileName} | Storage pending connection.</p>
+            ) : details.aadhaarFront.fileName ? (
+              <p className="text-xs text-slate-600">{details.aadhaarFront.fileName} | Storage pending connection.</p>
+            ) : null}
+          </div>
+          <div>
+            <p><span className="font-semibold text-slate-900">Aadhaar Back:</span> {details.aadhaarBack.uploaded ? "Uploaded" : "Missing"}</p>
+            {details.aadhaarBack.url ? (
+              <a href={details.aadhaarBack.url} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-[#0f766e] underline">
+                View Document
+              </a>
+            ) : details.aadhaarBack.fileName ? (
+              <p className="text-xs text-slate-600">{details.aadhaarBack.fileName} | Storage pending connection.</p>
             ) : null}
           </div>
           <div>
             <p><span className="font-semibold text-slate-900">PAN:</span> {details.pan.uploaded ? "Uploaded" : "Missing"}</p>
             {details.pan.url ? (
-              <a href={details.pan.url} target="_blank" rel="noreferrer" className="text-xs font-medium text-[#0f766e] underline">
+              <a href={details.pan.url} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-[#0f766e] underline">
                 View Document
               </a>
             ) : details.pan.fileName ? (
