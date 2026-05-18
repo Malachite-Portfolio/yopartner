@@ -67,6 +67,9 @@ type KycUploadState = {
   pan: PartnerKycUploadResult | null;
 };
 
+const MAX_CHAT_AUDIO_VIDEO_PRICE = 10000;
+const MAX_HOME_VISIT_PRICE = 100000;
+
 const stepTitles = [
   "Basic details",
   "Background",
@@ -98,6 +101,14 @@ function sanitizeServices(services: string[]): OnboardingServiceType[] {
   );
 }
 
+function parsePrice(value: string) {
+  const normalized = value.trim();
+  if (!/^\d+$/.test(normalized)) return null;
+  const parsed = Number(normalized);
+  if (!Number.isFinite(parsed)) return null;
+  return parsed;
+}
+
 function formatDocumentSelectionStatus(hasDocument: boolean) {
   return hasDocument ? "Selected" : "Pending";
 }
@@ -110,9 +121,13 @@ function toOnboardingProfile(source: PartnerProfile): OnboardingProfile {
 }
 
 function toPartnerOnboardingPayload(profile: OnboardingProfile, uploads: KycUploadState) {
-  const backendSupportedServices = profile.servicesOffered.filter(
-    (service): service is Exclude<OnboardingServiceType, "Home Visit"> => service !== "Home Visit",
-  );
+  const backendSupportedServices = profile.servicesOffered
+    .filter((service): service is Exclude<OnboardingServiceType, "Home Visit"> => service !== "Home Visit")
+    .map((service) => {
+      if (service === "Chat") return "CHAT";
+      if (service === "Audio Call") return "AUDIO";
+      return "VIDEO";
+    });
   const safetyChecklist = [];
   if (profile.safetyPlatonicOnly) safetyChecklist.push("strictly platonic");
   if (profile.safetyRespectfulRules) safetyChecklist.push("respectful communication");
@@ -144,9 +159,11 @@ function toPartnerOnboardingPayload(profile: OnboardingProfile, uploads: KycUplo
     profileTagline: profile.profileTagline.trim(),
     aboutYourself: profile.aboutYourself.trim(),
     servicesOffered: backendSupportedServices,
-    chatPrice: Number(profile.chatPricePerMinute) || 0,
-    audioPrice: Number(profile.audioPricePerMinute) || 0,
-    videoPrice: Number(profile.videoPricePerMinute) || 0,
+    homeVisitRequested: profile.servicesOffered.includes("Home Visit"),
+    homeVisitPrice: parsePrice(profile.homeVisitPricePerSession) ?? 0,
+    chatPrice: parsePrice(profile.chatPricePerMinute) ?? 0,
+    audioPrice: parsePrice(profile.audioPricePerMinute) ?? 0,
+    videoPrice: parsePrice(profile.videoPricePerMinute) ?? 0,
     categories: profile.categories,
     safetyChecklist,
     selfieUploaded,
@@ -333,6 +350,25 @@ export default function PartnerOnboardingPage() {
       if (!profile.videoPricePerMinute.trim()) nextErrors.videoPricePerMinute = "Video price is required.";
       if (profile.servicesOffered.includes("Home Visit") && !profile.homeVisitPricePerSession.trim()) {
         nextErrors.homeVisitPricePerSession = "Home Visit price per session is required.";
+      }
+
+      const chatPrice = parsePrice(profile.chatPricePerMinute);
+      const audioPrice = parsePrice(profile.audioPricePerMinute);
+      const videoPrice = parsePrice(profile.videoPricePerMinute);
+      if (chatPrice === null || chatPrice < 0 || chatPrice > MAX_CHAT_AUDIO_VIDEO_PRICE) {
+        nextErrors.chatPricePerMinute = "Please enter a valid price.";
+      }
+      if (audioPrice === null || audioPrice < 0 || audioPrice > MAX_CHAT_AUDIO_VIDEO_PRICE) {
+        nextErrors.audioPricePerMinute = "Please enter a valid price.";
+      }
+      if (videoPrice === null || videoPrice < 0 || videoPrice > MAX_CHAT_AUDIO_VIDEO_PRICE) {
+        nextErrors.videoPricePerMinute = "Please enter a valid price.";
+      }
+      if (profile.servicesOffered.includes("Home Visit")) {
+        const homeVisitPrice = parsePrice(profile.homeVisitPricePerSession);
+        if (homeVisitPrice === null || homeVisitPrice < 0 || homeVisitPrice > MAX_HOME_VISIT_PRICE) {
+          nextErrors.homeVisitPricePerSession = "Please enter a valid price.";
+        }
       }
       if (profile.categories.length === 0) nextErrors.categories = "Select at least one category.";
     }
