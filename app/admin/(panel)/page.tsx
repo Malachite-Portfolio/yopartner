@@ -14,18 +14,12 @@ import {
   listUsers,
   listWalletTransactions,
 } from "@/lib/api/admin";
-import { isClientDemoAdminSessionActive, isClientDemoEnabled } from "@/lib/clientDemoData";
+import { clearAdminAuthSession } from "@/lib/adminAuth";
 import {
   formatDateTime,
   formatINR,
-  getAdminApplications,
-  getAdminBookings,
-  getAdminCompanions,
-  getAdminSessions,
-  getAdminSupportTickets,
-  getAdminTransactions,
-  getAdminUsers,
 } from "@/lib/adminStore";
+import { useRouter } from "next/navigation";
 
 type DashboardStats = {
   totalUsers: number;
@@ -110,91 +104,29 @@ function titleCase(value: string) {
     .join(" ");
 }
 
-function getDemoDashboardSeed() {
-  const demoApplications = getAdminApplications();
-  const demoSessions = getAdminSessions();
-  const demoTransactions = getAdminTransactions();
-  const demoTickets = getAdminSupportTickets();
-  const demoUsers = getAdminUsers();
-  const demoCompanions = getAdminCompanions();
-  const demoBookings = getAdminBookings();
-
-  return {
-    stats: {
-      totalUsers: demoUsers.length,
-      activeCompanions: demoCompanions.filter((item) => item.status === "Active").length,
-      pendingApplications: demoApplications.filter((item) => item.status === "Under Review" || item.status === "Needs Info").length,
-      liveSessions: demoSessions.filter((item) => item.status === "Live").length,
-      totalBookings: demoBookings.length,
-      walletVolume: demoTransactions.reduce((acc, item) => acc + Math.max(item.amount, 0), 0),
-      pendingPayouts: 0,
-      openSupportTickets: demoTickets.filter((item) => item.status !== "Resolved").length,
-    } as DashboardStats,
-    applications: demoApplications.map((item) => ({
-      id: item.id,
-      name: item.partnerName,
-      phone: item.phone,
-      services: item.servicesOffered.join(", "),
-      kycStatus: "Pending",
-      status: item.status,
-      submittedAt: item.submittedDate,
-    })) as UiApplication[],
-    sessions: demoSessions.map((item) => ({
-      id: item.id,
-      sessionId: item.sessionId,
-      user: item.user,
-      companion: item.companion,
-      type: item.type,
-      status: item.status,
-      startedAt: item.startedAt,
-    })) as UiSession[],
-    transactions: demoTransactions.map((item) => ({
-      id: item.id,
-      transactionId: item.transactionId,
-      user: item.user,
-      type: item.type,
-      amount: item.amount,
-      status: item.status,
-      createdAt: item.date,
-    })) as UiTransaction[],
-    tickets: demoTickets.map((item) => ({
-      id: item.id,
-      ticketId: item.ticketId,
-      type: item.type,
-      priority: item.priority,
-      status: item.status,
-    })) as UiTicket[],
-  };
-}
-
 export default function AdminDashboardPage() {
-  const isDemoPreview = isClientDemoEnabled() && isClientDemoAdminSessionActive();
-  const demoSeed = useMemo(() => (isDemoPreview ? getDemoDashboardSeed() : null), [isDemoPreview]);
-
-  const [loading, setLoading] = useState(!isDemoPreview);
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState("");
 
   const [stats, setStats] = useState<DashboardStats>(
-    () =>
-      demoSeed?.stats ?? {
-        totalUsers: 0,
-        activeCompanions: 0,
-        pendingApplications: 0,
-        liveSessions: 0,
-        totalBookings: 0,
-        walletVolume: 0,
-        pendingPayouts: 0,
-        openSupportTickets: 0,
-      },
+    () => ({
+      totalUsers: 0,
+      activeCompanions: 0,
+      pendingApplications: 0,
+      liveSessions: 0,
+      totalBookings: 0,
+      walletVolume: 0,
+      pendingPayouts: 0,
+      openSupportTickets: 0,
+    }),
   );
-  const [applications, setApplications] = useState<UiApplication[]>(() => demoSeed?.applications ?? []);
-  const [sessions, setSessions] = useState<UiSession[]>(() => demoSeed?.sessions ?? []);
-  const [transactions, setTransactions] = useState<UiTransaction[]>(() => demoSeed?.transactions ?? []);
-  const [tickets, setTickets] = useState<UiTicket[]>(() => demoSeed?.tickets ?? []);
+  const [applications, setApplications] = useState<UiApplication[]>([]);
+  const [sessions, setSessions] = useState<UiSession[]>([]);
+  const [transactions, setTransactions] = useState<UiTransaction[]>([]);
+  const [tickets, setTickets] = useState<UiTicket[]>([]);
 
   useEffect(() => {
-    if (isDemoPreview) return;
-
     let active = true;
     const load = async () => {
       setLoading(true);
@@ -232,9 +164,16 @@ export default function AdminDashboardPage() {
         walletResponse,
         supportResponse,
       ];
+      if (responses.some((response) => response.error?.status === 401)) {
+        clearAdminAuthSession();
+        setApiError("Admin session expired. Please login again.");
+        setLoading(false);
+        router.replace("/admin/login");
+        return;
+      }
       const hasAnySuccess = responses.some((response) => Boolean(response.data));
       if (!hasAnySuccess) {
-        setApiError("Admin data could not be loaded. Please try again.");
+        setApiError("Unable to load admin dashboard data. Please retry.");
         setLoading(false);
         return;
       }
@@ -259,6 +198,7 @@ export default function AdminDashboardPage() {
 
       const mappedApplications: UiApplication[] = apps.map((item, index) => {
         const payload = asRecord(item.payload);
+        const applicantUser = asRecord(item.applicantUser);
         const services = Array.isArray(item.servicesOffered)
           ? (item.servicesOffered as unknown[])
           : Array.isArray(payload.servicesOffered)
@@ -268,13 +208,13 @@ export default function AdminDashboardPage() {
         return {
           id: stringOrFallback(item.id, `application-${index + 1}`),
           name: stringOrFallback(item.fullName ?? item.partnerName ?? item.displayName ?? payload.fullName),
-          phone: stringOrFallback(item.phoneNumber ?? item.phone ?? payload.phoneNumber),
+          phone: stringOrFallback(applicantUser.phoneNumber ?? item.phoneNumber ?? item.phone ?? payload.phoneNumber),
           services: services.length > 0 ? services.map((value) => String(value)).join(", ") : "-",
           kycStatus: titleCase(stringOrFallback(item.kycStatus ?? payload.kycStatus ?? item.verificationStatus, "Pending")),
           status: titleCase(stringOrFallback(item.status, "Under Review")),
           submittedAt: stringOrFallback(item.submittedAt ?? item.createdAt ?? item.updatedAt, new Date().toISOString()),
         };
-      });
+      }).sort((a, b) => +new Date(b.submittedAt) - +new Date(a.submittedAt));
 
       const mappedSessions: UiSession[] = sessionRows.map((item, index) => {
         const user = asRecord(item.user);
@@ -345,7 +285,7 @@ export default function AdminDashboardPage() {
     return () => {
       active = false;
     };
-  }, [isDemoPreview]);
+  }, [router]);
 
   const metricCards = [
     { label: "Members", value: stats.totalUsers.toLocaleString("en-IN"), icon: Users, tone: "blue" as const },

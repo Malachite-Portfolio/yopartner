@@ -26,6 +26,12 @@ type SafetyRow = {
   done: boolean;
 };
 
+type DocumentInfo = {
+  uploaded: boolean;
+  fileName: string;
+  url: string;
+};
+
 type ApplicationDetails = {
   id: string;
   applicationId: string;
@@ -51,9 +57,9 @@ type ApplicationDetails = {
   videoPrice: string;
   homeVisitRequested: boolean;
   homeVisitPrice: string;
-  selfieUploaded: boolean;
-  aadhaarUploaded: boolean;
-  panUploaded: boolean;
+  selfie: DocumentInfo;
+  aadhaar: DocumentInfo;
+  pan: DocumentInfo;
   safetyChecklist: SafetyRow[];
   adminNote: string;
 };
@@ -105,6 +111,39 @@ function hasDocumentValue(value: unknown) {
   return false;
 }
 
+function getDocumentInfo(...values: unknown[]): DocumentInfo {
+  for (const value of values) {
+    if (!value) continue;
+    if (typeof value === "string") {
+      const normalized = value.trim();
+      if (!normalized) continue;
+      const isUrl = normalized.startsWith("http://") || normalized.startsWith("https://");
+      return {
+        uploaded: true,
+        fileName: isUrl ? "" : normalized,
+        url: isUrl ? normalized : "",
+      };
+    }
+    if (typeof value === "object") {
+      const record = asRecord(value);
+      const url = asString(record.url ?? record.downloadUrl ?? record.fileUrl ?? "", "");
+      const fileName = asString(record.fileName ?? record.name ?? "", "");
+      if (!url && !fileName && !hasDocumentValue(value)) continue;
+      return {
+        uploaded: true,
+        fileName,
+        url,
+      };
+    }
+  }
+
+  return {
+    uploaded: false,
+    fileName: "",
+    url: "",
+  };
+}
+
 function extractApplication(applicationRaw: unknown): ApplicationDetails {
   const application = asRecord(applicationRaw);
   const payload = asRecord(application.payload);
@@ -140,14 +179,29 @@ function extractApplication(applicationRaw: unknown): ApplicationDetails {
     parseBoolean(application.homeVisitRequested ?? payload.homeVisitRequested) ||
     (homeVisitPrice !== "-" && homeVisitPrice !== "0");
 
-  const selfieUploaded = hasDocumentValue(
-    application.selfieFileName ?? payload.selfieFileName ?? application.selfieDocument ?? payload.selfieDocument,
+  const selfie = getDocumentInfo(
+    application.selfieDocument,
+    payload.selfieDocument,
+    application.selfieUrl,
+    payload.selfieUrl,
+    application.selfieFileName,
+    payload.selfieFileName,
   );
-  const aadhaarUploaded = hasDocumentValue(
-    application.aadhaarFileName ?? payload.aadhaarFileName ?? application.aadhaarDocument ?? payload.aadhaarDocument,
+  const aadhaar = getDocumentInfo(
+    application.aadhaarDocument,
+    payload.aadhaarDocument,
+    application.aadhaarUrl,
+    payload.aadhaarUrl,
+    application.aadhaarFileName,
+    payload.aadhaarFileName,
   );
-  const panUploaded = hasDocumentValue(
-    application.panFileName ?? payload.panFileName ?? application.panDocument ?? payload.panDocument,
+  const pan = getDocumentInfo(
+    application.panDocument,
+    payload.panDocument,
+    application.panUrl,
+    payload.panUrl,
+    application.panFileName,
+    payload.panFileName,
   );
 
   const kycStatus = titleCase(
@@ -195,9 +249,9 @@ function extractApplication(applicationRaw: unknown): ApplicationDetails {
     videoPrice: asString(application.videoPrice ?? payload.videoPrice, "0"),
     homeVisitRequested,
     homeVisitPrice,
-    selfieUploaded,
-    aadhaarUploaded,
-    panUploaded,
+    selfie,
+    aadhaar,
+    pan,
     safetyChecklist: [
       {
         label: "Strictly platonic",
@@ -230,6 +284,7 @@ export default function AdminApplicationDetailsPage() {
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [rowActionLoading, setRowActionLoading] = useState<RowAction | null>(null);
+  const [adminNoteDraft, setAdminNoteDraft] = useState("");
 
   const loadDetails = useCallback(async () => {
     if (!id) {
@@ -249,7 +304,9 @@ export default function AdminApplicationDetailsPage() {
     }
 
     if (detailResponse.data?.application) {
-      setDetails(extractApplication(detailResponse.data.application));
+      const parsed = extractApplication(detailResponse.data.application);
+      setDetails(parsed);
+      setAdminNoteDraft(parsed.adminNote);
       setLoading(false);
       return;
     }
@@ -283,7 +340,9 @@ export default function AdminApplicationDetailsPage() {
       return;
     }
 
-    setDetails(extractApplication(found));
+    const parsed = extractApplication(found);
+    setDetails(parsed);
+    setAdminNoteDraft(parsed.adminNote);
     setLoading(false);
   }, [id, router]);
 
@@ -341,20 +400,17 @@ export default function AdminApplicationDetailsPage() {
   const handleApprove = async () => {
     const confirmed = window.confirm("Approve this partner application? This will activate the companion profile.");
     if (!confirmed) return;
-    await applyStatusAction("APPROVED", "approve");
+    await applyStatusAction("APPROVED", "approve", adminNoteDraft.trim() || undefined);
   };
 
   const handleReject = async () => {
     const confirmed = window.confirm("Reject this partner application?");
     if (!confirmed) return;
-    const note = window.prompt("Add a rejection note (optional)", "") ?? undefined;
-    await applyStatusAction("REJECTED", "reject", note?.trim() ? note.trim() : undefined);
+    await applyStatusAction("REJECTED", "reject", adminNoteDraft.trim() || undefined);
   };
 
   const handleNeedsInfo = async () => {
-    const note = window.prompt("What information is needed?", "");
-    if (note === null) return;
-    await applyStatusAction("NEEDS_INFO", "needs_info", note.trim() ? note.trim() : undefined);
+    await applyStatusAction("NEEDS_INFO", "needs_info", adminNoteDraft.trim() || undefined);
   };
 
   if (loading) {
@@ -442,17 +498,47 @@ export default function AdminApplicationDetailsPage() {
         <div>
           <p className="font-semibold text-slate-900">Services and prices</p>
           <p className="mt-1 text-slate-700">{servicesLabel}</p>
-          <p className="mt-1 text-slate-700">Chat: {details.chatPrice}/min • Audio: {details.audioPrice}/min • Video: {details.videoPrice}/min</p>
+          <p className="mt-1 text-slate-700">Chat: {details.chatPrice}/min | Audio: {details.audioPrice}/min | Video: {details.videoPrice}/min</p>
           <p className="mt-1 text-slate-700">
             Home Visit requested: {details.homeVisitRequested ? "Yes" : "No"}
             {details.homeVisitRequested ? ` (${details.homeVisitPrice === "-" ? "price pending" : `${details.homeVisitPrice}/session`})` : ""}
           </p>
+          {details.homeVisitRequested ? (
+            <p className="mt-1 text-xs text-amber-700">Manual approval required before Home Visit can be activated.</p>
+          ) : null}
         </div>
 
         <div className="grid gap-2 sm:grid-cols-3">
-          <p><span className="font-semibold text-slate-900">Selfie:</span> {details.selfieUploaded ? "Uploaded" : "Missing"}</p>
-          <p><span className="font-semibold text-slate-900">Aadhaar:</span> {details.aadhaarUploaded ? "Uploaded" : "Missing"}</p>
-          <p><span className="font-semibold text-slate-900">PAN:</span> {details.panUploaded ? "Uploaded" : "Missing"}</p>
+          <div>
+            <p><span className="font-semibold text-slate-900">Selfie:</span> {details.selfie.uploaded ? "Uploaded" : "Missing"}</p>
+            {details.selfie.url ? (
+              <a href={details.selfie.url} target="_blank" rel="noreferrer" className="text-xs font-medium text-[#0f766e] underline">
+                View Document
+              </a>
+            ) : details.selfie.fileName ? (
+              <p className="text-xs text-slate-600">{details.selfie.fileName} | Storage pending connection.</p>
+            ) : null}
+          </div>
+          <div>
+            <p><span className="font-semibold text-slate-900">Aadhaar:</span> {details.aadhaar.uploaded ? "Uploaded" : "Missing"}</p>
+            {details.aadhaar.url ? (
+              <a href={details.aadhaar.url} target="_blank" rel="noreferrer" className="text-xs font-medium text-[#0f766e] underline">
+                View Document
+              </a>
+            ) : details.aadhaar.fileName ? (
+              <p className="text-xs text-slate-600">{details.aadhaar.fileName} | Storage pending connection.</p>
+            ) : null}
+          </div>
+          <div>
+            <p><span className="font-semibold text-slate-900">PAN:</span> {details.pan.uploaded ? "Uploaded" : "Missing"}</p>
+            {details.pan.url ? (
+              <a href={details.pan.url} target="_blank" rel="noreferrer" className="text-xs font-medium text-[#0f766e] underline">
+                View Document
+              </a>
+            ) : details.pan.fileName ? (
+              <p className="text-xs text-slate-600">{details.pan.fileName} | Storage pending connection.</p>
+            ) : null}
+          </div>
         </div>
 
         <div>
@@ -464,9 +550,14 @@ export default function AdminApplicationDetailsPage() {
           </div>
         </div>
 
-        <div>
+        <div className="space-y-2">
           <p className="font-semibold text-slate-900">Admin note</p>
-          <p className="mt-1 text-slate-700">{details.adminNote || "-"}</p>
+          <textarea
+            value={adminNoteDraft}
+            onChange={(event) => setAdminNoteDraft(event.target.value)}
+            className="min-h-24 w-full rounded-xl border border-[#dceae5] px-3 py-2 text-sm text-slate-800 outline-none focus:border-[#0f766e]"
+            placeholder="Add notes for approval, rejection, or additional information..."
+          />
         </div>
       </article>
 
@@ -507,3 +598,5 @@ export default function AdminApplicationDetailsPage() {
     </section>
   );
 }
+
+

@@ -106,7 +106,7 @@ export default function AdminClientDiariesPage() {
                     { label: "Edit", onClick: () => openEdit(item) },
                     { label: "Publish", tone: "success", onClick: () => persist(stories.map((entry) => (entry.id === item.id ? { ...entry, status: "Published" } : entry))) },
                     { label: "Hide", tone: "warning", onClick: () => persist(stories.map((entry) => (entry.id === item.id ? { ...entry, status: "Hidden" } : entry))) },
-                    { label: "Delete Demo", tone: "danger", onClick: () => persist(stories.filter((entry) => entry.id !== item.id)) },
+                    { label: "Delete", tone: "danger", onClick: () => persist(stories.filter((entry) => entry.id !== item.id)) },
                     { label: "View", onClick: () => setSelected(item) },
                   ]}
                 />

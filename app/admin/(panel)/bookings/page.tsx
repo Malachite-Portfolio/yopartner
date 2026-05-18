@@ -44,7 +44,7 @@ export default function AdminBookingsPage() {
     let merged = [...base];
 
     if (typeof window !== "undefined") {
-      const raw = window.localStorage.getItem("yopartner_demo_bookings");
+      const raw = window.localStorage.getItem("yopartner_bookings_cache");
       if (raw) {
         try {
           const parsed = JSON.parse(raw);
@@ -98,12 +98,12 @@ export default function AdminBookingsPage() {
       type: "Refund",
       amount: target.amount,
       status: "Success",
-      gateway: "Demo",
+      gateway: "Wallet",
       date: new Date().toISOString(),
       reason: `Refund for ${target.bookingId}`,
     };
     persistTransactions([tx, ...transactions]);
-    alert(`Refund demo transaction created for ${target.bookingId}.`);
+    alert(`Refund transaction created for ${target.bookingId}.`);
   };
 
   const assignCompanion = (target: AdminBooking) => {
@@ -159,7 +159,7 @@ export default function AdminBookingsPage() {
                         { label: "View Details", onClick: () => setSelected(item) },
                         { label: "Mark Completed", tone: "success", onClick: () => updateBookingStatus(item, "Completed") },
                         { label: "Cancel", tone: "danger", onClick: () => updateBookingStatus(item, "Cancelled") },
-                        { label: "Refund Demo", tone: "warning", onClick: () => refundBooking(item) },
+                        { label: "Refund", tone: "warning", onClick: () => refundBooking(item) },
                         { label: "Assign Companion", onClick: () => assignCompanion(item) },
                       ]}
                     />

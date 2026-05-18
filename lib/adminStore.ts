@@ -74,10 +74,10 @@ function seedIfMissing<T>(key: string, value: T) {
   }
 }
 
-function hydrateFromExistingDemoData() {
+function hydrateFromExistingLocalData() {
   if (!canUseStorage()) return;
 
-  const existingBookings = readJSON<Array<Record<string, unknown>>>("yopartner_demo_bookings", []);
+  const existingBookings = readJSON<Array<Record<string, unknown>>>("yopartner_bookings_cache", []);
   if (existingBookings.length > 0 && window.localStorage.getItem(adminStorageKeys.bookings) === null) {
     const mapped: AdminBooking[] = existingBookings.map((booking, index) => ({
       id: String(booking.id ?? `ext-booking-${index}`),
@@ -108,7 +108,7 @@ function hydrateFromExistingDemoData() {
       type: tx.type === "booking" ? "Booking" : "Recharge",
       amount: Number(tx.amountAdded ?? 0),
       status: "Success",
-      gateway: "Demo",
+      gateway: "Wallet",
       date: String(tx.createdAt ?? new Date().toISOString()),
       reason: String(tx.description ?? ""),
     }));
@@ -176,7 +176,7 @@ export function initAdminStore() {
   seedIfMissing(adminStorageKeys.media, seedAdminMedia);
   seedIfMissing(adminStorageKeys.clientDiaries, seedAdminClientDiaries);
   seedIfMissing(adminStorageKeys.settings, seedAdminSettings);
-  hydrateFromExistingDemoData();
+  hydrateFromExistingLocalData();
   initialized = true;
 }
 

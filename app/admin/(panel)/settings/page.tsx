@@ -27,7 +27,7 @@ export default function AdminSettingsPage() {
     }
     setAdminSettings(settings);
     setError("");
-    setMessage("Admin settings saved to local demo storage.");
+    setMessage("Admin settings saved.");
   };
 
   const toggleClass = "flex w-full items-center justify-between rounded-xl border border-slate-200 px-3 py-2 text-sm";
@@ -64,8 +64,8 @@ export default function AdminSettingsPage() {
             <input value={settings.minimumRecharge} onChange={(e) => update("minimumRecharge", e.target.value)} placeholder="Minimum Recharge" className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm" />
             <input value={settings.maximumRecharge} onChange={(e) => update("maximumRecharge", e.target.value)} placeholder="Maximum Recharge" className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm" />
             <input value={settings.minimumBalanceRule} onChange={(e) => update("minimumBalanceRule", e.target.value)} placeholder="Minimum Balance Rule" className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm" />
-            <button type="button" onClick={() => update("paymentGatewayRazorpayDemo", !settings.paymentGatewayRazorpayDemo)} className={toggleClass}>Razorpay Demo Toggle <span>{settings.paymentGatewayRazorpayDemo ? "On" : "Off"}</span></button>
-            <button type="button" onClick={() => update("paymentGatewayCashfreeDemo", !settings.paymentGatewayCashfreeDemo)} className={toggleClass}>Cashfree Demo Toggle <span>{settings.paymentGatewayCashfreeDemo ? "On" : "Off"}</span></button>
+            <button type="button" onClick={() => update("paymentGatewayRazorpayEnabled", !settings.paymentGatewayRazorpayEnabled)} className={toggleClass}>Razorpay Toggle <span>{settings.paymentGatewayRazorpayEnabled ? "On" : "Off"}</span></button>
+            <button type="button" onClick={() => update("paymentGatewayCashfreeEnabled", !settings.paymentGatewayCashfreeEnabled)} className={toggleClass}>Cashfree Toggle <span>{settings.paymentGatewayCashfreeEnabled ? "On" : "Off"}</span></button>
           </div>
         </article>
 
@@ -86,7 +86,7 @@ export default function AdminSettingsPage() {
             <button type="button" onClick={() => update("platonicOnlyPolicy", !settings.platonicOnlyPolicy)} className={toggleClass}>Platonic-only policy <span>{settings.platonicOnlyPolicy ? "On" : "Off"}</span></button>
             <button type="button" onClick={() => update("blockOffPlatformPaymentSharing", !settings.blockOffPlatformPaymentSharing)} className={toggleClass}>Block off-platform payment sharing <span>{settings.blockOffPlatformPaymentSharing ? "On" : "Off"}</span></button>
             <button type="button" onClick={() => update("enableReportReviewQueue", !settings.enableReportReviewQueue)} className={toggleClass}>Enable report review queue <span>{settings.enableReportReviewQueue ? "On" : "Off"}</span></button>
-            <button type="button" onClick={() => update("sessionMonitoringDemo", !settings.sessionMonitoringDemo)} className={toggleClass}>Session monitoring demo <span>{settings.sessionMonitoringDemo ? "On" : "Off"}</span></button>
+            <button type="button" onClick={() => update("sessionMonitoringEnabled", !settings.sessionMonitoringEnabled)} className={toggleClass}>Session monitoring <span>{settings.sessionMonitoringEnabled ? "On" : "Off"}</span></button>
           </div>
         </article>
       </div>

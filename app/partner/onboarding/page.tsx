@@ -136,7 +136,7 @@ function toPartnerOnboardingPayload(profile: OnboardingProfile) {
   };
 }
 
-async function waitForFirebaseUser(timeoutMs = 3000) {
+async function waitForFirebaseUser(timeoutMs = 8000) {
   if (typeof window === "undefined") return null;
   const auth = firebaseAuth;
   if (!auth) return null;
@@ -314,7 +314,7 @@ export default function PartnerOnboardingPage() {
       reviewStatus: "under_review",
     };
 
-    if (isClientDemoPartnerSession(getPartnerPhone())) {
+    if (IS_DEMO_MODE && isClientDemoPartnerSession(getPartnerPhone())) {
       setIsSubmitting(true);
       completeClientDemoPartnerOnboarding(finalProfile);
       setSubmitMessage("Your profile has been submitted for review.");
@@ -352,22 +352,16 @@ export default function PartnerOnboardingPage() {
             setPartnerStoredFirebaseToken(freshToken);
             hadTokenBeforeSubmit = true;
           } catch {
-            hadTokenBeforeSubmit = Boolean(getPartnerStoredFirebaseToken());
-            if (!hadTokenBeforeSubmit) {
-              setErrors({ base: "Your login session could not be verified. Please login again as a partner." });
-              setIsSubmitting(false);
-              router.replace("/partner/login?reason=session-expired");
-              return;
-            }
-          }
-        } else {
-          hadTokenBeforeSubmit = Boolean(getPartnerStoredFirebaseToken());
-          if (!hadTokenBeforeSubmit) {
             setErrors({ base: "Your login session could not be verified. Please login again as a partner." });
             setIsSubmitting(false);
             router.replace("/partner/login?reason=session-expired");
             return;
           }
+        } else {
+          setErrors({ base: "Your login session could not be verified. Please login again as a partner." });
+          setIsSubmitting(false);
+          router.replace("/partner/login?reason=session-expired");
+          return;
         }
         const payload = toPartnerOnboardingPayload(finalProfile);
         const response = await submitPartnerApplication(payload);

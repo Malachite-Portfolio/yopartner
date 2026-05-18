@@ -71,7 +71,7 @@ export default function AdminWalletPage() {
     });
   }, [transactions, search, typeFilter, statusFilter]);
 
-  const refundDemo = (item: AdminTransaction) => {
+  const refundTransaction = (item: AdminTransaction) => {
     const refund: AdminTransaction = {
       id: generateId("txn"),
       transactionId: generateId("TRX"),
@@ -79,12 +79,12 @@ export default function AdminWalletPage() {
       type: "Refund",
       amount: Math.abs(item.amount),
       status: "Success",
-      gateway: "Demo",
+      gateway: "Wallet",
       date: new Date().toISOString(),
       reason: `Refund against ${item.transactionId}`,
     };
     persistTransactions([refund, ...transactions]);
-    alert(`Refund demo transaction created for ${item.transactionId}.`);
+    alert(`Refund transaction created for ${item.transactionId}.`);
   };
 
   const addManualCredit = () => {
@@ -101,7 +101,7 @@ export default function AdminWalletPage() {
       type: "Admin Credit",
       amount,
       status: "Success",
-      gateway: "Demo",
+      gateway: "Wallet",
       date: new Date().toISOString(),
       reason: creditReason,
     };
@@ -113,7 +113,7 @@ export default function AdminWalletPage() {
     persistUsers(nextUsers);
 
     setCreditOpen(false);
-    alert("Manual demo credit added.");
+    alert("Manual credit added.");
   };
 
   return (
@@ -179,7 +179,7 @@ export default function AdminWalletPage() {
                     <AdminActionMenu
                       actions={[
                         { label: "View", onClick: () => setSelected(item) },
-                        { label: "Refund Demo", tone: "warning", onClick: () => refundDemo(item) },
+                        { label: "Refund", tone: "warning", onClick: () => refundTransaction(item) },
                       ]}
                     />
                   </td>

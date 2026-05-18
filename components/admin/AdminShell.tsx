@@ -95,11 +95,6 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       <div className="flex min-w-0 flex-1 flex-col">
         <AdminTopbar onMenuOpen={() => setSidebarOpen(true)} />
         <main className="flex-1 p-4 sm:p-6">
-          {accessState.isDemo ? (
-            <p className="mb-4 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600">
-              Demo mode enabled | local preview
-            </p>
-          ) : null}
           {children}
         </main>
       </div>

@@ -31,6 +31,16 @@ export function isApiBaseUrlConfigured() {
   return Boolean(baseUrl);
 }
 
+function logPartnerTokenUsage(path: string, token: string | null) {
+  if (process.env.NODE_ENV === "production") return;
+  if (!path.startsWith("/api/partner")) return;
+  console.debug("[apiRequest partner auth]", {
+    path,
+    partnerTokenPresent: Boolean(token),
+    partnerTokenLength: token?.length ?? 0,
+  });
+}
+
 function clearPartnerAuthKeys() {
   if (typeof window === "undefined") return;
   PARTNER_AUTH_STORAGE_KEYS.forEach((key) => {
@@ -120,14 +130,16 @@ export function getStoredAuthToken(path = "") {
   if (typeof window === "undefined") return null;
   const isAdminRoute = path.startsWith("/api/admin");
   const isPartnerRoute = path.startsWith("/api/partner");
+  if (isPartnerRoute) {
+    const partnerToken = window.localStorage.getItem("yopartner_partner_firebase_id_token");
+    const normalized = partnerToken && partnerToken.trim().length > 0 ? partnerToken.trim() : null;
+    logPartnerTokenUsage(path, normalized);
+    return normalized;
+  }
   const keys = isAdminRoute
     ? [
         "yopartner_admin_auth_token",
       ]
-    : isPartnerRoute
-      ? [
-          "yopartner_partner_firebase_id_token",
-        ]
     : [
         "yopartner_firebase_id_token",
         "yopartner_partner_firebase_id_token",

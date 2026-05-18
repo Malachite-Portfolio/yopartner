@@ -45,7 +45,7 @@ export default function AdminReportsPage() {
     return { active, blocked, highValue, newUsers };
   }, [users]);
 
-  const exportMessage = (name: string) => alert(`${name} export is in demo mode. CSV download will be enabled after backend integration.`);
+  const exportMessage = (name: string) => alert(`${name} export is not available yet.`);
 
   return (
     <section className="space-y-6">

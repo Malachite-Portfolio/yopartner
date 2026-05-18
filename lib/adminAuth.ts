@@ -1,6 +1,5 @@
 import { apiRequest } from "@/lib/api/client";
 import { ADMIN_LOGIN_KEY } from "@/lib/adminData";
-import { clearClientDemoAdminSession, isClientDemoAdminSessionActive, isClientDemoEnabled } from "@/lib/clientDemoData";
 
 export const ADMIN_AUTH_TOKEN_KEY = "yopartner_admin_auth_token";
 export const ADMIN_LOGIN_ID_KEY = "yopartner_admin_login_id";
@@ -16,7 +15,6 @@ type AdminRoleCheckResult = {
 
 export type AdminAccessState = {
   allowed: boolean;
-  isDemo: boolean;
   needsLogin: boolean;
   forbidden: boolean;
   message?: string;
@@ -50,7 +48,6 @@ export function clearAdminAuthSession() {
   window.localStorage.removeItem(ADMIN_FIREBASE_TOKEN_KEY);
   window.localStorage.removeItem(ADMIN_FIREBASE_UID_KEY);
   window.localStorage.removeItem(ADMIN_FIREBASE_PHONE_KEY);
-  clearClientDemoAdminSession();
 }
 
 export async function verifyAdminRole(): Promise<AdminRoleCheckResult> {
@@ -85,20 +82,10 @@ export async function verifyAdminRole(): Promise<AdminRoleCheckResult> {
 }
 
 export async function resolveAdminAccess(): Promise<AdminAccessState> {
-  if (isClientDemoEnabled() && isClientDemoAdminSessionActive()) {
-    return {
-      allowed: true,
-      isDemo: true,
-      needsLogin: false,
-      forbidden: false,
-    };
-  }
-
   const token = getStoredAdminToken();
   if (!token) {
     return {
       allowed: false,
-      isDemo: false,
       needsLogin: true,
       forbidden: false,
       message: "Admin login required.",
@@ -112,7 +99,6 @@ export async function resolveAdminAccess(): Promise<AdminAccessState> {
     }
     return {
       allowed: true,
-      isDemo: false,
       needsLogin: false,
       forbidden: false,
     };
@@ -122,7 +108,6 @@ export async function resolveAdminAccess(): Promise<AdminAccessState> {
     clearAdminAuthSession();
     return {
       allowed: false,
-      isDemo: false,
       needsLogin: true,
       forbidden: false,
       message: "Please login as an admin to continue.",
@@ -132,7 +117,6 @@ export async function resolveAdminAccess(): Promise<AdminAccessState> {
   if (roleCheck.status === 403) {
     return {
       allowed: false,
-      isDemo: false,
       needsLogin: false,
       forbidden: true,
       message: "You do not have permission to access the admin panel.",
@@ -141,7 +125,6 @@ export async function resolveAdminAccess(): Promise<AdminAccessState> {
 
   return {
     allowed: false,
-    isDemo: false,
     needsLogin: false,
     forbidden: true,
     message: roleCheck.message ?? "You do not have permission to access the admin panel.",

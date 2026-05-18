@@ -26,6 +26,7 @@ const titleByPath: Record<string, string> = {
 };
 
 function getTitle(pathname: string) {
+  if (pathname.startsWith("/admin/applications/")) return "Application details";
   return titleByPath[pathname] ?? "Admin Console";
 }
 

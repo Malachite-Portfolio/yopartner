@@ -11,9 +11,9 @@ import {
   type AdminApplicationUpdateStatus,
   updateAdminApplicationStatus,
 } from "@/lib/api/admin";
-import { type AdminApplicationStatus } from "@/lib/adminData";
 import { formatDateTime } from "@/lib/adminStore";
-import { isClientDemoAdminSessionActive, isClientDemoEnabled } from "@/lib/clientDemoData";
+
+type AdminApplicationStatus = "Draft" | "Under Review" | "Approved" | "Rejected" | "Needs Info";
 
 type ApplicationRow = {
   id: string;
@@ -76,6 +76,7 @@ function toApplicationRows(data: unknown): ApplicationRow[] {
   return applicationsRaw.map((item, index) => {
     const record = asRecord(item);
     const payload = asRecord(record.payload);
+    const applicantUser = asRecord(record.applicantUser);
     const languages = Array.isArray(record.languagesKnown)
       ? record.languagesKnown
       : Array.isArray(payload.languagesKnown)
@@ -91,7 +92,7 @@ function toApplicationRows(data: unknown): ApplicationRow[] {
       id: String(record.id ?? `application-${index + 1}`),
       applicationId: String(record.applicationId ?? record.id ?? `APP-${index + 1}`),
       partnerName: String(record.fullName ?? record.partnerName ?? payload.fullName ?? "-"),
-      phone: String(record.phoneNumber ?? record.phone ?? payload.phoneNumber ?? "-"),
+      phone: String(applicantUser.phoneNumber ?? record.phoneNumber ?? record.phone ?? payload.phoneNumber ?? "-"),
       age: String(record.age ?? payload.age ?? "-"),
       gender: String(record.gender ?? payload.gender ?? "-"),
       bornCity: String(record.bornCity ?? record.city ?? payload.bornCity ?? "-"),
@@ -104,7 +105,7 @@ function toApplicationRows(data: unknown): ApplicationRow[] {
       profileTagline: String(record.profileTagline ?? payload.profileTagline ?? "-"),
       aboutYourself: String(record.aboutYourself ?? payload.aboutYourself ?? "-"),
     };
-  });
+  }).sort((a, b) => +new Date(b.submittedDate) - +new Date(a.submittedDate));
 }
 
 function toUiStatusFromApi(status: AdminApplicationUpdateStatus): AdminApplicationStatus {
@@ -115,15 +116,12 @@ function toUiStatusFromApi(status: AdminApplicationUpdateStatus): AdminApplicati
 
 export default function AdminApplicationsPage() {
   const router = useRouter();
-  const isDemoPreview = isClientDemoEnabled() && isClientDemoAdminSessionActive();
 
   const [applications, setApplications] = useState<ApplicationRow[]>([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"All" | AdminApplicationStatus>("All");
-  const [loading, setLoading] = useState(!isDemoPreview);
-  const [apiError, setApiError] = useState(
-    isDemoPreview ? "Real application actions are unavailable in demo preview." : "",
-  );
+  const [loading, setLoading] = useState(true);
+  const [apiError, setApiError] = useState("");
   const [actionError, setActionError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [rowActionLoading, setRowActionLoading] = useState<Record<string, RowAction | undefined>>({});
@@ -141,7 +139,7 @@ export default function AdminApplicationsPage() {
         setLoading(false);
         return;
       }
-      setApiError(response.error.message || "Admin data could not be loaded. Please try again.");
+      setApiError("Unable to load partner applications. Please retry.");
       setApplications([]);
       setLoading(false);
       return;
@@ -152,14 +150,13 @@ export default function AdminApplicationsPage() {
   }, [router]);
 
   useEffect(() => {
-    if (isDemoPreview) return;
     const timer = window.setTimeout(() => {
       void loadApplications();
     }, 0);
     return () => {
       window.clearTimeout(timer);
     };
-  }, [isDemoPreview, loadApplications]);
+  }, [loadApplications]);
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -266,6 +263,17 @@ export default function AdminApplicationsPage() {
       ) : null}
 
       <article className="rounded-3xl border border-[#dceae5] bg-white p-4 shadow-sm">
+        <div className="mb-3 flex justify-end">
+          <button
+            type="button"
+            onClick={() => {
+              void loadApplications();
+            }}
+            className="rounded-xl border border-[#dceae5] bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            Refresh
+          </button>
+        </div>
         <AdminTableToolbar
           searchValue={search}
           onSearchChange={setSearch}

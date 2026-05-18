@@ -127,7 +127,7 @@ export default function AdminMediaPage() {
                         { label: "Edit", onClick: () => openEdit(item) },
                         { label: "Publish", tone: "success", onClick: () => persist(items.map((entry) => (entry.id === item.id ? { ...entry, status: "Published" } : entry))) },
                         { label: "Hide", tone: "warning", onClick: () => persist(items.map((entry) => (entry.id === item.id ? { ...entry, status: "Hidden" } : entry))) },
-                        { label: "Delete Demo", tone: "danger", onClick: () => persist(items.filter((entry) => entry.id !== item.id)) },
+                        { label: "Delete", tone: "danger", onClick: () => persist(items.filter((entry) => entry.id !== item.id)) },
                         { label: "View", onClick: () => setSelected(item) },
                       ]}
                     />

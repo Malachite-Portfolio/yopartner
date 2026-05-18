@@ -78,7 +78,7 @@ export default function AdminReviewsPage() {
                         { label: "Approve", tone: "success", onClick: () => updateStatus(item, "Approved") },
                         { label: "Hide", tone: "warning", onClick: () => updateStatus(item, "Hidden") },
                         { label: "Flag", tone: "warning", onClick: () => updateStatus(item, "Flagged") },
-                        { label: "Delete Demo", tone: "danger", onClick: () => persist(reviews.filter((entry) => entry.id !== item.id)) },
+                        { label: "Delete", tone: "danger", onClick: () => persist(reviews.filter((entry) => entry.id !== item.id)) },
                         { label: "View", onClick: () => setSelected(item) },
                       ]}
                     />

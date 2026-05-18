@@ -70,13 +70,13 @@ export default function AdminUsersPage() {
       type: "Admin Credit",
       amount,
       status: "Success",
-      gateway: "Demo",
+      gateway: "Wallet",
       date: new Date().toISOString(),
       reason: creditReason,
     };
     persistTransactions([newTx, ...transactions]);
     setCreditTarget(null);
-    alert("Demo wallet credit added successfully.");
+    alert("Wallet credit added successfully.");
   };
 
   const selectedSessions = useMemo(

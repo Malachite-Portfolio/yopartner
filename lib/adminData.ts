@@ -128,7 +128,7 @@ export type AdminTransaction = {
   type: "Recharge" | "Booking" | "Refund" | "Admin Credit";
   amount: number;
   status: "Success" | "Pending" | "Failed";
-  gateway: "Demo" | "Razorpay Later" | "Cashfree Later";
+  gateway: "Wallet" | "Razorpay Later" | "Cashfree Later";
   date: string;
   reason?: string;
 };
@@ -217,8 +217,8 @@ export type AdminSettings = {
   minimumRecharge: string;
   maximumRecharge: string;
   minimumBalanceRule: string;
-  paymentGatewayRazorpayDemo: boolean;
-  paymentGatewayCashfreeDemo: boolean;
+  paymentGatewayRazorpayEnabled: boolean;
+  paymentGatewayCashfreeEnabled: boolean;
   minimumAge: string;
   requireIdVerification: boolean;
   requirePoliceVerification: boolean;
@@ -227,7 +227,7 @@ export type AdminSettings = {
   platonicOnlyPolicy: boolean;
   blockOffPlatformPaymentSharing: boolean;
   enableReportReviewQueue: boolean;
-  sessionMonitoringDemo: boolean;
+  sessionMonitoringEnabled: boolean;
 };
 
 export const adminStorageKeys = {
@@ -468,7 +468,7 @@ export const seedAdminTransactions: AdminTransaction[] = [
     type: "Recharge",
     amount: 5000,
     status: "Success",
-    gateway: "Demo",
+    gateway: "Wallet",
     date: "2026-05-10T10:00:00.000Z",
   },
   {
@@ -478,7 +478,7 @@ export const seedAdminTransactions: AdminTransaction[] = [
     type: "Booking",
     amount: -450,
     status: "Success",
-    gateway: "Demo",
+    gateway: "Wallet",
     date: "2026-05-10T14:20:00.000Z",
   },
   {
@@ -488,7 +488,7 @@ export const seedAdminTransactions: AdminTransaction[] = [
     type: "Refund",
     amount: 250,
     status: "Success",
-    gateway: "Demo",
+    gateway: "Wallet",
     date: "2026-05-12T11:10:00.000Z",
   },
 ];
@@ -654,8 +654,8 @@ export const seedAdminSettings: AdminSettings = {
   minimumRecharge: "100",
   maximumRecharge: "50000",
   minimumBalanceRule: "5x service price",
-  paymentGatewayRazorpayDemo: true,
-  paymentGatewayCashfreeDemo: false,
+  paymentGatewayRazorpayEnabled: true,
+  paymentGatewayCashfreeEnabled: false,
   minimumAge: "21",
   requireIdVerification: true,
   requirePoliceVerification: true,
@@ -664,5 +664,5 @@ export const seedAdminSettings: AdminSettings = {
   platonicOnlyPolicy: true,
   blockOffPlatformPaymentSharing: true,
   enableReportReviewQueue: true,
-  sessionMonitoringDemo: true,
+  sessionMonitoringEnabled: true,
 };

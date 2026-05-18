@@ -647,7 +647,7 @@ const adminTransactions: AdminTransaction[] = [
     type: "Recharge",
     amount: 5000,
     status: "Success",
-    gateway: "Demo",
+    gateway: "Wallet",
     date: "2026-05-15T08:30:00.000Z",
   },
   {
@@ -657,7 +657,7 @@ const adminTransactions: AdminTransaction[] = [
     type: "Recharge",
     amount: 4450,
     status: "Success",
-    gateway: "Demo",
+    gateway: "Wallet",
     date: "2026-05-15T08:35:00.000Z",
   },
   {
@@ -667,7 +667,7 @@ const adminTransactions: AdminTransaction[] = [
     type: "Recharge",
     amount: 9000,
     status: "Success",
-    gateway: "Demo",
+    gateway: "Wallet",
     date: "2026-05-15T08:40:00.000Z",
   },
 ];
@@ -716,8 +716,8 @@ const adminSettings: AdminSettings = {
   minimumRecharge: "100",
   maximumRecharge: "50000",
   minimumBalanceRule: "5x service price",
-  paymentGatewayRazorpayDemo: true,
-  paymentGatewayCashfreeDemo: false,
+  paymentGatewayRazorpayEnabled: true,
+  paymentGatewayCashfreeEnabled: false,
   minimumAge: "21",
   requireIdVerification: true,
   requirePoliceVerification: true,
@@ -726,7 +726,7 @@ const adminSettings: AdminSettings = {
   platonicOnlyPolicy: true,
   blockOffPlatformPaymentSharing: true,
   enableReportReviewQueue: true,
-  sessionMonitoringDemo: true,
+  sessionMonitoringEnabled: true,
 };
 
 export function activateClientDemoPartnerSession() {

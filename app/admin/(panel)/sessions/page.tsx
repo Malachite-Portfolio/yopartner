@@ -57,10 +57,10 @@ export default function AdminSessionsPage() {
         <h2 className="text-xl font-semibold text-slate-900">Conversations Monitor</h2>
         <button
           type="button"
-          onClick={() => alert("Demo export only. CSV export will be wired after backend integration.")}
+          onClick={() => alert("CSV export is not available yet.")}
           className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700"
         >
-          Export Demo CSV
+          Export CSV
         </button>
       </div>
 
@@ -146,7 +146,7 @@ export default function AdminSessionsPage() {
             <p><span className="font-semibold text-slate-900">Companion Earning:</span> {formatINR(selected.companionEarning)}</p>
             <p><span className="font-semibold text-slate-900">Safety Notes:</span> {selected.safetyNotes || "No notes."}</p>
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-              {selected.type === "Chat" ? "Chat transcript placeholder for demo monitoring." : "Call metadata placeholder for audio/video session monitoring."}
+              {selected.type === "Chat" ? "Chat transcript unavailable." : "Call metadata placeholder for audio/video session monitoring."}
             </div>
           </div>
         ) : null}
