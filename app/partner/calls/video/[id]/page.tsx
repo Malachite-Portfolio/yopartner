@@ -4,7 +4,9 @@ import { Camera, CameraOff, MessageCircle, Mic, PhoneOff, RefreshCcw } from "luc
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { PartnerGuard } from "@/components/partner/PartnerGuard";
-import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
+import { getSessionById, type SessionRecord } from "@/lib/api/sessions";
+
+const AGORA_APP_ID = process.env.NEXT_PUBLIC_AGORA_APP_ID?.trim() ?? "";
 
 function formatTimer(seconds: number) {
   const mins = Math.floor(seconds / 60)
@@ -14,46 +16,42 @@ function formatTimer(seconds: number) {
   return `${mins}:${secs}`;
 }
 
-function getMaskedPhone(id: string) {
-  if (id === "demo-user-1") return "+91******9363";
-  if (id === "demo-user-2") return "+91******7788";
-  if (id === "demo-user-3") return "+91******2231";
-  return "+91******0000";
+function maskPhone(value: string) {
+  const digits = value.replace(/\D/g, "");
+  if (digits.length < 4) return value || "Member";
+  return `+91******${digits.slice(-4)}`;
 }
 
 export default function PartnerVideoCallPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
-  const sessionId = params.id ?? "demo-user-1";
-  const maskedPhone = useMemo(() => getMaskedPhone(sessionId), [sessionId]);
+  const sessionId = params.id ?? "";
+  const [session, setSession] = useState<SessionRecord | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [mute, setMute] = useState(false);
   const [cameraOn, setCameraOn] = useState(true);
   const [frontCamera, setFrontCamera] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
+    if (!sessionId) return;
+    void (async () => {
+      const response = await getSessionById(sessionId);
+      if (response.error || !response.data) {
+        setError(response.error?.message || "Unable to open video call.");
+        return;
+      }
+      setSession(response.data);
+    })();
+  }, [sessionId]);
+
+  useEffect(() => {
+    if (session?.status !== "LIVE") return;
     const timer = window.setInterval(() => setElapsed((current) => current + 1), 1000);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [session?.status]);
 
-  if (IS_PRODUCTION_READY_MODE) {
-    return (
-      <PartnerGuard requireOnboarding>
-        <section className="flex h-screen min-h-screen items-center justify-center bg-[#050814] px-4 py-6">
-          <div className="w-full max-w-md rounded-2xl border border-amber-200/50 bg-amber-100/10 p-6 text-center text-white">
-            <p className="text-lg font-semibold">Video calling is temporarily unavailable. Please retry shortly.</p>
-            <button
-              type="button"
-              onClick={() => router.push("/partner/dashboard")}
-              className="mt-4 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white"
-            >
-              Back to Dashboard
-            </button>
-          </div>
-        </section>
-      </PartnerGuard>
-    );
-  }
+  const maskedPhone = useMemo(() => maskPhone(String(session?.user?.phoneNumber ?? "")), [session?.user]);
 
   return (
     <PartnerGuard requireOnboarding>
@@ -61,10 +59,22 @@ export default function PartnerVideoCallPage() {
         <div className="absolute inset-0 bg-gradient-to-b from-[#0b1224] via-[#0a132a] to-[#03060f]" />
 
         <div className="relative z-10 flex h-full flex-col p-4 sm:p-5">
+          {!AGORA_APP_ID ? (
+            <p className="mb-3 rounded-xl border border-amber-200/70 bg-amber-100/10 px-3 py-2 text-center text-xs text-amber-100">
+              Calling is not configured. Missing Agora App ID.
+            </p>
+          ) : null}
+          {error ? (
+            <p className="mb-3 rounded-xl border border-rose-200/70 bg-rose-100/10 px-3 py-2 text-center text-xs text-rose-100">
+              {error}
+            </p>
+          ) : null}
           <div className="flex items-center justify-between rounded-xl border border-white/10 bg-black/30 px-4 py-2.5">
             <div>
               <p className="text-sm font-semibold">{maskedPhone}</p>
-              <p className="text-xs text-cyan-100/85">Connected</p>
+              <p className="text-xs text-cyan-100/85">
+                {session?.status === "LIVE" ? "Connected" : "Awaiting status"}
+              </p>
             </div>
             <p className="text-sm font-semibold tabular-nums">{formatTimer(elapsed)}</p>
           </div>

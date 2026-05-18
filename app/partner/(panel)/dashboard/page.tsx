@@ -70,7 +70,7 @@ function normalizeRequest(raw: unknown): PartnerIncomingRequest | null {
   return {
     id,
     type,
-    memberLabel: String(item.memberLabel ?? item.userMaskedPhone ?? "Member"),
+    memberLabel: String(item.memberPhoneMasked ?? item.memberLabel ?? item.userMaskedPhone ?? item.memberName ?? "Member"),
     expectedRate: asNumber(item.expectedRate, 0),
     createdAt: String(item.createdAt ?? new Date().toISOString()),
   };
@@ -85,7 +85,7 @@ function normalizeActiveSession(raw: unknown): PartnerActiveSession | null {
   return {
     id,
     type,
-    memberLabel: String(item.memberLabel ?? item.userMaskedPhone ?? "Member"),
+    memberLabel: String(item.memberPhoneMasked ?? item.memberLabel ?? item.userMaskedPhone ?? item.memberName ?? "Member"),
     expectedRate: asNumber(item.expectedRate, 0),
     startedAt: item.startedAt ? String(item.startedAt) : null,
     status: String(item.status ?? "LIVE"),
@@ -251,14 +251,14 @@ export default function PartnerDashboardPage() {
     }
 
     if (overlayRequest.type === "AUDIO") {
-      router.push(`/partner/calls/audio/${overlayRequest.id}`);
+      router.push(`/partner/audio-call/${overlayRequest.id}`);
       return;
     }
     if (overlayRequest.type === "VIDEO") {
-      router.push(`/partner/calls/video/${overlayRequest.id}`);
+      router.push(`/partner/video-call/${overlayRequest.id}`);
       return;
     }
-    router.push(`/partner/chats/${overlayRequest.id}`);
+    router.push(`/partner/chat/${overlayRequest.id}`);
   };
 
   const handleDecline = async () => {
@@ -390,7 +390,7 @@ export default function PartnerDashboardPage() {
                 <div key={request.id} className="rounded-2xl border border-[#dceae5] p-3">
                   <p className="text-sm font-semibold text-slate-900">{maskMemberLabel(request.memberLabel)}</p>
                   <p className="mt-1 text-xs text-slate-500">
-                    {formatRequestType(request.type)} • {formatINR(request.expectedRate)}
+                    {formatRequestType(request.type)} - {formatINR(request.expectedRate)}
                   </p>
                 </div>
               ))
@@ -410,7 +410,7 @@ export default function PartnerDashboardPage() {
                 <div key={session.id} className="rounded-2xl border border-[#dceae5] p-2.5">
                   <p className="text-sm font-semibold text-slate-900">{maskMemberLabel(session.memberLabel)}</p>
                   <p className="text-xs text-slate-500">
-                    {formatRequestType(session.type)} • {session.status}
+                    {formatRequestType(session.type)} - {session.status}
                   </p>
                 </div>
               ))

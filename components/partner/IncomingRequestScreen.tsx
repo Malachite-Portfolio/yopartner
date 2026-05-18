@@ -84,7 +84,7 @@ export function IncomingRequestScreen({
 
         <p className="mt-6 text-lg font-semibold">{memberLabel}</p>
         <p className="mt-1 text-sm text-teal-100/80">
-          {serviceLabel} • {formatINR(Math.max(request.expectedRate, 0))}
+          {serviceLabel} - {formatINR(Math.max(request.expectedRate, 0))}
         </p>
 
         {message ? (

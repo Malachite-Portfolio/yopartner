@@ -3,7 +3,6 @@
 import { ArrowLeft, Paperclip, Phone, SendHorizontal, Video } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import type { CompanionRouteProfile } from "@/lib/companionRoutes";
 
 type ChatMessage = {
@@ -13,26 +12,7 @@ type ChatMessage = {
   timestamp: string;
 };
 
-const seedMessages: ChatMessage[] = [
-  {
-    id: "m1",
-    sender: "companion",
-    text: "Hi, I'm here with you. How are you feeling today?",
-    timestamp: "10:04 AM",
-  },
-  {
-    id: "m2",
-    sender: "user",
-    text: "I just wanted someone to talk to.",
-    timestamp: "10:05 AM",
-  },
-  {
-    id: "m3",
-    sender: "companion",
-    text: "That's completely okay. You can take your time.",
-    timestamp: "10:05 AM",
-  },
-];
+const seedMessages: ChatMessage[] = [];
 
 function getStoredMessages(storageKey: string) {
   if (typeof window === "undefined") return seedMessages;
@@ -66,7 +46,15 @@ function getInitials(name: string) {
     .toUpperCase();
 }
 
-export function ChatScreen({ companion }: { companion: CompanionRouteProfile }) {
+export function ChatScreen({
+  companion,
+  composerDisabled = false,
+  disabledMessage = "",
+}: {
+  companion: CompanionRouteProfile;
+  composerDisabled?: boolean;
+  disabledMessage?: string;
+}) {
   const router = useRouter();
   const storageKey = useMemo(() => `yp_chat_${companion.id}`, [companion.id]);
   const [messages, setMessages] = useState<ChatMessage[]>(() => getStoredMessages(storageKey));
@@ -105,25 +93,6 @@ export function ChatScreen({ companion }: { companion: CompanionRouteProfile }) 
     }
     router.push(`/connect-now/${companion.id}`);
   };
-
-  if (IS_PRODUCTION_READY_MODE) {
-    return (
-      <section className="flex h-screen min-h-screen w-full items-center justify-center bg-[#f2f7fb] p-4">
-        <div className="w-full max-w-md rounded-2xl border border-amber-200 bg-amber-50 p-6 text-center">
-          <p className="text-base font-semibold text-amber-800">
-            Chat is temporarily unavailable. Please try again in a moment.
-          </p>
-          <button
-            type="button"
-            onClick={handleBack}
-            className="mt-4 rounded-xl bg-[#2563eb] px-4 py-2 text-sm font-semibold text-white"
-          >
-            Back to Profile
-          </button>
-        </div>
-      </section>
-    );
-  }
 
   return (
     <section className="flex h-screen min-h-screen w-full flex-col overflow-hidden bg-[#f2f7fb]">
@@ -198,6 +167,11 @@ export function ChatScreen({ companion }: { companion: CompanionRouteProfile }) 
         </div>
 
         <div className="shrink-0 border-t border-slate-200 bg-white p-3 sm:p-4">
+          {composerDisabled && disabledMessage ? (
+            <p className="mb-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+              {disabledMessage}
+            </p>
+          ) : null}
           <div className="flex items-center gap-2 rounded-xl border border-slate-200 px-2 py-2 sm:px-3">
             <button
               type="button"
@@ -217,11 +191,13 @@ export function ChatScreen({ companion }: { companion: CompanionRouteProfile }) 
               }}
               placeholder="Type your message..."
               className="h-9 min-w-0 flex-1 border-none bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400"
+              disabled={composerDisabled}
             />
             <button
               type="button"
               onClick={handleSend}
               aria-label="Send message"
+              disabled={composerDisabled}
               className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#2563eb] text-white transition hover:bg-[#1d4ed8]"
             >
               <SendHorizontal size={16} />

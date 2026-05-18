@@ -4,7 +4,6 @@ import { ArrowLeft, MessageCircle, Mic, PhoneOff, Volume2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import type { CompanionRouteProfile } from "@/lib/companionRoutes";
 
 function formatTimer(seconds: number) {
@@ -65,25 +64,6 @@ export function AudioCallScreen({ companion }: { companion: CompanionRouteProfil
 
     return () => window.clearInterval(timer);
   }, []);
-
-  if (IS_PRODUCTION_READY_MODE) {
-    return (
-      <section className="relative h-screen min-h-screen overflow-hidden bg-gradient-to-b from-[#0f1d4d] via-[#2b235e] to-[#4d2a68] px-4 py-6 text-white sm:px-6">
-        <div className="mx-auto flex h-full w-full max-w-xl flex-col items-center justify-center">
-          <div className="w-full rounded-2xl border border-amber-200/60 bg-amber-100/10 p-6 text-center">
-            <p className="text-xl font-semibold text-amber-100">Audio calling is temporarily unavailable. Please retry shortly.</p>
-            <button
-              type="button"
-              onClick={() => router.push(`/connect-now/${companion.id}`)}
-              className="mt-4 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white"
-            >
-              Back to Profile
-            </button>
-          </div>
-        </div>
-      </section>
-    );
-  }
 
   return (
     <section className="relative h-screen min-h-screen overflow-hidden bg-gradient-to-b from-[#0f1d4d] via-[#2b235e] to-[#4d2a68] px-4 py-6 text-white sm:px-6">

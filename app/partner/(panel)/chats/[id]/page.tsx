@@ -1,60 +1,98 @@
 "use client";
 
 import { Phone, SendHorizontal, Video } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
-import { getPartnerMessages, savePartnerMessages, type PartnerMessage } from "@/lib/partnerData";
+import { getSessionById, type SessionRecord } from "@/lib/api/sessions";
+
+type PartnerChatMessage = {
+  id: string;
+  sender: "partner" | "member";
+  text: string;
+  time: string;
+};
+
+function maskPhone(value: string) {
+  const digits = value.replace(/\D/g, "");
+  if (digits.length < 4) return value || "Member";
+  return `+91******${digits.slice(-4)}`;
+}
 
 export default function PartnerChatDetailPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
-  const chatId = params.id ?? "demo-user-1";
-  const allMessages = getPartnerMessages();
-  const [messages, setMessages] = useState<PartnerMessage[]>(allMessages[chatId] ?? []);
+  const sessionId = params.id ?? "";
+  const [session, setSession] = useState<SessionRecord | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [messages, setMessages] = useState<PartnerChatMessage[]>([]);
   const [input, setInput] = useState("");
-  const userLabel = useMemo(() => {
-    if (chatId === "demo-user-1") return "+91******9363";
-    if (chatId === "demo-user-2") return "+91******7788";
-    if (chatId === "demo-user-3") return "+91******2231";
-    return "+91******0000";
-  }, [chatId]);
 
-  if (IS_PRODUCTION_READY_MODE) {
-    return (
-      <section className="rounded-xl border border-amber-200 bg-amber-50 p-5">
-        <h2 className="text-xl font-semibold text-amber-800">Partner chat is unavailable</h2>
-        <p className="mt-2 text-sm text-amber-700">We couldn&apos;t load this conversation right now. Please retry.</p>
-      </section>
-    );
-  }
+  useEffect(() => {
+    if (!sessionId) return;
+    void (async () => {
+      setLoading(true);
+      const response = await getSessionById(sessionId);
+      if (response.error || !response.data) {
+        setError(response.error?.message || "Unable to load this conversation.");
+        setLoading(false);
+        return;
+      }
+      setSession(response.data);
+      setLoading(false);
+    })();
+  }, [sessionId]);
+
+  const userPhone = useMemo(() => {
+    const raw = String(session?.user?.phoneNumber ?? "");
+    return maskPhone(raw);
+  }, [session?.user]);
 
   const handleSend = () => {
     const text = input.trim();
     if (!text) return;
-    const nextMessage: PartnerMessage = {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      sender: "partner",
-      text,
-      time: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
-    };
-    const nextMessages = [...messages, nextMessage];
-    setMessages(nextMessages);
-    savePartnerMessages({ ...allMessages, [chatId]: nextMessages });
+    setMessages((current) => [
+      ...current,
+      {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        sender: "partner",
+        text,
+        time: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
+      },
+    ]);
     setInput("");
   };
+
+  if (loading) {
+    return (
+      <section className="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-600">
+        Opening conversation...
+      </section>
+    );
+  }
+
+  if (!session) {
+    return (
+      <section className="rounded-xl border border-amber-200 bg-amber-50 p-5">
+        <h2 className="text-xl font-semibold text-amber-800">Conversation unavailable</h2>
+        <p className="mt-2 text-sm text-amber-700">{error || "Session was not found."}</p>
+      </section>
+    );
+  }
 
   return (
     <section className="flex min-h-[calc(100vh-140px)] flex-col rounded-xl border border-slate-200 bg-white shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
         <div>
-          <p className="text-sm font-semibold text-slate-900">{userLabel}</p>
-          <p className="text-xs text-slate-500">Conversation type: Chat • Status: Active</p>
+          <p className="text-sm font-semibold text-slate-900">{userPhone}</p>
+          <p className="text-xs text-slate-500">
+            Conversation type: {session.serviceType || "CHAT"} - Status: {session.status || "LIVE"}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => router.push(`/partner/calls/audio/${chatId}`)}
+            onClick={() => router.push(`/partner/calls/audio/${sessionId}`)}
             className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-700"
             aria-label="Start audio call"
           >
@@ -62,7 +100,7 @@ export default function PartnerChatDetailPage() {
           </button>
           <button
             type="button"
-            onClick={() => router.push(`/partner/calls/video/${chatId}`)}
+            onClick={() => router.push(`/partner/calls/video/${sessionId}`)}
             className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-700"
             aria-label="Start video call"
           >
@@ -72,6 +110,11 @@ export default function PartnerChatDetailPage() {
       </div>
 
       <div className="flex-1 space-y-2 overflow-y-auto bg-slate-50 px-3 py-3">
+        {messages.length === 0 ? (
+          <p className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
+            Messaging connection is being prepared.
+          </p>
+        ) : null}
         {messages.map((message) => (
           <div key={message.id} className={`flex ${message.sender === "partner" ? "justify-end" : "justify-start"}`}>
             <div
@@ -91,6 +134,9 @@ export default function PartnerChatDetailPage() {
       </div>
 
       <div className="border-t border-slate-200 bg-white p-3">
+        <div className="mb-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+          Messaging connection is being prepared.
+        </div>
         <div className="flex items-center gap-2 rounded-xl border border-slate-200 px-2 py-1.5">
           <input
             value={input}

@@ -43,12 +43,32 @@ function SupportAction({
   label,
   price,
   icon,
+  onClick,
 }: {
   href: string;
   label: string;
   price?: number;
   icon: ReactNode;
+  onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
 }) {
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className="flex min-h-[52px] items-center justify-between gap-2 rounded-2xl border border-[#dceae5] bg-white px-3 text-left text-sm font-semibold leading-tight text-slate-800 hover:border-[#0f766e]/40 hover:bg-[#eef8f5]"
+      >
+        <span className="inline-flex min-w-0 items-center gap-2">
+          {icon}
+          <span className="truncate">{label}</span>
+        </span>
+        {typeof price === "number" ? (
+          <span className="shrink-0 text-xs font-semibold text-[#0f766e]">{formatINRPrice(price, "/min")}</span>
+        ) : null}
+      </button>
+    );
+  }
+
   return (
     <Link
       href={href}
@@ -82,9 +102,17 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
   const hasHomeVisit = typeof visitPrice === "number" && visitPrice > 0;
   const profileUrl = `/connect-now/${companion.id}`;
 
-  const handleStartChat = async (event: React.MouseEvent<HTMLButtonElement>) => {
+  const createSessionAndRoute = async (
+    event: React.MouseEvent<HTMLButtonElement>,
+    serviceType: "chat" | "audio" | "video",
+  ) => {
     event.stopPropagation();
-    const returnUrl = `/chat/${companion.id}`;
+    const returnUrl =
+      serviceType === "chat"
+        ? `/chat/${companion.id}`
+        : serviceType === "audio"
+          ? `/call/audio/${companion.id}`
+          : `/call/video/${companion.id}`;
     const token =
       typeof window !== "undefined"
         ? window.localStorage.getItem(USER_FIREBASE_TOKEN_KEY)?.trim() || ""
@@ -97,7 +125,7 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
 
     const sessionResponse = await createSession({
       companionId: companion.id,
-      serviceType: "chat",
+      serviceType,
     });
 
     if (sessionResponse.error?.status === 401) {
@@ -110,7 +138,15 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
 
     const sessionId = sessionResponse.data?.id;
     if (sessionId) {
-      router.push(`/chat/${sessionId}?companionId=${encodeURIComponent(companion.id)}`);
+      if (serviceType === "chat") {
+        router.push(`/chat/${sessionId}?companionId=${encodeURIComponent(companion.id)}`);
+        return;
+      }
+      if (serviceType === "audio") {
+        router.push(`/call/audio/${sessionId}?companionId=${encodeURIComponent(companion.id)}`);
+        return;
+      }
+      router.push(`/call/video/${sessionId}?companionId=${encodeURIComponent(companion.id)}`);
       return;
     }
 
@@ -194,7 +230,9 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
       <div className="mt-auto grid grid-cols-2 gap-2 pt-4">
         <button
           type="button"
-          onClick={handleStartChat}
+          onClick={(event) => {
+            void createSessionAndRoute(event, "chat");
+          }}
           className="flex min-h-[52px] items-center justify-between gap-2 rounded-2xl border border-[#dceae5] bg-white px-3 text-left text-sm font-semibold leading-tight text-slate-800 hover:border-[#0f766e]/40 hover:bg-[#eef8f5]"
         >
           <span className="inline-flex min-w-0 items-center gap-2">
@@ -205,9 +243,25 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
             <span className="shrink-0 text-xs font-semibold text-[#0f766e]">{formatINRPrice(chatPrice, "/min")}</span>
           ) : null}
         </button>
-        <SupportAction href={`/call/audio/${companion.id}`} label="Audio call" price={voicePrice} icon={<Phone size={15} />} />
+        <SupportAction
+          href={`/call/audio/${companion.id}`}
+          label="Audio call"
+          price={voicePrice}
+          icon={<Phone size={15} />}
+          onClick={(event) => {
+            void createSessionAndRoute(event, "audio");
+          }}
+        />
         {hasVideo ? (
-          <SupportAction href={`/call/video/${companion.id}`} label="Video call" price={videoPrice} icon={<Video size={15} />} />
+          <SupportAction
+            href={`/call/video/${companion.id}`}
+            label="Video call"
+            price={videoPrice}
+            icon={<Video size={15} />}
+            onClick={(event) => {
+              void createSessionAndRoute(event, "video");
+            }}
+          />
         ) : null}
         {hasHomeVisit ? (
           <Link

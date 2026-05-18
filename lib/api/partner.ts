@@ -5,6 +5,8 @@ export type PartnerRequestType = "CHAT" | "AUDIO" | "VIDEO";
 export type PartnerIncomingRequest = {
   id: string;
   memberLabel: string;
+  memberName?: string;
+  memberPhoneMasked?: string;
   type: PartnerRequestType;
   expectedRate: number;
   createdAt: string;
@@ -13,6 +15,8 @@ export type PartnerIncomingRequest = {
 export type PartnerActiveSession = {
   id: string;
   memberLabel: string;
+  memberName?: string;
+  memberPhoneMasked?: string;
   type: PartnerRequestType;
   expectedRate: number;
   startedAt: string | null;

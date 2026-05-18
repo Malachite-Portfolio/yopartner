@@ -129,49 +129,65 @@ export function ProfileBookingPanel({
 
     if (IS_PRODUCTION_READY_MODE) {
       void (async () => {
+        const token =
+          typeof window !== "undefined"
+            ? window.localStorage.getItem(USER_FIREBASE_TOKEN_KEY)?.trim() || ""
+            : "";
+        const currentPath =
+          selectedType === "chat"
+            ? `/chat/${companion.id}`
+            : selectedType === "audio"
+              ? `/call/audio/${companion.id}`
+              : `/call/video/${companion.id}`;
+
+        if (!token) {
+          router.push(`/login?returnUrl=${encodeURIComponent(currentPath)}`);
+          return;
+        }
+
         const response = await createBooking({
           companionId: companion.id,
           serviceType: selectedType,
         });
         if (response.error) {
-          setActionMessage("Booking is temporarily unavailable. Please try again.");
+          setActionMessage(response.error.message || "Unable to create booking right now. Please try again.");
+          return;
+        }
+
+        const serviceType = selectedType === "chat" ? "chat" : selectedType === "audio" ? "audio" : "video";
+        const sessionResponse = await createSession({
+          companionId: companion.id,
+          serviceType,
+          bookingId: response.data?.booking.id,
+        });
+
+        if (sessionResponse.error?.status === 401) {
+          if (typeof window !== "undefined") {
+            window.localStorage.removeItem(USER_FIREBASE_TOKEN_KEY);
+          }
+          router.push(`/login?returnUrl=${encodeURIComponent(currentPath)}`);
+          return;
+        }
+        if (sessionResponse.error) {
+          setActionMessage(sessionResponse.error.message || "Unable to create a new session. Please try again.");
+          return;
+        }
+
+        const sessionId = sessionResponse.data?.id;
+        if (!sessionId) {
+          setActionMessage("Unable to create a new session. Please try again.");
           return;
         }
 
         if (selectedType === "chat") {
-          const token =
-            typeof window !== "undefined"
-              ? window.localStorage.getItem(USER_FIREBASE_TOKEN_KEY)?.trim() || ""
-              : "";
-          if (!token) {
-            router.push(`/login?returnUrl=${encodeURIComponent(`/chat/${companion.id}`)}`);
-            return;
-          }
-          const sessionResponse = await createSession({
-            companionId: companion.id,
-            serviceType: "chat",
-            bookingId: response.data?.booking.id,
-          });
-          if (sessionResponse.error?.status === 401) {
-            if (typeof window !== "undefined") {
-              window.localStorage.removeItem(USER_FIREBASE_TOKEN_KEY);
-            }
-            router.push(`/login?returnUrl=${encodeURIComponent(`/chat/${companion.id}`)}`);
-            return;
-          }
-          const sessionId = sessionResponse.data?.id;
-          if (sessionId) {
-            router.push(`/chat/${sessionId}?companionId=${encodeURIComponent(companion.id)}`);
-            return;
-          }
-          router.push(`/chat/${companion.id}`);
+          router.push(`/chat/${sessionId}?companionId=${encodeURIComponent(companion.id)}`);
           return;
         }
         if (selectedType === "audio") {
-          router.push(`/call/audio/${companion.id}`);
+          router.push(`/call/audio/${sessionId}?companionId=${encodeURIComponent(companion.id)}`);
           return;
         }
-        router.push(`/call/video/${companion.id}`);
+        router.push(`/call/video/${sessionId}?companionId=${encodeURIComponent(companion.id)}`);
       })();
       return;
     }

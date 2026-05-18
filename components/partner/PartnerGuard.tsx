@@ -4,7 +4,8 @@ import { useEffect } from "react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { getCurrentFirebaseUser, subscribeFirebaseAuthState } from "@/lib/auth/firebasePhoneAuth";
-import { isPartnerLoggedIn, isPartnerOnboardingComplete } from "@/lib/partnerAuth";
+import { resolvePartnerLandingRoute } from "@/lib/partnerApproval";
+import { isPartnerLoggedIn } from "@/lib/partnerAuth";
 
 type PartnerGuardProps = {
   children: React.ReactNode;
@@ -14,38 +15,54 @@ type PartnerGuardProps = {
 export function PartnerGuard({ children, requireOnboarding = true }: PartnerGuardProps) {
   const router = useRouter();
   const [checking, setChecking] = useState(true);
-  const [loggedIn, setLoggedIn] = useState(false);
-  const [onboardingComplete, setOnboardingComplete] = useState(false);
+  const [hasAccess, setHasAccess] = useState(false);
 
   useEffect(() => {
-    const sync = () => {
+    const sync = async () => {
       const hasFirebaseUser = Boolean(getCurrentFirebaseUser());
       const hasPartnerSession = isPartnerLoggedIn() || hasFirebaseUser;
-      setLoggedIn(hasPartnerSession);
-      setOnboardingComplete(isPartnerOnboardingComplete());
+      if (!hasPartnerSession) {
+        setHasAccess(false);
+        setChecking(false);
+        return;
+      }
+
+      if (!requireOnboarding) {
+        setHasAccess(true);
+        setChecking(false);
+        return;
+      }
+
+      const landing = await resolvePartnerLandingRoute();
+      if (landing.route === "/partner/onboarding") {
+        setHasAccess(false);
+        setChecking(false);
+        router.replace("/partner/onboarding");
+        return;
+      }
+
+      setHasAccess(true);
       setChecking(false);
     };
 
-    sync();
+    void sync();
     const unsubscribe = subscribeFirebaseAuthState(() => {
-      sync();
+      void sync();
     });
 
     return unsubscribe;
-  }, []);
+  }, [requireOnboarding, router]);
 
   useEffect(() => {
     if (checking) return;
-    if (!loggedIn) {
+    const hasFirebaseUser = Boolean(getCurrentFirebaseUser());
+    const hasPartnerSession = isPartnerLoggedIn() || hasFirebaseUser;
+    if (!hasPartnerSession) {
       router.replace("/partner/login");
-      return;
     }
-    if (requireOnboarding && !onboardingComplete) {
-      router.replace("/partner/onboarding");
-    }
-  }, [checking, loggedIn, onboardingComplete, requireOnboarding, router]);
+  }, [checking, router]);
 
-  if (checking || !loggedIn || (requireOnboarding && !onboardingComplete)) {
+  if (checking || !hasAccess) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
         <p className="text-sm font-medium text-slate-600">Checking partner access...</p>

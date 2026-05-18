@@ -10,6 +10,10 @@ export type PartnerApprovalState = {
   companionStatus?: "UNDER_REVIEW" | "ACTIVE" | "SUSPENDED";
   verificationStatus?: "PENDING" | "VERIFIED" | "FAILED" | "NEEDS_REVIEW";
   reviewStatus?: string;
+  approved?: boolean;
+  underReview?: boolean;
+  notSubmitted?: boolean;
+  hasApplication?: boolean;
 };
 
 export type PartnerLandingRoute =
@@ -70,11 +74,16 @@ function mergeState(base: PartnerApprovalState, next: PartnerApprovalState) {
     ...(next.companionStatus ? { companionStatus: next.companionStatus } : {}),
     ...(next.verificationStatus ? { verificationStatus: next.verificationStatus } : {}),
     ...(next.reviewStatus ? { reviewStatus: next.reviewStatus } : {}),
+    ...(typeof next.approved === "boolean" ? { approved: next.approved } : {}),
+    ...(typeof next.underReview === "boolean" ? { underReview: next.underReview } : {}),
+    ...(typeof next.notSubmitted === "boolean" ? { notSubmitted: next.notSubmitted } : {}),
+    ...(typeof next.hasApplication === "boolean" ? { hasApplication: next.hasApplication } : {}),
   };
 }
 
 export function normalizePartnerApprovalState(apiData: unknown): PartnerApprovalState {
   const data = (apiData ?? {}) as Record<string, unknown>;
+  const approvalState = (data.approvalState ?? {}) as Record<string, unknown>;
   const profile = (data.profile ?? {}) as Record<string, unknown>;
   const companion = (profile.companion ?? data.companion ?? {}) as Record<string, unknown>;
   const application = (data.application ?? profile.application ?? {}) as Record<string, unknown>;
@@ -82,14 +91,49 @@ export function normalizePartnerApprovalState(apiData: unknown): PartnerApproval
 
   return {
     applicationStatus: normalizeApplicationStatus(
-      data.applicationStatus ?? data.status ?? application.status ?? profile.reviewStatus ?? payload.reviewStatus,
+      approvalState.applicationStatus ??
+        data.applicationStatus ??
+        data.status ??
+        application.status ??
+        profile.reviewStatus ??
+        payload.reviewStatus,
     ),
-    kycStatus: normalizeKycStatus(data.kycStatus ?? profile.kycStatus ?? payload.kycStatus),
-    companionStatus: normalizeCompanionStatus(data.companionStatus ?? profile.status ?? companion.status),
+    kycStatus: normalizeKycStatus(approvalState.kycStatus ?? data.kycStatus ?? profile.kycStatus ?? payload.kycStatus),
+    companionStatus: normalizeCompanionStatus(
+      approvalState.companionStatus ?? data.companionStatus ?? profile.status ?? companion.status,
+    ),
     verificationStatus: normalizeVerificationStatus(
-      data.verificationStatus ?? profile.verificationStatus ?? companion.verificationStatus ?? payload.verificationStatus,
+      approvalState.verificationStatus ??
+        data.verificationStatus ??
+        profile.verificationStatus ??
+        companion.verificationStatus ??
+        payload.verificationStatus,
     ),
     reviewStatus: String(profile.reviewStatus ?? payload.reviewStatus ?? data.reviewStatus ?? "").toLowerCase() || undefined,
+    approved:
+      typeof approvalState.approved === "boolean"
+        ? approvalState.approved
+        : typeof data.approved === "boolean"
+          ? data.approved
+          : undefined,
+    underReview:
+      typeof approvalState.underReview === "boolean"
+        ? approvalState.underReview
+        : typeof data.underReview === "boolean"
+          ? data.underReview
+          : undefined,
+    notSubmitted:
+      typeof approvalState.notSubmitted === "boolean"
+        ? approvalState.notSubmitted
+        : typeof data.notSubmitted === "boolean"
+          ? data.notSubmitted
+          : undefined,
+    hasApplication:
+      typeof approvalState.hasApplication === "boolean"
+        ? approvalState.hasApplication
+        : typeof data.hasApplication === "boolean"
+          ? data.hasApplication
+          : undefined,
   };
 }
 
@@ -107,12 +151,14 @@ export function saveLocalPartnerApprovalState(state: PartnerApprovalState) {
 }
 
 export function isPartnerApproved(state: PartnerApprovalState) {
+  if (typeof state.approved === "boolean") return state.approved;
   if (state.applicationStatus === "APPROVED") return true;
   if (state.companionStatus === "ACTIVE" && state.verificationStatus === "VERIFIED") return true;
   return false;
 }
 
 export function isPartnerUnderReview(state: PartnerApprovalState) {
+  if (typeof state.underReview === "boolean") return state.underReview;
   return (
     state.applicationStatus === "UNDER_REVIEW" ||
     state.kycStatus === "PENDING" ||
@@ -226,9 +272,6 @@ export async function resolvePartnerLandingRoute(): Promise<{
   } catch {
     if (isPartnerApproved(localState)) {
       return { route: "/partner/dashboard", state: localState };
-    }
-    if (localState.applicationStatus === "NOT_SUBMITTED") {
-      return { route: "/partner/onboarding", state: localState };
     }
     return { route: "/partner/application-status", state: localState };
   }
