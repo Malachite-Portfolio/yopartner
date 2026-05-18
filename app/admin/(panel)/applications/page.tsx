@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AdminActionMenu } from "@/components/admin/AdminActionMenu";
-import { AdminDetailDrawer } from "@/components/admin/AdminDetailDrawer";
 import { AdminStatusBadge } from "@/components/admin/AdminStatusBadge";
 import { AdminTableToolbar } from "@/components/admin/AdminTableToolbar";
 import { clearAdminAuthSession } from "@/lib/adminAuth";
@@ -121,7 +120,6 @@ export default function AdminApplicationsPage() {
   const [applications, setApplications] = useState<ApplicationRow[]>([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"All" | AdminApplicationStatus>("All");
-  const [selected, setSelected] = useState<ApplicationRow | null>(null);
   const [loading, setLoading] = useState(!isDemoPreview);
   const [apiError, setApiError] = useState(
     isDemoPreview ? "Real application actions are unavailable in demo preview." : "",
@@ -206,7 +204,6 @@ export default function AdminApplicationsPage() {
 
     const nextStatus = toUiStatusFromApi(status);
     setApplications((current) => current.map((item) => (item.id === row.id ? { ...item, status: nextStatus } : item)));
-    setSelected((current) => (current?.id === row.id ? { ...current, status: nextStatus } : current));
 
     if (status === "APPROVED") {
       setSuccessMessage("Application approved successfully.");
@@ -317,7 +314,7 @@ export default function AdminApplicationsPage() {
                       <td className="px-2 py-2">
                         <AdminActionMenu
                           actions={[
-                            { label: "View profile", onClick: () => setSelected(item) },
+                            { label: "View profile", onClick: () => router.push(`/admin/applications/${item.id}`) },
                             {
                               label: rowAction === "approve" ? "Approving..." : "Approve",
                               onClick: () => {
@@ -353,30 +350,6 @@ export default function AdminApplicationsPage() {
           </table>
         </div>
       </article>
-
-      <AdminDetailDrawer
-        open={Boolean(selected)}
-        title={selected ? `Application ${selected.applicationId}` : "Application Details"}
-        onClose={() => setSelected(null)}
-      >
-        {selected ? (
-          <div className="space-y-4 text-sm text-slate-700">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <p><span className="font-semibold text-slate-900">Name:</span> {selected.partnerName}</p>
-              <p><span className="font-semibold text-slate-900">Phone:</span> {selected.phone}</p>
-              <p><span className="font-semibold text-slate-900">Age:</span> {selected.age}</p>
-              <p><span className="font-semibold text-slate-900">Gender:</span> {selected.gender}</p>
-              <p><span className="font-semibold text-slate-900">Born City:</span> {selected.bornCity}</p>
-              <p><span className="font-semibold text-slate-900">KYC Status:</span> {selected.kycStatus}</p>
-            </div>
-            <p><span className="font-semibold text-slate-900">Languages Known:</span> {selected.languagesKnown.join(", ") || "-"}</p>
-            <p><span className="font-semibold text-slate-900">Services Offered:</span> {selected.servicesOffered.join(", ") || "-"}</p>
-            <p><span className="font-semibold text-slate-900">Tagline:</span> {selected.profileTagline}</p>
-            <p><span className="font-semibold text-slate-900">About Yourself:</span> {selected.aboutYourself}</p>
-            <p><span className="font-semibold text-slate-900">Status:</span> <AdminStatusBadge status={selected.status} /></p>
-          </div>
-        ) : null}
-      </AdminDetailDrawer>
     </section>
   );
 }

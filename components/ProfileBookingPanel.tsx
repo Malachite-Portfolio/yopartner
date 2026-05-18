@@ -6,6 +6,8 @@ import { BadgeCheck, CheckCircle2, HeartHandshake, MessageCircle, PhoneCall, Vid
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createBooking } from "@/lib/api/bookings";
+import { createSession } from "@/lib/api/sessions";
+import { USER_FIREBASE_TOKEN_KEY } from "@/lib/auth/firebasePhoneAuth";
 import { getWallet } from "@/lib/api/wallet";
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import type { ConnectCompanion } from "@/lib/data";
@@ -137,6 +139,31 @@ export function ProfileBookingPanel({
         }
 
         if (selectedType === "chat") {
+          const token =
+            typeof window !== "undefined"
+              ? window.localStorage.getItem(USER_FIREBASE_TOKEN_KEY)?.trim() || ""
+              : "";
+          if (!token) {
+            router.push(`/login?returnUrl=${encodeURIComponent(`/chat/${companion.id}`)}`);
+            return;
+          }
+          const sessionResponse = await createSession({
+            companionId: companion.id,
+            serviceType: "chat",
+            bookingId: response.data?.booking.id,
+          });
+          if (sessionResponse.error?.status === 401) {
+            if (typeof window !== "undefined") {
+              window.localStorage.removeItem(USER_FIREBASE_TOKEN_KEY);
+            }
+            router.push(`/login?returnUrl=${encodeURIComponent(`/chat/${companion.id}`)}`);
+            return;
+          }
+          const sessionId = sessionResponse.data?.id;
+          if (sessionId) {
+            router.push(`/chat/${sessionId}?companionId=${encodeURIComponent(companion.id)}`);
+            return;
+          }
           router.push(`/chat/${companion.id}`);
           return;
         }

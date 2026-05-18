@@ -19,11 +19,19 @@ import { CLIENT_DEMO_PHONE, isClientDemoEnabled, isClientDemoPartnerPhone, setCl
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { PARTNER_PHONE_KEY } from "@/lib/partnerAuth";
 
+const PARTNER_SESSION_EXPIRED_MESSAGE =
+  "Your login session could not be verified. Please login again as a partner.";
+
 export default function PartnerLoginPage() {
   const router = useRouter();
   const [phone, setPhone] = useState("");
   const [agreed, setAgreed] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(() => {
+    if (typeof window === "undefined") return "";
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("reason") !== "session-expired") return "";
+    return params.get("message") || PARTNER_SESSION_EXPIRED_MESSAGE;
+  });
   const [debugError, setDebugError] = useState<{ code: string; message: string } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const firebaseEnabled = isFirebaseOtpEnabled();

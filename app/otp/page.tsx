@@ -20,6 +20,22 @@ import { getDemoPhone, setDemoLoggedIn } from "@/lib/demoAuth";
 import { maskIndianPhoneNumber } from "@/lib/phoneMask";
 
 const OTP_LENGTH = 6;
+const POST_LOGIN_REDIRECT_KEY = "yopartner_post_login_redirect";
+
+function getPostLoginRedirect() {
+  if (typeof window === "undefined") return null;
+  const value = window.localStorage.getItem(POST_LOGIN_REDIRECT_KEY);
+  if (!value || !value.startsWith("/")) return null;
+  return value;
+}
+
+function consumePostLoginRedirect() {
+  const redirect = getPostLoginRedirect();
+  if (typeof window !== "undefined") {
+    window.localStorage.removeItem(POST_LOGIN_REDIRECT_KEY);
+  }
+  return redirect;
+}
 
 export default function OtpPage() {
   const router = useRouter();
@@ -99,7 +115,8 @@ export default function OtpPage() {
         setAuthMode("firebase");
         setMessage("Verification successful. Redirecting...");
         setTimeout(() => {
-          router.push("/connect-now");
+          const redirectTo = consumePostLoginRedirect() || "/connect-now";
+          router.push(redirectTo);
         }, 300);
       } catch (verifyError) {
         setError(mapFirebaseAuthError(verifyError));
@@ -114,7 +131,8 @@ export default function OtpPage() {
     setError("");
     setMessage("Verification successful. Redirecting...");
     setTimeout(() => {
-      router.push("/connect-now");
+      const redirectTo = consumePostLoginRedirect() || "/connect-now";
+      router.push(redirectTo);
     }, 400);
   };
 

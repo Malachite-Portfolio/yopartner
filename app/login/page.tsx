@@ -15,6 +15,8 @@ import {
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { setDemoPhone } from "@/lib/demoAuth";
 
+const POST_LOGIN_REDIRECT_KEY = "yopartner_post_login_redirect";
+
 export default function LoginPage() {
   const router = useRouter();
   const [phone, setPhone] = useState("");
@@ -46,6 +48,17 @@ export default function LoginPage() {
 
     const normalized = `+91${digits}`;
     setDemoPhone(normalized);
+    const returnUrl =
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).get("returnUrl")
+        : null;
+    if (typeof window !== "undefined") {
+      if (returnUrl && returnUrl.startsWith("/")) {
+        window.localStorage.setItem(POST_LOGIN_REDIRECT_KEY, returnUrl);
+      } else {
+        window.localStorage.removeItem(POST_LOGIN_REDIRECT_KEY);
+      }
+    }
 
     if (IS_PRODUCTION_READY_MODE && !firebaseEnabled) {
       setMessage("Firebase OTP is not configured. Please check Vercel environment variables.");

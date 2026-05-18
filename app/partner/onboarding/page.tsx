@@ -6,6 +6,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import {
+  PARTNER_FIREBASE_PHONE_KEY,
+  clearPartnerStoredFirebaseToken,
   getPartnerStoredFirebaseToken,
   setPartnerStoredFirebaseToken,
 } from "@/lib/auth/firebasePhoneAuth";
@@ -336,21 +338,34 @@ export default function PartnerOnboardingPage() {
         if (user) {
           try {
             const freshToken = await user.getIdToken(true);
+            if (process.env.NODE_ENV !== "production") {
+              const tokenResult = await user.getIdTokenResult();
+              const tokenAud = String(tokenResult.claims.aud ?? "");
+              const firebaseProject = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? "";
+              if (tokenAud && firebaseProject && tokenAud !== firebaseProject) {
+                console.warn("[partner onboarding] Firebase project mismatch detected", {
+                  tokenProject: tokenAud,
+                  frontendProject: firebaseProject,
+                });
+              }
+            }
             setPartnerStoredFirebaseToken(freshToken);
             hadTokenBeforeSubmit = true;
           } catch {
             hadTokenBeforeSubmit = Boolean(getPartnerStoredFirebaseToken());
             if (!hadTokenBeforeSubmit) {
-              setErrors({ base: "Please login again as a partner to submit your profile." });
+              setErrors({ base: "Your login session could not be verified. Please login again as a partner." });
               setIsSubmitting(false);
+              router.replace("/partner/login?reason=session-expired");
               return;
             }
           }
         } else {
           hadTokenBeforeSubmit = Boolean(getPartnerStoredFirebaseToken());
           if (!hadTokenBeforeSubmit) {
-            setErrors({ base: "Please login again as a partner to submit your profile." });
+            setErrors({ base: "Your login session could not be verified. Please login again as a partner." });
             setIsSubmitting(false);
+            router.replace("/partner/login?reason=session-expired");
             return;
           }
         }
@@ -358,16 +373,16 @@ export default function PartnerOnboardingPage() {
         const response = await submitPartnerApplication(payload);
         if (response.error) {
           if (response.error.status === 401) {
+            clearPartnerStoredFirebaseToken();
+            if (typeof window !== "undefined") {
+              window.localStorage.removeItem(PARTNER_FIREBASE_PHONE_KEY);
+            }
             if (process.env.NODE_ENV !== "production") {
               console.warn("[partner onboarding] submit returned 401", { hadTokenBeforeSubmit });
             }
-            const backendMessage = response.error.message?.trim();
-            if (backendMessage && backendMessage !== "Request failed.") {
-              setErrors({ base: `Submit failed (401): ${backendMessage}` });
-            } else {
-              setErrors({ base: "Your login session expired. Please login again as a partner." });
-            }
+            setErrors({ base: "Your login session could not be verified. Please login again as a partner." });
             setIsSubmitting(false);
+            router.replace("/partner/login?reason=session-expired");
             return;
           }
           const statusLabel = response.error.status ?? "ERR";

@@ -4,6 +4,8 @@ import { BadgeCheck, HeartHandshake, MessageCircle, Phone, ShieldCheck, Star, Vi
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
+import { USER_FIREBASE_TOKEN_KEY } from "@/lib/auth/firebasePhoneAuth";
+import { createSession } from "@/lib/api/sessions";
 import type { ConnectCompanion } from "@/lib/data";
 import { formatINRPrice } from "@/lib/priceFormat";
 
@@ -80,6 +82,41 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
   const hasHomeVisit = typeof visitPrice === "number" && visitPrice > 0;
   const profileUrl = `/connect-now/${companion.id}`;
 
+  const handleStartChat = async (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    const returnUrl = `/chat/${companion.id}`;
+    const token =
+      typeof window !== "undefined"
+        ? window.localStorage.getItem(USER_FIREBASE_TOKEN_KEY)?.trim() || ""
+        : "";
+
+    if (!token) {
+      router.push(`/login?returnUrl=${encodeURIComponent(returnUrl)}`);
+      return;
+    }
+
+    const sessionResponse = await createSession({
+      companionId: companion.id,
+      serviceType: "chat",
+    });
+
+    if (sessionResponse.error?.status === 401) {
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem(USER_FIREBASE_TOKEN_KEY);
+      }
+      router.push(`/login?returnUrl=${encodeURIComponent(returnUrl)}`);
+      return;
+    }
+
+    const sessionId = sessionResponse.data?.id;
+    if (sessionId) {
+      router.push(`/chat/${sessionId}?companionId=${encodeURIComponent(companion.id)}`);
+      return;
+    }
+
+    router.push(returnUrl);
+  };
+
   return (
     <article
       className="flex h-full cursor-pointer flex-col rounded-[28px] border border-[#dceae5] bg-white p-4 shadow-sm shadow-teal-900/5 transition hover:-translate-y-0.5 hover:border-[#0f766e]/35"
@@ -155,7 +192,19 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
       </div>
 
       <div className="mt-auto grid grid-cols-2 gap-2 pt-4">
-        <SupportAction href={`/chat/${companion.id}`} label="Start chat" price={chatPrice} icon={<MessageCircle size={15} />} />
+        <button
+          type="button"
+          onClick={handleStartChat}
+          className="flex min-h-[52px] items-center justify-between gap-2 rounded-2xl border border-[#dceae5] bg-white px-3 text-left text-sm font-semibold leading-tight text-slate-800 hover:border-[#0f766e]/40 hover:bg-[#eef8f5]"
+        >
+          <span className="inline-flex min-w-0 items-center gap-2">
+            <MessageCircle size={15} />
+            <span className="truncate">Start chat</span>
+          </span>
+          {typeof chatPrice === "number" ? (
+            <span className="shrink-0 text-xs font-semibold text-[#0f766e]">{formatINRPrice(chatPrice, "/min")}</span>
+          ) : null}
+        </button>
         <SupportAction href={`/call/audio/${companion.id}`} label="Audio call" price={voicePrice} icon={<Phone size={15} />} />
         {hasVideo ? (
           <SupportAction href={`/call/video/${companion.id}`} label="Video call" price={videoPrice} icon={<Video size={15} />} />

@@ -27,6 +27,10 @@ export async function updateAdminApplicationStatus(
   });
 }
 
+export async function getAdminApplicationById(id: string) {
+  return apiRequest<{ application: Record<string, unknown> }>(`/api/admin/applications/${id}`);
+}
+
 export const getAdminDashboard = () => adminGet<Record<string, unknown>>("/api/admin/dashboard");
 export const listApplications = () => adminGet<Record<string, unknown>>("/api/admin/applications");
 export const updateApplicationStatus = (payload: Record<string, unknown>) => adminUpdate("/api/admin/applications", payload);
