@@ -13,8 +13,8 @@ type PartnerTopbarProps = {
 
 const titleMap: Record<string, string> = {
   "/partner/dashboard": "Dashboard",
-  "/partner/chats": "Chats",
-  "/partner/bookings": "Bookings",
+  "/partner/chats": "Conversations",
+  "/partner/bookings": "Requests",
   "/partner/earnings": "Earnings",
   "/partner/profile": "Profile",
   "/partner/settings": "Settings",

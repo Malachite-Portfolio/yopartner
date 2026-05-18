@@ -61,7 +61,7 @@ export default function PartnerSettingsPage() {
     return (
       <section className="rounded-xl border border-amber-200 bg-amber-50 p-5">
         <h2 className="text-xl font-semibold text-amber-800">Partner settings are unavailable</h2>
-        <p className="mt-2 text-sm text-amber-700">Partner settings service is not connected yet.</p>
+        <p className="mt-2 text-sm text-amber-700">We couldn&apos;t load settings right now. Please retry.</p>
       </section>
     );
   }

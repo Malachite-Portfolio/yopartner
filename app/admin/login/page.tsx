@@ -71,8 +71,8 @@ export default function AdminLoginPage() {
         <div className="mb-6 text-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/images/logo.png" alt="YoPartner" className="mx-auto h-auto max-h-12 w-auto object-contain" />
-          <h1 className="mt-4 text-2xl font-semibold text-slate-900">Admin Login</h1>
-          <p className="mt-1 text-sm text-slate-600">Sign in with your admin ID and password.</p>
+          <h1 className="mt-4 text-2xl font-semibold text-slate-900">Admin Console</h1>
+          <p className="mt-1 text-sm text-slate-600">Sign in to manage partners, members, and safety reviews.</p>
         </div>
 
         <form className="space-y-4" onSubmit={handleLogin}>
@@ -102,7 +102,7 @@ export default function AdminLoginPage() {
 
           {isClientDemoEnabled() ? (
             <label className="block">
-              <p className="mb-1.5 text-sm font-medium text-slate-700">Client Demo PIN</p>
+              <p className="mb-1.5 text-sm font-medium text-slate-700">Demo PIN</p>
               <input
                 type="password"
                 value={pin}

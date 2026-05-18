@@ -14,7 +14,7 @@ export function FAQSection({ showHeading = true }: FAQSectionProps) {
   return (
     <section id="faqs" className="mx-auto w-full max-w-4xl px-4 py-16 sm:px-6 lg:px-8">
       {showHeading && (
-        <h2 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">FAQs</h2>
+        <h2 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">Common Questions</h2>
       )}
 
       <div className={`${showHeading ? "mt-8" : ""} space-y-3`}>

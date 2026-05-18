@@ -110,8 +110,8 @@ export default function PartnerLoginPage() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/images/logo.png" alt="YoPartner" className="h-auto max-h-11 w-auto object-contain" />
           </Link>
-          <h1 className="mt-4 text-2xl font-semibold text-slate-900">Partner Login</h1>
-          <p className="mt-1 text-sm text-slate-600">Enter your mobile number to continue.</p>
+          <h1 className="mt-4 text-2xl font-semibold text-slate-900">Welcome to YoPartner</h1>
+          <p className="mt-1 text-sm text-slate-600">Sign in securely to continue as a partner.</p>
         </div>
 
         <form className="space-y-4" onSubmit={handleContinue}>
@@ -171,9 +171,10 @@ export default function PartnerLoginPage() {
                 ? "Firebase OTP Required"
                 : "Demo OTP"}
           </p>
+          <p className="text-xs text-slate-500">Your number is used only for account verification.</p>
           {isDemoPhoneInput ? (
             <p className="inline-flex rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-semibold text-slate-600">
-              Client Demo OTP • {CLIENT_DEMO_PHONE}
+              Demo OTP enabled • {CLIENT_DEMO_PHONE}
             </p>
           ) : null}
           {firebaseEnabled ? (

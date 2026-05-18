@@ -21,8 +21,8 @@ type PartnerSidebarProps = {
 
 const links = [
   { label: "Dashboard", href: "/partner/dashboard", icon: LayoutDashboard },
-  { label: "Chats", href: "/partner/chats", icon: MessageCircle },
-  { label: "Bookings", href: "/partner/bookings", icon: CalendarCheck2 },
+  { label: "Conversations", href: "/partner/chats", icon: MessageCircle },
+  { label: "Requests", href: "/partner/bookings", icon: CalendarCheck2 },
   { label: "Earnings", href: "/partner/earnings", icon: CreditCard },
   { label: "Profile", href: "/partner/profile", icon: User },
   { label: "Settings", href: "/partner/settings", icon: Settings },

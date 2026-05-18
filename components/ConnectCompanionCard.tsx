@@ -15,7 +15,7 @@ function PricePill({
   price,
   variant,
 }: {
-  label: "chat" | "voice" | "video";
+  label: "Start chat" | "Audio call" | "Video call";
   price?: number;
   variant: "chat" | "voice" | "video";
 }) {
@@ -35,11 +35,13 @@ function PricePill({
           variant === "chat" ? "bg-[#FACC15]" : variant === "voice" ? "bg-[#2563EB]" : "bg-[#F472B6]"
         }`}
       >
-        {label === "chat" && <MessageCircle size={13} className="sm:h-4 sm:w-4" />}
-        {label === "voice" && <Phone size={13} className="sm:h-4 sm:w-4" />}
-        {label === "video" && <Video size={13} className="sm:h-4 sm:w-4" />}
+        {variant === "chat" && <MessageCircle size={13} className="sm:h-4 sm:w-4" />}
+        {variant === "voice" && <Phone size={13} className="sm:h-4 sm:w-4" />}
+        {variant === "video" && <Video size={13} className="sm:h-4 sm:w-4" />}
       </span>
-      <span className="text-sm font-semibold leading-none text-slate-900 sm:text-[15px]">{formatINRPrice(price, "/min")}</span>
+      <span className="text-sm font-semibold leading-none text-slate-900 sm:text-[15px]">
+        {label} • {formatINRPrice(price, "/min")}
+      </span>
     </span>
   );
 }
@@ -101,7 +103,7 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
             )}
           </div>
 
-          <p className="mt-1 truncate text-[15px] text-slate-600">{companion.tagline}</p>
+          <p className="mt-1 text-[15px] leading-6 text-slate-600">{companion.tagline}</p>
 
           <div className="mt-2 flex items-center gap-0.5 text-[#F5BF1B]">
             {Array.from({ length: 5 }).map((_, index) => (
@@ -109,6 +111,18 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
             ))}
             <span className="ml-1 text-[13px] font-semibold text-slate-900">{companion.rating.toFixed(1)}/5</span>
             <span className="text-[13px] text-slate-500">| {companion.experience}</span>
+          </div>
+
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-semibold text-slate-700">
+              Calm listener
+            </span>
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-semibold text-slate-700">
+              {companion.languages.slice(0, 2).join(" & ")}
+            </span>
+            <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700">
+              {companion.online ? "Available now" : "Available soon"}
+            </span>
           </div>
         </div>
       </div>
@@ -121,7 +135,7 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
           onKeyDown={(event) => event.stopPropagation()}
           aria-label={`Chat with ${companion.name}`}
         >
-          <PricePill label="chat" price={companion.chatPrice} variant="chat" />
+          <PricePill label="Start chat" price={companion.chatPrice} variant="chat" />
         </Link>
         <Link
           href={`/call/audio/${companion.id}`}
@@ -130,7 +144,7 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
           onKeyDown={(event) => event.stopPropagation()}
           aria-label={`Voice call ${companion.name}`}
         >
-          <PricePill label="voice" price={companion.voicePrice} variant="voice" />
+          <PricePill label="Audio call" price={companion.voicePrice} variant="voice" />
         </Link>
         {hasVideo && (
           <Link
@@ -140,7 +154,7 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
             onKeyDown={(event) => event.stopPropagation()}
             aria-label={`Video call ${companion.name}`}
           >
-            <PricePill label="video" price={companion.videoPrice as number} variant="video" />
+            <PricePill label="Video call" price={companion.videoPrice as number} variant="video" />
           </Link>
         )}
       </div>

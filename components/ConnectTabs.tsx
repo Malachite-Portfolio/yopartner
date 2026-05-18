@@ -35,7 +35,7 @@ export function ConnectTabs({ selectedTab, onTabChange, searchTerm, onSearchTerm
         <Search size={18} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
         <input
           type="text"
-          placeholder="Search"
+          placeholder="Search companions, styles, or categories"
           value={searchTerm}
           onChange={(event) => onSearchTermChange(event.target.value)}
           className="h-12 w-full rounded-[10px] border border-[#dfe5ec] bg-white pl-10 pr-3 text-[15px] outline-none transition focus:border-[#2563EB]"

@@ -90,8 +90,8 @@ export default function LoginPage() {
         <div className="text-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/images/logo.png" alt="YoPartner" className="mx-auto h-auto max-h-11 w-auto object-contain" />
-          <h1 className="mt-4 text-2xl font-semibold text-slate-900">Sign in to YoPartner</h1>
-          <p className="mt-1 text-sm text-slate-600">Enter your phone number to continue securely.</p>
+          <h1 className="mt-4 text-2xl font-semibold text-slate-900">Welcome to YoPartner</h1>
+          <p className="mt-1 text-sm text-slate-600">Sign in securely to continue.</p>
         </div>
 
         <div className="mt-6 space-y-4">
@@ -135,7 +135,7 @@ export default function LoginPage() {
             {isSubmitting ? "Sending OTP..." : "Continue"}
           </button>
 
-          <p className="text-xs text-slate-500">We&apos;ll send a one-time password to verify your number.</p>
+          <p className="text-xs text-slate-500">Your number is used only for account verification.</p>
 
           {message ? <p className="text-xs font-medium text-rose-600">{message}</p> : null}
           {showDebugDetails && debugError ? (

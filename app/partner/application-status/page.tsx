@@ -64,7 +64,7 @@ export default function PartnerApplicationStatusPage() {
       <div className="mx-auto w-full max-w-3xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
         <h1 className="text-2xl font-semibold text-slate-900">Profile submitted for review</h1>
         <p className="mt-2 text-sm text-slate-600">
-          Your YoPartner companion profile is under review. You&apos;ll be able to go online after KYC verification and admin approval.
+          Your profile is being reviewed by our safety team. You&apos;ll be able to start accepting requests after KYC verification and admin approval.
         </p>
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -96,12 +96,12 @@ export default function PartnerApplicationStatusPage() {
 
         {!isApproved && isUnderReview ? (
           <p className="mt-4 text-xs text-slate-500">
-            Your profile is still under review. You can go online after KYC verification and admin approval.
+            Your profile is still under review. Admin approval is required before you can accept requests.
           </p>
         ) : null}
 
         {demoEnabled && isDemoSession ? (
-          <p className="mt-4 text-xs text-slate-500">Client Demo mode can still show active dashboard preview.</p>
+          <p className="mt-4 text-xs text-slate-500">Demo mode can still show an active dashboard preview.</p>
         ) : null}
       </div>
     </section>

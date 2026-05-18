@@ -90,7 +90,7 @@ export default function AdminUsersPage() {
 
   return (
     <section className="space-y-4">
-      <h2 className="text-xl font-semibold text-slate-900">Users</h2>
+      <h2 className="text-xl font-semibold text-slate-900">Members</h2>
 
       <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <AdminTableToolbar
@@ -164,7 +164,7 @@ export default function AdminUsersPage() {
         </div>
       </article>
 
-      <AdminDetailDrawer open={Boolean(selected)} title={selected ? `${selected.name} Details` : "User Details"} onClose={() => setSelected(null)}>
+      <AdminDetailDrawer open={Boolean(selected)} title={selected ? `${selected.name} Details` : "Member Details"} onClose={() => setSelected(null)}>
         {selected ? (
           <div className="space-y-5 text-sm text-slate-700">
             <div className="space-y-2">

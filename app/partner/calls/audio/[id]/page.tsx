@@ -40,7 +40,7 @@ export default function PartnerAudioCallPage() {
       <PartnerGuard requireOnboarding>
         <section className="flex h-screen min-h-screen items-center justify-center bg-[#0f1f4d] px-4 py-6">
           <div className="w-full max-w-md rounded-2xl border border-amber-200/50 bg-amber-100/10 p-6 text-center text-white">
-            <p className="text-lg font-semibold">Calling service is not connected yet.</p>
+            <p className="text-lg font-semibold">Audio calling is temporarily unavailable. Please retry shortly.</p>
             <button
               type="button"
               onClick={() => router.push("/partner/dashboard")}

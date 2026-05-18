@@ -17,7 +17,7 @@ export type WalletTransaction = {
 export async function getWallet() {
   const result = await apiRequest<WalletData & { message?: string }>("/api/wallet");
   if (result.error) {
-    return { data: null, error: { ...result.error, message: "Wallet service is not connected yet." } };
+    return { data: null, error: { ...result.error, message: "We couldn't load wallet details right now. Please retry." } };
   }
   return { data: result.data, error: null };
 }
@@ -25,7 +25,7 @@ export async function getWallet() {
 export async function getWalletTransactions() {
   const result = await apiRequest<{ transactions: WalletTransaction[] }>("/api/wallet/transactions");
   if (result.error) {
-    return { data: [], error: { ...result.error, message: "Wallet service is not connected yet." } };
+    return { data: [], error: { ...result.error, message: "We couldn't load wallet details right now. Please retry." } };
   }
   return { data: result.data?.transactions ?? [], error: null };
 }
@@ -58,7 +58,7 @@ export async function createAdminCredit(payload: Record<string, unknown>) {
     body: JSON.stringify(payload),
   });
   if (result.error) {
-    return { data: null, error: { ...result.error, message: "Wallet service is not connected yet." } };
+    return { data: null, error: { ...result.error, message: "We couldn't complete this wallet operation right now. Please retry." } };
   }
   return result;
 }

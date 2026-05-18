@@ -28,7 +28,7 @@ const PROFILE_PREFERENCES_KEY = "yopartner_profile_preferences";
 
 const tabItems: Array<{ id: ProfileTab; label: string }> = [
   { id: "overview", label: "Overview" },
-  { id: "sessions", label: "Sessions" },
+  { id: "sessions", label: "Conversations" },
   { id: "preferences", label: "Preferences" },
 ];
 
@@ -41,7 +41,7 @@ const statCards = [
     iconTint: "from-[#2563eb] to-[#06b6d4]",
   },
   {
-    title: "Active Sessions",
+    title: "Active Conversations",
     value: "1",
     subtitle: "Across all devices",
     icon: Clock3,
@@ -212,7 +212,7 @@ export default function MyProfilePage() {
 
           {activeTab === "sessions" && (
             <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-              <h2 className="text-xl font-semibold text-slate-900">Active Sessions</h2>
+              <h2 className="text-xl font-semibold text-slate-900">Active Conversations</h2>
               <div className="mt-4 inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
                 1 Active
               </div>

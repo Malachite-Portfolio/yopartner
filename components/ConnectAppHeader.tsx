@@ -10,7 +10,7 @@ import { logoutUserAuthSession } from "@/lib/auth/logout";
 import { getDemoLoggedIn, subscribeDemoAuthUpdates } from "@/lib/demoAuth";
 
 const navItems = [
-  { label: "Connect Now", href: "/connect-now" },
+  { label: "Find a Companion", href: "/connect-now" },
   { label: "Home Visit", href: "/home-visit" },
   { label: "Media", href: "/media" },
   { label: "Client Diaries", href: "/client-diaries" },
@@ -141,7 +141,7 @@ export function ConnectAppHeader() {
                   className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-3 py-2 text-center text-sm font-medium text-slate-700"
                   onClick={() => setOpen(false)}
                 >
-                  Your Booking
+                  My Bookings
                 </Link>
                 <button
                   type="button"

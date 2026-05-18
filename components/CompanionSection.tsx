@@ -50,7 +50,7 @@ export function CompanionSection({ showHeader = true, note, variant = "classic" 
 
   return (
     <section id="companions" className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 lg:px-8">
-      {showHeader && <SectionHeader eyebrow="Our Companions" title="Meet your companions" />}
+      {showHeader && <SectionHeader eyebrow="Verified Companions" title="Find the right companion for your day" />}
 
       <div className="yp-hover-soft mt-8 rounded-2xl border border-line bg-surface p-4 shadow-[0_6px_18px_rgba(24,86,115,0.08)] sm:p-5">
         <div className="relative">

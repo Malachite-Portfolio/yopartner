@@ -168,7 +168,7 @@ export default function PartnerOtpPage() {
 
         <div className="text-center">
           <h1 className="text-2xl font-semibold text-slate-900">Verify your number</h1>
-          <p className="mt-1 text-sm text-slate-600">Enter the 6-digit code sent to your phone.</p>
+          <p className="mt-1 text-sm text-slate-600">Enter the secure 6-digit code sent to your phone.</p>
           <p className="mt-2 text-sm font-semibold text-slate-900">{maskIndianPhoneNumber(phone)}</p>
         </div>
 
@@ -210,7 +210,7 @@ export default function PartnerOtpPage() {
                 : "Demo OTP"}
         </p>
         {isClientDemoOtpFlow ? (
-          <p className="mt-1 text-xs font-medium text-slate-500">Preview Mode</p>
+          <p className="mt-1 text-xs font-medium text-slate-500">Demo login preview</p>
         ) : null}
         {IS_PRODUCTION_READY_MODE && firebaseEnabled && !pendingConfirmation && !isClientDemoOtpFlow ? (
           <p className="mt-1 text-xs font-medium text-rose-600">OTP session expired. Please request a new OTP.</p>

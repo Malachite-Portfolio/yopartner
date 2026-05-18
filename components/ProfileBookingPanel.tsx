@@ -73,9 +73,9 @@ export function ProfileBookingPanel({
   const router = useRouter();
   const options = useMemo<SessionOption[]>(
     () => [
-      { type: "chat", label: "Chat", icon: MessageCircle, unit: "/min", price: companion.chatPrice, badge: "CHAT" },
-      { type: "audio", label: "Audio", icon: PhoneCall, unit: "/min", price: companion.voicePrice, badge: "AUDIO" },
-      { type: "video", label: "Video", icon: Video, unit: "/min", price: companion.videoPrice ?? 20, badge: "VIDEO" },
+      { type: "chat", label: "Start chat", icon: MessageCircle, unit: "/min", price: companion.chatPrice, badge: "CHAT" },
+      { type: "audio", label: "Audio call", icon: PhoneCall, unit: "/min", price: companion.voicePrice, badge: "AUDIO" },
+      { type: "video", label: "Video call", icon: Video, unit: "/min", price: companion.videoPrice ?? 20, badge: "VIDEO" },
     ],
     [companion.chatPrice, companion.voicePrice, companion.videoPrice],
   );
@@ -115,7 +115,7 @@ export function ProfileBookingPanel({
           serviceType: selectedType,
         });
         if (response.error) {
-          setActionMessage("Session booking is not available yet.");
+          setActionMessage("Booking is temporarily unavailable. Please try again.");
           return;
         }
 
@@ -150,20 +150,18 @@ export function ProfileBookingPanel({
 
   const primaryActionLabel =
     selectedType === "chat"
-      ? "Start Chat"
+      ? "Start chat"
       : selectedType === "audio"
-        ? "Start Audio Call"
-        : "Start Video Call";
+        ? "Audio call"
+        : "Video call";
 
   return (
     <div className="space-y-3.5 lg:sticky lg:top-4">
       <section className="rounded-2xl border border-slate-200 bg-white p-5 text-slate-900 shadow-sm">
-        <p className="text-xs uppercase tracking-[0.18em] text-slate-500">
-          Chat
-        </p>
-        <h3 className="mt-1 text-xl font-semibold">Book your session</h3>
+        <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Book safely</p>
+        <h3 className="mt-1 text-xl font-semibold">Book your conversation</h3>
 
-        <p className="mt-3 text-sm font-semibold text-slate-700">Choose Session Type</p>
+        <p className="mt-3 text-sm font-semibold text-slate-700">Choose conversation type</p>
         <div className="mt-3 grid grid-cols-2 gap-2">
           {options.map((option) => (
             <SessionCard
@@ -191,7 +189,7 @@ export function ProfileBookingPanel({
         </div>
 
         <div className="mt-3.5 rounded-xl border border-rose-100 bg-white p-4 text-sm text-slate-900">
-          <p className="font-semibold">Wallet Balance</p>
+              <p className="font-semibold">Wallet balance</p>
           <p className="mt-1 text-[36px] font-semibold leading-none">{formatINR(walletBalance)}</p>
           <p className="mt-0.5 text-sm text-slate-600">available</p>
 
@@ -267,6 +265,7 @@ export function ProfileBookingPanel({
         </h4>
         <p className="mt-2 text-sm font-semibold text-slate-900">YoPartner Verified</p>
         <p className="text-xs text-slate-500">Member since November 2025</p>
+        <p className="mt-1 text-xs text-slate-500">Strictly platonic • No outside payments</p>
       </section>
     </div>
   );

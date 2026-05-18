@@ -20,14 +20,14 @@ export default function PartnerChatsPage() {
     return (
       <section className="rounded-xl border border-amber-200 bg-amber-50 p-5">
         <h2 className="text-xl font-semibold text-amber-800">Partner chats are unavailable</h2>
-        <p className="mt-2 text-sm text-amber-700">Partner chat service is not connected yet.</p>
+        <p className="mt-2 text-sm text-amber-700">We couldn&apos;t load partner conversations right now. Please retry.</p>
       </section>
     );
   }
 
   return (
     <section className="space-y-4">
-      <h2 className="text-xl font-semibold text-slate-900">Chats</h2>
+      <h2 className="text-xl font-semibold text-slate-900">Conversations</h2>
 
       <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <label className="relative block">
@@ -38,7 +38,7 @@ export default function PartnerChatsPage() {
           <input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search conversation..."
+            placeholder="Search by member or latest message..."
             className="h-10 w-full rounded-xl border border-slate-200 pl-9 pr-3 text-sm outline-none focus:border-[#2563eb]"
           />
         </label>
@@ -46,7 +46,7 @@ export default function PartnerChatsPage() {
         <div className="mt-4 space-y-2">
           {filteredChats.length === 0 ? (
             <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-600">
-              No partner chats found for your current search.
+              No conversations found for your current search.
             </div>
           ) : null}
           {filteredChats.map((chat) => (

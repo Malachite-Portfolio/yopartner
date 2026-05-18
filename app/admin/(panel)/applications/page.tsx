@@ -243,7 +243,7 @@ export default function AdminApplicationsPage() {
       <section className="space-y-4">
         <h2 className="text-xl font-semibold text-slate-900">Partner Applications</h2>
         <article className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600 shadow-sm">
-          Loading applications...
+          Loading partner applications...
         </article>
       </section>
     );
@@ -266,7 +266,7 @@ export default function AdminApplicationsPage() {
         <AdminTableToolbar
           searchValue={search}
           onSearchChange={setSearch}
-          searchPlaceholder="Search by application ID, name, phone or city..."
+          searchPlaceholder="Search by application ID, name, phone, or city..."
           filterValue={statusFilter}
           onFilterChange={(value) => setStatusFilter(value as "All" | AdminApplicationStatus)}
           filterOptions={statusFilterOptions}
@@ -277,7 +277,7 @@ export default function AdminApplicationsPage() {
             <thead className="text-xs uppercase text-slate-500">
               <tr>
                 <th className="px-2 py-2">Application ID</th>
-                <th className="px-2 py-2">Partner Name</th>
+                <th className="px-2 py-2">Name</th>
                 <th className="px-2 py-2">Phone</th>
                 <th className="px-2 py-2">Services</th>
                 <th className="px-2 py-2">KYC</th>
@@ -289,7 +289,7 @@ export default function AdminApplicationsPage() {
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-2 py-3 text-slate-500">No applications found.</td>
+                  <td colSpan={8} className="px-2 py-3 text-slate-500">No partner applications yet.</td>
                 </tr>
               ) : (
                 filtered.map((item) => {
@@ -311,7 +311,7 @@ export default function AdminApplicationsPage() {
                       <td className="px-2 py-2">
                         <AdminActionMenu
                           actions={[
-                            { label: "View", onClick: () => setSelected(item) },
+                            { label: "View Profile", onClick: () => setSelected(item) },
                             {
                               label: rowAction === "approve" ? "Approving..." : "Approve",
                               onClick: () => {
@@ -329,7 +329,7 @@ export default function AdminApplicationsPage() {
                               disabled: rowBusy || isRejected,
                             },
                             {
-                              label: rowAction === "needs_info" ? "Saving..." : "Needs Info",
+                              label: rowAction === "needs_info" ? "Saving..." : "Need Info",
                               onClick: () => {
                                 void handleNeedsInfo(item);
                               },

@@ -35,10 +35,10 @@ const initialRequests: IncomingRequest[] = [
 ];
 
 const activityItems = [
-  "New chat request received",
-  "Audio call completed",
-  "Wallet earning credited",
-  "Profile reviewed",
+  "New request received",
+  "Audio conversation completed",
+  "Earnings credited to wallet",
+  "Safety review checkpoint completed",
 ];
 
 function formatINR(value: number) {
@@ -119,8 +119,8 @@ export default function PartnerDashboardPage() {
           </h2>
           {demoEnabled && isDemoSession ? (
             <p className="mt-2 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">
-              <span>Client Demo</span>
-              <span className="text-slate-400">Preview Mode</span>
+              <span>Demo session</span>
+              <span className="text-slate-400">local preview</span>
             </p>
           ) : null}
           <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-600">
@@ -139,7 +139,7 @@ export default function PartnerDashboardPage() {
           </p>
           {!isApproved ? (
             <p className="mt-2 text-sm text-amber-700">
-              Your profile is under review. You can go online after KYC verification and admin approval.
+              Your profile is being reviewed by our safety team. You can start accepting requests after KYC verification and admin approval.
             </p>
           ) : null}
         </div>
@@ -149,7 +149,7 @@ export default function PartnerDashboardPage() {
           disabled={!isApproved}
           className="rounded-xl bg-[#2563eb] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#1d4ed8] disabled:cursor-not-allowed disabled:bg-slate-400"
         >
-          {isApproved ? (online ? "Go Offline" : "Go Online") : "Go Online"}
+          {isApproved ? (online ? "Pause requests" : "Start accepting requests") : "Start accepting requests"}
         </button>
       </div>
 
@@ -159,7 +159,7 @@ export default function PartnerDashboardPage() {
             ? [
                 ["Total Earnings", "₹4,850"],
                 ["Available Balance", "₹2,300"],
-                ["Completed Sessions", "28"],
+                ["Completed Conversations", "28"],
                 ["Rating", "5.0"],
                 ["Completed Chats", "3"],
                 ["Completed Audio Calls", "2"],
@@ -170,7 +170,7 @@ export default function PartnerDashboardPage() {
                 ["Audio Calls", "3"],
                 ["Video Calls", "2"],
                 ["Pending Bookings", "4"],
-                ["Earnings Today", "₹1,250"],
+                ["Today's Earnings", "₹1,250"],
                 ["Rating", "4.9"],
               ]
         ).map((item) => (
@@ -183,7 +183,7 @@ export default function PartnerDashboardPage() {
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
         <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h3 className="text-base font-semibold text-slate-900">Incoming Requests</h3>
+          <h3 className="text-base font-semibold text-slate-900">New requests</h3>
           <div className="mt-3 space-y-3">
             {requests.length === 0 ? (
               <p className="text-sm text-slate-500">No pending requests.</p>
@@ -204,7 +204,7 @@ export default function PartnerDashboardPage() {
                         disabled={!isApproved}
                         className="rounded-lg bg-[#1d4ed8] px-3 py-1.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-400"
                       >
-                        Accept
+                        Accept request
                       </button>
                       <button
                         type="button"
@@ -222,7 +222,7 @@ export default function PartnerDashboardPage() {
         </article>
 
         <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h3 className="text-base font-semibold text-slate-900">Active Sessions</h3>
+          <h3 className="text-base font-semibold text-slate-900">Ongoing conversations</h3>
           <div className="mt-3 space-y-2">
             {sessions.map((session) => (
               <div key={session.id} className="flex items-center justify-between rounded-lg border border-slate-200 p-2.5">
@@ -243,7 +243,7 @@ export default function PartnerDashboardPage() {
                   disabled={!isApproved}
                   className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-700 disabled:cursor-not-allowed disabled:text-slate-400"
                 >
-                  Join
+                  Join conversation
                 </button>
               </div>
             ))}

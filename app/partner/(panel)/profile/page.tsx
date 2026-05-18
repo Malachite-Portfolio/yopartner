@@ -15,7 +15,7 @@ export default function PartnerProfilePage() {
     return (
       <section className="rounded-xl border border-amber-200 bg-amber-50 p-5">
         <h2 className="text-xl font-semibold text-amber-800">Partner profile is unavailable</h2>
-        <p className="mt-2 text-sm text-amber-700">Partner profile service is not connected yet.</p>
+        <p className="mt-2 text-sm text-amber-700">We couldn&apos;t load profile management right now. Please retry.</p>
       </section>
     );
   }
@@ -54,7 +54,7 @@ export default function PartnerProfilePage() {
         <h2 className="text-xl font-semibold text-slate-900">Profile</h2>
         {demoEnabled && isDemoSession ? (
           <p className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">
-            Client Demo • Preview Mode
+            Demo session • local preview
           </p>
         ) : null}
         <Link

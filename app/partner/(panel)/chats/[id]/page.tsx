@@ -24,7 +24,7 @@ export default function PartnerChatDetailPage() {
     return (
       <section className="rounded-xl border border-amber-200 bg-amber-50 p-5">
         <h2 className="text-xl font-semibold text-amber-800">Partner chat is unavailable</h2>
-        <p className="mt-2 text-sm text-amber-700">Partner chat service is not connected yet.</p>
+        <p className="mt-2 text-sm text-amber-700">We couldn&apos;t load this conversation right now. Please retry.</p>
       </section>
     );
   }
@@ -49,7 +49,7 @@ export default function PartnerChatDetailPage() {
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
         <div>
           <p className="text-sm font-semibold text-slate-900">{userLabel}</p>
-          <p className="text-xs text-slate-500">Session type: Chat • Status: Active</p>
+          <p className="text-xs text-slate-500">Conversation type: Chat • Status: Active</p>
         </div>
         <div className="flex items-center gap-2">
           <button

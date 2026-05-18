@@ -12,7 +12,7 @@ export function ServicesSection({ showHeader = true }: ServicesSectionProps) {
       {showHeader && (
         <SectionHeader
           eyebrow="What We Offer"
-          title="Connection on your terms"
+          title="Companionship with trust at every step"
         />
       )}
       <div className={`${showHeader ? "mt-8" : ""} grid gap-4 md:grid-cols-2 xl:grid-cols-3`}>

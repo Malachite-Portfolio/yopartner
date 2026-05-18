@@ -111,7 +111,7 @@ export function ChatScreen({ companion }: { companion: CompanionRouteProfile }) 
       <section className="flex h-screen min-h-screen w-full items-center justify-center bg-[#f2f7fb] p-4">
         <div className="w-full max-w-md rounded-2xl border border-amber-200 bg-amber-50 p-6 text-center">
           <p className="text-base font-semibold text-amber-800">
-            Chat service is not connected yet.
+            Chat is temporarily unavailable. Please try again in a moment.
           </p>
           <button
             type="button"

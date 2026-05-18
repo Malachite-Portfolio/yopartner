@@ -125,7 +125,7 @@ export default function OtpPage() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/images/logo.png" alt="YoPartner" className="mx-auto h-auto max-h-11 w-auto object-contain" />
           <h1 className="mt-4 text-2xl font-semibold text-slate-900">Verify your number</h1>
-          <p className="mt-1 text-sm text-slate-600">Enter the 6-digit code sent to your phone.</p>
+          <p className="mt-1 text-sm text-slate-600">Enter the secure 6-digit code sent to your phone.</p>
           <p className="mt-2 text-sm font-semibold text-slate-900">{maskIndianPhoneNumber(phone)}</p>
         </div>
 

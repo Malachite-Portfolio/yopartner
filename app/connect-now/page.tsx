@@ -138,6 +138,9 @@ export default function ConnectNowPage() {
               <p className="mt-1">
                 Verified in-person companionship for everyday support. Available only after verification and platform approval.
               </p>
+              <p className="mt-1 text-xs text-slate-500">
+                Strictly platonic • Platform-protected payments • Respectful communication only
+              </p>
               <Link href="/home-visit" className="mt-2 inline-flex text-sm font-semibold text-[#2563eb]">
                 Explore Home Visit
               </Link>
@@ -151,8 +154,8 @@ export default function ConnectNowPage() {
 
             {isPreviewMode ? (
               <p className="mt-4 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">
-                <span>Client Demo</span>
-                <span className="text-slate-400">Preview Mode</span>
+                <span>Demo Mode Enabled</span>
+                <span className="text-slate-400">API fallback preview</span>
               </p>
             ) : null}
 

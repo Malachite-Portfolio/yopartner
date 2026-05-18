@@ -54,7 +54,7 @@ export default function AdminSessionsPage() {
   return (
     <section className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-xl font-semibold text-slate-900">Sessions Monitor</h2>
+        <h2 className="text-xl font-semibold text-slate-900">Conversations Monitor</h2>
         <button
           type="button"
           onClick={() => alert("Demo export only. CSV export will be wired after backend integration.")}

@@ -202,7 +202,9 @@ export default function WalletPage() {
           setIsDemoWalletPreview(true);
           return;
         }
-        if (walletResponse.error || transactionResponse.error) setApiError("Wallet service is not connected yet.");
+        if (walletResponse.error || transactionResponse.error) {
+          setApiError("We couldn't load wallet details right now. Please retry.");
+        }
       })();
       return () => undefined;
     }
@@ -302,7 +304,7 @@ export default function WalletPage() {
             <div>
               <h1 className="text-3xl font-semibold text-slate-900">Wallet</h1>
               <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-600 sm:text-base">
-                View your balance, review transactions, and recharge securely.
+                Platform-protected payments for your conversations with verified companions.
               </p>
               {isDemoWalletPreview ? (
                 <p className="mt-2 text-xs font-semibold text-slate-500">Demo wallet for preview</p>
@@ -347,7 +349,9 @@ export default function WalletPage() {
                         setSuccessMessage("Demo wallet loaded.");
                         return;
                       }
-                      if (walletResponse.error || txResponse.error) setApiError("Wallet service is not connected yet.");
+                      if (walletResponse.error || txResponse.error) {
+                        setApiError("We couldn't load wallet details right now. Please retry.");
+                      }
                       setSuccessMessage("Wallet summary refreshed.");
                     })();
                     return;

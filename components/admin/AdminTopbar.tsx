@@ -9,15 +9,15 @@ type AdminTopbarProps = {
 
 const titleByPath: Record<string, string> = {
   "/admin": "Dashboard",
-  "/admin/applications": "Applications",
-  "/admin/companions": "Companions",
-  "/admin/users": "Users",
-  "/admin/sessions": "Sessions",
+  "/admin/applications": "Partner Applications",
+  "/admin/companions": "Partners",
+  "/admin/users": "Members",
+  "/admin/sessions": "Conversations",
   "/admin/bookings": "Bookings",
-  "/admin/wallet": "Wallet",
+  "/admin/wallet": "Wallet Ops",
   "/admin/payouts": "Payouts",
   "/admin/reviews": "Reviews",
-  "/admin/verification": "Verification",
+  "/admin/verification": "KYC Review",
   "/admin/support": "Support",
   "/admin/media": "Media",
   "/admin/client-diaries": "Client Diaries",
@@ -26,7 +26,7 @@ const titleByPath: Record<string, string> = {
 };
 
 function getTitle(pathname: string) {
-  return titleByPath[pathname] ?? "Admin Panel";
+  return titleByPath[pathname] ?? "Admin Console";
 }
 
 export function AdminTopbar({ onMenuOpen }: AdminTopbarProps) {
@@ -51,7 +51,7 @@ export function AdminTopbar({ onMenuOpen }: AdminTopbarProps) {
           <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            placeholder="Search admin..."
+            placeholder="Search records..."
             className="h-10 w-[220px] rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 text-sm text-slate-700 outline-none focus:border-[#2563eb]"
           />
         </label>

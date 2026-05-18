@@ -172,7 +172,7 @@ export const stats: Stat[] = [
 
 export const processSteps: ProcessStep[] = [
   {
-    title: "Browse Companions",
+    title: "Find a Companion",
     description:
       "Explore verified profiles by city, availability, and conversation style.",
     icon: "search",

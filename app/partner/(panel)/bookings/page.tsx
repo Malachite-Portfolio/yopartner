@@ -41,7 +41,7 @@ export default function PartnerBookingsPage() {
     return (
       <section className="rounded-xl border border-amber-200 bg-amber-50 p-5">
         <h2 className="text-xl font-semibold text-amber-800">Partner bookings are unavailable</h2>
-        <p className="mt-2 text-sm text-amber-700">Partner booking service is not connected yet.</p>
+        <p className="mt-2 text-sm text-amber-700">We couldn&apos;t load booking operations right now. Please retry.</p>
       </section>
     );
   }
@@ -49,10 +49,10 @@ export default function PartnerBookingsPage() {
   return (
     <section className="space-y-4">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-xl font-semibold text-slate-900">Bookings</h2>
+        <h2 className="text-xl font-semibold text-slate-900">Conversations</h2>
         {demoEnabled && isDemoSession ? (
           <p className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">
-            Client Demo • Preview Mode
+            Demo session • local preview
           </p>
         ) : null}
       </div>
@@ -78,7 +78,7 @@ export default function PartnerBookingsPage() {
               <tr>
                 <th className="px-2 py-2">Booking ID</th>
                 <th className="px-2 py-2">User</th>
-                <th className="px-2 py-2">Type</th>
+                <th className="px-2 py-2">Conversation</th>
                 <th className="px-2 py-2">Date</th>
                 <th className="px-2 py-2">Price</th>
                 <th className="px-2 py-2">Status</th>

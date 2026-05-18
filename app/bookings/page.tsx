@@ -28,7 +28,7 @@ export default function BookingsPage() {
       void (async () => {
         const response = await getMyBookings();
         if (response.error) {
-          setApiError("Booking service is not connected yet.");
+          setApiError("We couldn't load your bookings right now. Please retry.");
           setBookings([]);
           return;
         }
@@ -64,7 +64,7 @@ export default function BookingsPage() {
       void (async () => {
         const response = await getMyBookings();
         if (response.error) {
-          setApiError("Booking service is not connected yet.");
+          setApiError("We couldn't load your bookings right now. Please retry.");
           setBookings([]);
         } else {
           const mapped: DemoBooking[] = response.data.map((item) => ({
@@ -119,8 +119,8 @@ export default function BookingsPage() {
               <ShieldCheck size={14} />
               User
             </p>
-            <h1 className="mt-3 text-3xl font-semibold text-slate-900 sm:text-4xl">My Appointments</h1>
-            <p className="mt-2 text-sm text-slate-600 sm:text-base">Track your scheduled consultations</p>
+            <h1 className="mt-3 text-3xl font-semibold text-slate-900 sm:text-4xl">My Conversations</h1>
+            <p className="mt-2 text-sm text-slate-600 sm:text-base">Track your confirmed and upcoming companion sessions</p>
           </div>
 
           <button
@@ -208,7 +208,7 @@ export default function BookingsPage() {
             <span className="mx-auto inline-flex h-20 w-20 items-center justify-center rounded-full bg-slate-100 text-slate-400">
               <CalendarDays size={36} />
             </span>
-            <h2 className="mt-5 text-2xl font-semibold text-slate-900">No Appointments</h2>
+            <h2 className="mt-5 text-2xl font-semibold text-slate-900">No conversations yet</h2>
             <p className="mt-2 text-sm text-slate-500 sm:text-base">
               No bookings found.
             </p>

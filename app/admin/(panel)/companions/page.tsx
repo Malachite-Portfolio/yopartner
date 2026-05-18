@@ -137,7 +137,7 @@ export default function AdminCompanionsPage() {
 
   return (
     <section className="space-y-4">
-      <h2 className="text-xl font-semibold text-slate-900">Companions</h2>
+      <h2 className="text-xl font-semibold text-slate-900">Partners</h2>
 
       <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <AdminTableToolbar

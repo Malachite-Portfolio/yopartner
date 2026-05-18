@@ -2,9 +2,9 @@
 import Link from "next/link";
 
 const trustHighlights = [
-  "Verified companion profiles",
-  "Transparent pricing",
-  "Private and secure sessions",
+  "Verified profiles",
+  "Secure payments",
+  "Respectful conversations",
 ];
 
 export function HeroSection() {
@@ -20,15 +20,15 @@ export function HeroSection() {
             Talk to a verified companion when you need someone to listen.
           </h1>
           <p className="mt-4 max-w-xl text-base leading-7 text-slate-600 sm:text-lg">
-            YoPartner helps you connect with trusted companions for thoughtful conversations in a calm, strictly platonic
-            environment.
+            Safe, respectful, strictly platonic support with verified companions across chat, audio, video, and
+            safety-reviewed Home Visit.
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
             <Link
               href="/connect-now"
               className="rounded-full bg-[#2563eb] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#1d4ed8]"
             >
-              Browse Companions
+              Find a Companion
             </Link>
             <Link
               href="/support"

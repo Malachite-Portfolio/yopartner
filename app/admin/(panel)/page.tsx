@@ -348,10 +348,10 @@ export default function AdminDashboardPage() {
   }, [isDemoPreview]);
 
   const metricCards = [
-    { label: "Total Users", value: stats.totalUsers.toLocaleString("en-IN"), icon: Users, tone: "blue" as const },
-    { label: "Active Companions", value: String(stats.activeCompanions), icon: BadgeCheck, tone: "teal" as const },
+    { label: "Total Members", value: stats.totalUsers.toLocaleString("en-IN"), icon: Users, tone: "blue" as const },
+    { label: "Active Partners", value: String(stats.activeCompanions), icon: BadgeCheck, tone: "teal" as const },
     { label: "Pending Applications", value: String(stats.pendingApplications), icon: Activity, tone: "amber" as const },
-    { label: "Live Sessions", value: String(stats.liveSessions), icon: MessageCircle, tone: "purple" as const },
+    { label: "Live Conversations", value: String(stats.liveSessions), icon: MessageCircle, tone: "purple" as const },
     { label: "Total Bookings", value: String(stats.totalBookings), icon: Phone, tone: "slate" as const },
     { label: "Wallet Volume", value: formatINR(stats.walletVolume), icon: Wallet, tone: "teal" as const },
     { label: "Pending Payouts", value: String(stats.pendingPayouts), icon: CreditCard, tone: "amber" as const },
@@ -378,7 +378,7 @@ export default function AdminDashboardPage() {
   if (loading) {
     return (
       <section className="space-y-4">
-        <h2 className="text-xl font-semibold text-slate-900">Admin Dashboard</h2>
+        <h2 className="text-xl font-semibold text-slate-900">Operations Dashboard</h2>
         <article className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600 shadow-sm">
           Loading admin data...
         </article>
@@ -402,7 +402,7 @@ export default function AdminDashboardPage() {
 
       <div className="grid gap-6 xl:grid-cols-2">
         <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h2 className="text-base font-semibold text-slate-900">Live Sessions Monitor</h2>
+          <h2 className="text-base font-semibold text-slate-900">Live Conversations Monitor</h2>
           <div className="mt-3 overflow-x-auto">
             <table className="min-w-full text-left text-sm">
               <thead className="text-xs uppercase text-slate-500">
@@ -417,7 +417,7 @@ export default function AdminDashboardPage() {
               <tbody>
                 {liveSessions.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-2 py-3 text-slate-500">No live sessions.</td>
+                    <td colSpan={5} className="px-2 py-3 text-slate-500">No live conversations right now.</td>
                   </tr>
                 ) : (
                   liveSessions.map((item) => (
@@ -451,7 +451,7 @@ export default function AdminDashboardPage() {
               <tbody>
                 {pendingApplications.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-2 py-3 text-slate-500">No pending applications.</td>
+                    <td colSpan={5} className="px-2 py-3 text-slate-500">No partner applications yet.</td>
                   </tr>
                 ) : (
                   pendingApplications.map((item) => (
