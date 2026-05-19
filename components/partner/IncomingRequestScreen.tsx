@@ -1,6 +1,6 @@
 "use client";
 
-import { PhoneCall, PhoneOff } from "lucide-react";
+import { MessageCircle, PhoneCall, PhoneOff } from "lucide-react";
 import { useEffect, useMemo } from "react";
 import type { PartnerIncomingRequest } from "@/lib/api/partner";
 
@@ -16,7 +16,7 @@ type IncomingRequestScreenProps = {
 function toRequestTitle(type: PartnerIncomingRequest["type"]) {
   if (type === "AUDIO") return "Incoming audio call";
   if (type === "VIDEO") return "Incoming video call";
-  return "Incoming chat request";
+  return "New chat request";
 }
 
 function toServiceLabel(type: PartnerIncomingRequest["type"]) {
@@ -52,10 +52,12 @@ export function IncomingRequestScreen({
   const memberLabel = useMemo(() => maskMemberLabel(request?.memberLabel ?? ""), [request?.memberLabel]);
   const serviceLabel = request ? toServiceLabel(request.type) : "";
   const title = request ? toRequestTitle(request.type) : "";
+  const isChat = request?.type === "CHAT";
   const initials = memberLabel.slice(-2).toUpperCase();
 
   useEffect(() => {
     if (!open) return;
+    if (request?.type === "CHAT") return;
     const audio = new Audio("/sounds/incoming-request.mp3");
     audio.loop = true;
     audio.preload = "none";
@@ -64,21 +66,27 @@ export function IncomingRequestScreen({
       audio.pause();
       audio.currentTime = 0;
     };
-  }, [open]);
+  }, [open, request?.type]);
 
   if (!open || !request) return null;
 
   return (
-    <div className="fixed inset-0 z-[70] flex min-h-screen items-center justify-center bg-gradient-to-b from-[#041a1d] via-[#06393d] to-[#021114] px-5 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))] text-white">
+    <div className={`fixed inset-0 z-[70] flex min-h-screen items-center justify-center px-5 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))] text-white ${
+      isChat
+        ? "bg-gradient-to-b from-[#0b3f44] via-[#0d666d] to-[#0a5358]"
+        : "bg-gradient-to-b from-[#041a1d] via-[#06393d] to-[#021114]"
+    }`}>
       <div className="mx-auto w-full max-w-md text-center">
         <p className="text-sm font-semibold uppercase tracking-[0.18em] text-teal-100/85">{title}</p>
-        <p className="mt-2 text-sm text-teal-100/80">A member wants to talk with you</p>
+        <p className="mt-2 text-sm text-teal-100/80">
+          {isChat ? "A member would like to start a conversation." : "A member wants to talk with you"}
+        </p>
 
         <div className="relative mx-auto mt-8 h-[126px] w-[126px]">
-          <span className="absolute inset-0 rounded-full bg-emerald-400/20 animate-ping" />
+          <span className={`absolute inset-0 rounded-full ${isChat ? "bg-cyan-200/20" : "bg-emerald-400/20 animate-ping"}`} />
           <span className="absolute inset-[10px] rounded-full border border-emerald-200/60" />
           <span className="absolute inset-[20px] inline-flex items-center justify-center rounded-full bg-white/15 text-2xl font-semibold">
-            {initials}
+            {isChat ? <MessageCircle size={34} /> : initials}
           </span>
         </div>
 
@@ -111,9 +119,11 @@ export function IncomingRequestScreen({
               disabled={accepting || declining}
               className="inline-flex h-[76px] w-[76px] items-center justify-center rounded-full bg-emerald-500 text-white shadow-lg shadow-emerald-900/35 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              <PhoneCall size={30} />
+              {isChat ? <MessageCircle size={30} /> : <PhoneCall size={30} />}
             </button>
-            <span className="text-sm font-medium text-emerald-100">{accepting ? "Connecting..." : "Accept"}</span>
+            <span className="text-sm font-medium text-emerald-100">
+              {accepting ? "Connecting..." : isChat ? "Accept chat" : "Accept call"}
+            </span>
           </div>
         </div>
       </div>

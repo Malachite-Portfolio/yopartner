@@ -1,13 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { ChatScreen } from "@/components/chat/ChatScreen";
+import { ChatScreen, type ChatScreenMessage } from "@/components/chat/ChatScreen";
 import {
   cancelSession,
   createSession,
   getSessionById,
+  getSessionMessages,
+  sendSessionMessage,
   type SessionRecord,
+  type SessionMessageRecord,
 } from "@/lib/api/sessions";
 import { USER_FIREBASE_TOKEN_KEY } from "@/lib/auth/firebasePhoneAuth";
 import {
@@ -25,6 +28,18 @@ function toLoginUrl(returnUrl: string) {
   return `/login?returnUrl=${encodeURIComponent(returnUrl)}`;
 }
 
+function toScreenMessages(messages: SessionMessageRecord[], selfUserId: string): ChatScreenMessage[] {
+  return messages.map((message) => ({
+    id: message.id,
+    sender: message.senderUserId === selfUserId ? "self" : "other",
+    text: message.body,
+    timestamp: new Date(message.createdAt).toLocaleTimeString("en-IN", {
+      hour: "2-digit",
+      minute: "2-digit",
+    }),
+  }));
+}
+
 export default function ChatPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
@@ -36,11 +51,24 @@ export default function ChatPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const [isCancelling, setIsCancelling] = useState(false);
+  const [messageInput, setMessageInput] = useState("");
+  const [messages, setMessages] = useState<SessionMessageRecord[]>([]);
+  const [messageError, setMessageError] = useState("");
 
   const currentPath = useMemo(() => {
     const query = searchParams.toString();
     return query ? `/chat/${routeId}?${query}` : `/chat/${routeId}`;
   }, [routeId, searchParams]);
+
+  const refreshMessages = useCallback(async (sessionId: string) => {
+    const response = await getSessionMessages(sessionId);
+    if (response.error) {
+      setMessageError(response.error.message || "Unable to load messages right now.");
+      return;
+    }
+    setMessages(response.data);
+    setMessageError("");
+  }, []);
 
   useEffect(() => {
     if (!routeId) return;
@@ -71,7 +99,7 @@ export default function ChatPage() {
         const resolvedCompanion = await resolveCompanionRouteProfile(fetched.data.companionId);
         if (!active) return;
         if (!resolvedCompanion) {
-          setErrorMessage("Your chat session is being prepared. Please try again shortly.");
+          setErrorMessage("Unable to open this chat right now. Please try again from the companion profile.");
           setCompanion(null);
           setIsLoading(false);
           return;
@@ -131,15 +159,29 @@ export default function ChatPage() {
   }, [currentPath, preferredCompanionId, routeId, router]);
 
   useEffect(() => {
-    if (!session?.id || session.status !== "PENDING") return;
+    if (!session?.id) return;
     const timer = window.setInterval(async () => {
       const latest = await getSessionById(session.id);
       if (latest.data) setSession(latest.data);
-    }, 4000);
+    }, session.status === "PENDING" ? 4000 : 5000);
     return () => {
       window.clearInterval(timer);
     };
   }, [session?.id, session?.status]);
+
+  useEffect(() => {
+    if (!session?.id || session.status !== "LIVE") return;
+    const loadNow = window.setTimeout(() => {
+      void refreshMessages(session.id);
+    }, 0);
+    const timer = window.setInterval(() => {
+      void refreshMessages(session.id);
+    }, 2000);
+    return () => {
+      window.clearTimeout(loadNow);
+      window.clearInterval(timer);
+    };
+  }, [refreshMessages, session?.id, session?.status]);
 
   const handleCancelPending = async () => {
     if (!session?.id || isCancelling) return;
@@ -151,6 +193,32 @@ export default function ChatPage() {
       return;
     }
     setErrorMessage(response.error?.message || "Unable to cancel this request right now.");
+  };
+
+  const handleSendMessage = async () => {
+    if (!session?.id || session.status !== "LIVE") return;
+    const body = messageInput.trim();
+    if (!body) return;
+    setMessageInput("");
+
+    const optimistic: SessionMessageRecord = {
+      id: `temp-${Date.now()}`,
+      sessionId: session.id,
+      senderUserId: session.userId ?? "",
+      body,
+      createdAt: new Date().toISOString(),
+    };
+    setMessages((current) => [...current, optimistic]);
+
+    const response = await sendSessionMessage(session.id, body);
+    if (!response.data) {
+      setMessageError(response.error?.message || "Unable to send message.");
+      setMessages((current) => current.filter((item) => item.id !== optimistic.id));
+      return;
+    }
+    const createdMessage = response.data;
+    setMessageError("");
+    setMessages((current) => [...current.filter((item) => item.id !== optimistic.id), createdMessage]);
   };
 
   if (isLoading) {
@@ -224,7 +292,7 @@ export default function ChatPage() {
         <div className="w-full max-w-md rounded-2xl border border-[#dceae5] bg-white p-6 text-center">
           <p className="text-sm font-semibold text-slate-900">
             {session.status === "FAILED"
-              ? "Your chat request was declined."
+              ? "Partner declined this chat request."
               : session.status === "COMPLETED"
                 ? "This chat session has ended."
                 : "This chat session is not active right now."}
@@ -241,13 +309,26 @@ export default function ChatPage() {
     );
   }
 
+  const screenMessages = toScreenMessages(messages, session.userId ?? "");
+
   return (
     <main className="h-screen overflow-hidden bg-[#eef3f8]">
+      {messageError ? (
+        <div className="absolute left-1/2 top-3 z-50 -translate-x-1/2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          {messageError}
+        </div>
+      ) : null}
       <ChatScreen
-        key={`${companion.id}-${session.id}`}
         companion={companion}
-        composerDisabled
-        disabledMessage="Messaging connection is being prepared."
+        messages={screenMessages}
+        input={messageInput}
+        onInputChange={setMessageInput}
+        onSend={() => {
+          void handleSendMessage();
+        }}
+        onOpenAudio={() => router.push(`/call/audio/${session.id}?companionId=${encodeURIComponent(companion.id)}`)}
+        onOpenVideo={() => router.push(`/call/video/${session.id}?companionId=${encodeURIComponent(companion.id)}`)}
+        composerDisabled={false}
       />
     </main>
   );

@@ -246,7 +246,7 @@ export default function PartnerDashboardPage() {
     setRequestAction(null);
 
     if (response.error) {
-      setRequestMessage("Request handling is being connected.");
+      setRequestMessage(response.error.message || "Unable to accept request right now.");
       return;
     }
 
@@ -268,7 +268,7 @@ export default function PartnerDashboardPage() {
     const response = await declinePartnerRequest(overlayRequest.id);
     setRequestAction(null);
     if (response.error) {
-      setRequestMessage("Request handling is being connected.");
+      setRequestMessage(response.error.message || "Unable to decline request right now.");
       return;
     }
     setPendingRequests((current) => current.filter((item) => item.id !== overlayRequest.id));

@@ -1,41 +1,28 @@
 "use client";
 
 import { ArrowLeft, Paperclip, Phone, SendHorizontal, Video } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { CompanionRouteProfile } from "@/lib/companionRoutes";
 
-type ChatMessage = {
+export type ChatScreenMessage = {
   id: string;
-  sender: "user" | "companion";
+  sender: "self" | "other";
   text: string;
   timestamp: string;
 };
 
-const seedMessages: ChatMessage[] = [];
-
-function getStoredMessages(storageKey: string) {
-  if (typeof window === "undefined") return seedMessages;
-  const raw = window.localStorage.getItem(storageKey);
-  if (!raw) return seedMessages;
-
-  try {
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return seedMessages;
-
-    const safeMessages = parsed.filter((item) => item && typeof item.text === "string");
-    if (safeMessages.length === 0) return seedMessages;
-
-    return safeMessages.map((item, index) => ({
-      id: String(item.id ?? `${Date.now()}-${index}`),
-      sender: item.sender === "user" ? "user" : "companion",
-      text: String(item.text),
-      timestamp: String(item.timestamp ?? ""),
-    })) as ChatMessage[];
-  } catch {
-    return seedMessages;
-  }
-}
+type ChatScreenProps = {
+  companion: CompanionRouteProfile;
+  messages: ChatScreenMessage[];
+  input: string;
+  onInputChange: (next: string) => void;
+  onSend: () => void;
+  onOpenAudio: () => void;
+  onOpenVideo: () => void;
+  composerDisabled?: boolean;
+  disabledMessage?: string;
+  emptyMessage?: string;
+};
 
 function getInitials(name: string) {
   return name
@@ -48,43 +35,17 @@ function getInitials(name: string) {
 
 export function ChatScreen({
   companion,
+  messages,
+  input,
+  onInputChange,
+  onSend,
+  onOpenAudio,
+  onOpenVideo,
   composerDisabled = false,
   disabledMessage = "",
-}: {
-  companion: CompanionRouteProfile;
-  composerDisabled?: boolean;
-  disabledMessage?: string;
-}) {
+  emptyMessage = "No messages yet. Say hello when you're ready.",
+}: ChatScreenProps) {
   const router = useRouter();
-  const storageKey = useMemo(() => `yp_chat_${companion.id}`, [companion.id]);
-  const [messages, setMessages] = useState<ChatMessage[]>(() => getStoredMessages(storageKey));
-  const [input, setInput] = useState("");
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(storageKey, JSON.stringify(messages));
-  }, [messages, storageKey]);
-
-  const handleSend = () => {
-    const next = input.trim();
-    if (!next) return;
-
-    const timestamp = new Date().toLocaleTimeString("en-IN", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
-    setMessages((current) => [
-      ...current,
-      {
-        id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-        sender: "user",
-        text: next,
-        timestamp,
-      },
-    ]);
-    setInput("");
-  };
 
   const handleBack = () => {
     if (typeof window !== "undefined" && window.history.length > 1) {
@@ -126,7 +87,7 @@ export function ChatScreen({
           <button
             type="button"
             aria-label="Start audio call"
-            onClick={() => router.push(`/call/audio/${companion.id}`)}
+            onClick={onOpenAudio}
             className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-700 transition hover:bg-slate-50"
           >
             <Phone size={17} />
@@ -134,7 +95,7 @@ export function ChatScreen({
           <button
             type="button"
             aria-label="Start video call"
-            onClick={() => router.push(`/call/video/${companion.id}`)}
+            onClick={onOpenVideo}
             className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-700 transition hover:bg-slate-50"
           >
             <Video size={17} />
@@ -144,11 +105,14 @@ export function ChatScreen({
 
       <div className="flex min-h-0 flex-1 flex-col">
         <div className="flex-1 space-y-3 overflow-y-auto px-3 py-4 sm:px-5 sm:py-5">
+          {messages.length === 0 ? (
+            <p className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">{emptyMessage}</p>
+          ) : null}
           {messages.map((message) => (
-            <div key={message.id} className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}>
+            <div key={message.id} className={`flex ${message.sender === "self" ? "justify-end" : "justify-start"}`}>
               <div
                 className={`max-w-[82%] rounded-2xl px-3 py-2.5 shadow-sm sm:max-w-[70%] ${
-                  message.sender === "user"
+                  message.sender === "self"
                     ? "rounded-br-md bg-gradient-to-r from-[#2563eb] to-[#0ea5a6] text-white"
                     : "rounded-bl-md bg-white text-slate-800"
                 }`}
@@ -156,7 +120,7 @@ export function ChatScreen({
                 <p className="text-sm leading-relaxed">{message.text}</p>
                 <p
                   className={`mt-1 text-right text-[11px] ${
-                    message.sender === "user" ? "text-white/85" : "text-slate-400"
+                    message.sender === "self" ? "text-white/85" : "text-slate-400"
                   }`}
                 >
                   {message.timestamp}
@@ -182,11 +146,11 @@ export function ChatScreen({
             </button>
             <input
               value={input}
-              onChange={(event) => setInput(event.target.value)}
+              onChange={(event) => onInputChange(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Enter" && !event.shiftKey) {
                   event.preventDefault();
-                  handleSend();
+                  onSend();
                 }
               }}
               placeholder="Type your message..."
@@ -195,7 +159,7 @@ export function ChatScreen({
             />
             <button
               type="button"
-              onClick={handleSend}
+              onClick={onSend}
               aria-label="Send message"
               disabled={composerDisabled}
               className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#2563eb] text-white transition hover:bg-[#1d4ed8]"

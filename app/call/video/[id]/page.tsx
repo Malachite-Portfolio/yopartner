@@ -1,11 +1,13 @@
 "use client";
 
 import { Camera, CameraOff, MessageCircle, Mic, PhoneOff, RefreshCcw } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import type { IAgoraRTCClient, ICameraVideoTrack, IMicrophoneAudioTrack, IRemoteAudioTrack, IRemoteVideoTrack } from "agora-rtc-sdk-ng";
 import {
   cancelSession,
   createSession,
+  getSessionAgoraToken,
   getSessionById,
   type SessionRecord,
 } from "@/lib/api/sessions";
@@ -14,6 +16,7 @@ import {
   resolveCompanionRouteProfile,
   type CompanionRouteProfile,
 } from "@/lib/companionRoutes";
+import { buildAgoraUid, createAgoraClient, normalizeChannelName, requestVideoPermission } from "@/lib/agora";
 
 const AGORA_APP_ID = process.env.NEXT_PUBLIC_AGORA_APP_ID?.trim() ?? "";
 
@@ -47,6 +50,55 @@ export default function VideoCallPage() {
   const [isMuted, setIsMuted] = useState(false);
   const [isCameraOn, setIsCameraOn] = useState(true);
   const [isFrontCamera, setIsFrontCamera] = useState(true);
+  const [joined, setJoined] = useState(false);
+  const [permissionReady, setPermissionReady] = useState(false);
+  const [joining, setJoining] = useState(false);
+  const [remoteVideoReady, setRemoteVideoReady] = useState(false);
+  const clientRef = useRef<IAgoraRTCClient | null>(null);
+  const localAudioTrackRef = useRef<IMicrophoneAudioTrack | null>(null);
+  const localVideoTrackRef = useRef<ICameraVideoTrack | null>(null);
+  const remoteAudioTrackRef = useRef<IRemoteAudioTrack | null>(null);
+  const remoteVideoTrackRef = useRef<IRemoteVideoTrack | null>(null);
+  const localVideoContainerRef = useRef<HTMLDivElement | null>(null);
+  const remoteVideoContainerRef = useRef<HTMLDivElement | null>(null);
+
+  const cleanupAgora = useCallback(async () => {
+    try {
+      remoteAudioTrackRef.current?.stop();
+      remoteVideoTrackRef.current?.stop();
+    } catch {
+      // no-op
+    }
+    try {
+      localAudioTrackRef.current?.stop();
+      localAudioTrackRef.current?.close();
+      localVideoTrackRef.current?.stop();
+      localVideoTrackRef.current?.close();
+    } catch {
+      // no-op
+    }
+    localAudioTrackRef.current = null;
+    localVideoTrackRef.current = null;
+    remoteAudioTrackRef.current = null;
+    remoteVideoTrackRef.current = null;
+    if (clientRef.current) {
+      try {
+        clientRef.current.removeAllListeners();
+        await clientRef.current.leave();
+      } catch {
+        // no-op
+      }
+      clientRef.current = null;
+    }
+    setJoined(false);
+    setRemoteVideoReady(false);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      void cleanupAgora();
+    };
+  }, [cleanupAgora]);
 
   useEffect(() => {
     if (!routeId) return;
@@ -115,21 +167,109 @@ export default function VideoCallPage() {
   }, [currentPath, preferredCompanionId, routeId, router, searchParams]);
 
   useEffect(() => {
-    if (!session?.id || session.status !== "PENDING") return;
+    if (!session?.id) return;
     const timer = window.setInterval(async () => {
       const latest = await getSessionById(session.id);
       if (latest.data) setSession(latest.data);
-    }, 4000);
+    }, session.status === "PENDING" ? 4000 : 5000);
     return () => window.clearInterval(timer);
   }, [session?.id, session?.status]);
 
   useEffect(() => {
-    if (session?.status !== "LIVE") return;
+    if (session?.status !== "LIVE" || !joined) return;
     const timer = window.setInterval(() => {
       setElapsedSeconds((value) => value + 1);
     }, 1000);
     return () => window.clearInterval(timer);
-  }, [session?.status]);
+  }, [joined, session?.status]);
+
+  useEffect(() => {
+    if (!localAudioTrackRef.current) return;
+    void localAudioTrackRef.current.setEnabled(!isMuted);
+  }, [isMuted]);
+
+  useEffect(() => {
+    if (!localVideoTrackRef.current) return;
+    void localVideoTrackRef.current.setEnabled(isCameraOn);
+  }, [isCameraOn]);
+
+  const joinAgoraVideo = useCallback(async () => {
+    if (!session || !companion || joining || joined) return;
+    const appId = AGORA_APP_ID;
+    if (!appId) {
+      setError("Calling is not configured. Missing Agora App ID.");
+      return;
+    }
+
+    setJoining(true);
+    setError("");
+    try {
+      const client = await createAgoraClient();
+      clientRef.current = client;
+
+      client.on("user-published", async (user, mediaType) => {
+        await client.subscribe(user, mediaType);
+        if (mediaType === "video") {
+          if (remoteVideoContainerRef.current) {
+            user.videoTrack?.play(remoteVideoContainerRef.current);
+          }
+          remoteVideoTrackRef.current = user.videoTrack ?? null;
+          setRemoteVideoReady(Boolean(user.videoTrack));
+        }
+        if (mediaType === "audio") {
+          user.audioTrack?.play();
+          remoteAudioTrackRef.current = user.audioTrack ?? null;
+        }
+      });
+
+      client.on("user-unpublished", (_user, mediaType) => {
+        if (mediaType === "video") {
+          setRemoteVideoReady(false);
+          remoteVideoTrackRef.current = null;
+        }
+        if (mediaType === "audio") {
+          remoteAudioTrackRef.current = null;
+        }
+      });
+
+      client.on("user-left", () => {
+        setRemoteVideoReady(false);
+        remoteVideoTrackRef.current = null;
+        remoteAudioTrackRef.current = null;
+      });
+
+      const tokenResponse = await getSessionAgoraToken(session.id);
+      const channelName = normalizeChannelName(session.id, tokenResponse.data?.channelName ?? session.channelName);
+      const uid = tokenResponse.data?.uid ?? buildAgoraUid(session.id, session.userId ?? "user");
+
+      await client.join(appId, channelName, tokenResponse.data?.token ?? null, uid);
+
+      const AgoraRTC = await import("agora-rtc-sdk-ng");
+      const [localAudioTrack, localVideoTrack] = await AgoraRTC.default.createMicrophoneAndCameraTracks();
+      localAudioTrackRef.current = localAudioTrack;
+      localVideoTrackRef.current = localVideoTrack;
+      await client.publish([localAudioTrack, localVideoTrack]);
+      if (localVideoContainerRef.current) {
+        localVideoTrack.play(localVideoContainerRef.current);
+      }
+      setJoined(true);
+    } catch (joinError) {
+      setError(joinError instanceof Error ? joinError.message : "Unable to connect video call.");
+      await cleanupAgora();
+    } finally {
+      setJoining(false);
+    }
+  }, [cleanupAgora, companion, joined, joining, session]);
+
+  const enableCameraAndMicrophone = async () => {
+    try {
+      await requestVideoPermission();
+      setPermissionReady(true);
+      await joinAgoraVideo();
+    } catch {
+      setError("Camera and microphone permission are required for video calls.");
+    }
+  };
 
   const handleCancel = async () => {
     if (!session?.id || isCancelling) return;
@@ -138,6 +278,7 @@ export default function VideoCallPage() {
     setIsCancelling(false);
     if (response.data) {
       setSession(response.data);
+      await cleanupAgora();
       return;
     }
     setError(response.error?.message || "Unable to cancel request.");
@@ -191,7 +332,7 @@ export default function VideoCallPage() {
         <div className="w-full max-w-md rounded-2xl border border-white/20 bg-white/10 p-6 text-center">
           <p className="text-base font-semibold">
             {session.status === "FAILED"
-              ? "Your video request was declined."
+              ? "Partner declined this call request."
               : session.status === "COMPLETED"
                 ? "This video call has ended."
                 : "This video call is not active right now."}
@@ -212,43 +353,60 @@ export default function VideoCallPage() {
     <section className="relative h-screen min-h-screen overflow-hidden bg-[#0b1224] text-white">
       <div className="absolute inset-0 bg-gradient-to-b from-[#0b1224] via-[#0a132a] to-[#03060f]" />
       <div className="relative z-10 flex h-full flex-col p-4 sm:p-5">
-        {!AGORA_APP_ID ? (
-          <p className="mb-4 rounded-xl border border-amber-200/80 bg-amber-100/15 px-3 py-2 text-xs text-amber-100">
-            Calling is not configured. Missing Agora App ID.
+        {!permissionReady ? (
+          <button
+            type="button"
+            onClick={() => {
+              void enableCameraAndMicrophone();
+            }}
+            disabled={joining}
+            className="mb-3 rounded-xl border border-white/30 bg-white/10 px-3 py-2 text-xs text-cyan-100 disabled:opacity-70"
+          >
+            {joining ? "Enabling camera & microphone..." : "Enable camera & microphone"}
+          </button>
+        ) : null}
+        {permissionReady && !joined ? (
+          <button
+            type="button"
+            onClick={() => {
+              void joinAgoraVideo();
+            }}
+            disabled={joining}
+            className="mb-3 rounded-xl border border-white/30 bg-white/10 px-3 py-2 text-xs text-cyan-100 disabled:opacity-70"
+          >
+            {joining ? "Joining call..." : "Join video call"}
+          </button>
+        ) : null}
+        {error ? (
+          <p className="mb-3 rounded-xl border border-amber-200/80 bg-amber-100/15 px-3 py-2 text-xs text-amber-100">
+            {error}
           </p>
-        ) : (
-          <p className="mb-4 rounded-xl border border-white/20 bg-black/20 px-3 py-2 text-xs text-cyan-100">
-            Session is accepted. Video streaming connection is being prepared.
-          </p>
-        )}
+        ) : null}
         <div className="flex items-center justify-between rounded-xl border border-white/10 bg-black/30 px-4 py-2.5">
           <div>
             <p className="text-sm font-semibold">{companion.name}</p>
-            <p className="text-xs text-cyan-100/85">Connected</p>
+            <p className="text-xs text-cyan-100/85">{joined ? "Connected" : "Waiting for connection..."}</p>
           </div>
           <p className="text-sm font-semibold tabular-nums">{formatTimer(elapsedSeconds)}</p>
         </div>
         <div className="relative mt-4 flex flex-1 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-black/30">
-          <div className="text-center">
-            <p className="text-xs uppercase tracking-[0.2em] text-cyan-100/80">Remote User</p>
-            <p className="mt-2 text-2xl font-semibold">{companion.name}</p>
-          </div>
+          <div ref={remoteVideoContainerRef} className="absolute inset-0" />
+          {!remoteVideoReady ? (
+            <div className="relative z-10 text-center">
+              <p className="text-xs uppercase tracking-[0.2em] text-cyan-100/80">Video</p>
+              <p className="mt-2 text-2xl font-semibold">Waiting for partner video...</p>
+            </div>
+          ) : null}
           <div className="absolute bottom-4 right-4 h-28 w-40 overflow-hidden rounded-xl border border-white/20 bg-slate-900/80 sm:h-36 sm:w-52">
-            {isCameraOn ? (
-              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#1d4ed8] to-[#0ea5a6]">
-                <div className="text-center">
-                  <Camera size={22} className="mx-auto" />
-                  <p className="mt-1 text-xs">You</p>
-                  <p className="text-[11px] text-white/80">{isFrontCamera ? "Front Camera" : "Rear Camera"}</p>
-                </div>
-              </div>
-            ) : (
+            {!isCameraOn ? (
               <div className="flex h-full w-full items-center justify-center bg-slate-950/90 text-center">
                 <div>
                   <CameraOff size={20} className="mx-auto text-slate-100" />
                   <p className="mt-1 text-xs text-slate-100">Camera Off</p>
                 </div>
               </div>
+            ) : (
+              <div ref={localVideoContainerRef} className="h-full w-full" />
             )}
           </div>
         </div>
@@ -275,6 +433,8 @@ export default function VideoCallPage() {
             type="button"
             onClick={() => setIsFrontCamera((value) => !value)}
             className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-white/25 bg-white/10"
+            aria-label="Switch camera"
+            title={isFrontCamera ? "Front camera selected" : "Rear camera selected"}
           >
             <RefreshCcw size={20} />
           </button>

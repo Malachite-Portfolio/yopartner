@@ -1,11 +1,13 @@
 "use client";
 
 import { ArrowLeft, MessageCircle, Mic, PhoneOff, Volume2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import type { IAgoraRTCClient, IMicrophoneAudioTrack, IRemoteAudioTrack } from "agora-rtc-sdk-ng";
 import {
   cancelSession,
   createSession,
+  getSessionAgoraToken,
   getSessionById,
   type SessionRecord,
 } from "@/lib/api/sessions";
@@ -14,6 +16,7 @@ import {
   resolveCompanionRouteProfile,
   type CompanionRouteProfile,
 } from "@/lib/companionRoutes";
+import { buildAgoraUid, createAgoraClient, normalizeChannelName, requestAudioPermission } from "@/lib/agora";
 
 const AGORA_APP_ID = process.env.NEXT_PUBLIC_AGORA_APP_ID?.trim() ?? "";
 
@@ -37,7 +40,47 @@ export default function AudioCallPage() {
   const [isCancelling, setIsCancelling] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
-  const [isSpeakerOn, setIsSpeakerOn] = useState(true);
+  const [joined, setJoined] = useState(false);
+  const [permissionReady, setPermissionReady] = useState(false);
+  const [joining, setJoining] = useState(false);
+  const [remoteAudioReady, setRemoteAudioReady] = useState(false);
+  const [speakerHintVisible, setSpeakerHintVisible] = useState(false);
+  const clientRef = useRef<IAgoraRTCClient | null>(null);
+  const localAudioTrackRef = useRef<IMicrophoneAudioTrack | null>(null);
+  const remoteAudioTrackRef = useRef<IRemoteAudioTrack | null>(null);
+
+  const cleanupAgora = useCallback(async () => {
+    try {
+      remoteAudioTrackRef.current?.stop();
+    } catch {
+      // no-op
+    }
+    try {
+      localAudioTrackRef.current?.stop();
+      localAudioTrackRef.current?.close();
+    } catch {
+      // no-op
+    }
+    localAudioTrackRef.current = null;
+    remoteAudioTrackRef.current = null;
+    if (clientRef.current) {
+      try {
+        clientRef.current.removeAllListeners();
+        await clientRef.current.leave();
+      } catch {
+        // no-op
+      }
+      clientRef.current = null;
+    }
+    setJoined(false);
+    setRemoteAudioReady(false);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      void cleanupAgora();
+    };
+  }, [cleanupAgora]);
 
   useEffect(() => {
     if (!routeId) return;
@@ -106,21 +149,92 @@ export default function AudioCallPage() {
   }, [currentPath, preferredCompanionId, routeId, router, searchParams]);
 
   useEffect(() => {
-    if (!session?.id || session.status !== "PENDING") return;
+    if (!session?.id) return;
     const timer = window.setInterval(async () => {
       const latest = await getSessionById(session.id);
       if (latest.data) setSession(latest.data);
-    }, 4000);
+    }, session.status === "PENDING" ? 4000 : 5000);
     return () => window.clearInterval(timer);
   }, [session?.id, session?.status]);
 
   useEffect(() => {
-    if (session?.status !== "LIVE") return;
+    if (session?.status !== "LIVE" || !joined) return;
     const timer = window.setInterval(() => {
       setElapsedSeconds((value) => value + 1);
     }, 1000);
     return () => window.clearInterval(timer);
-  }, [session?.status]);
+  }, [joined, session?.status]);
+
+  useEffect(() => {
+    if (!localAudioTrackRef.current) return;
+    void localAudioTrackRef.current.setEnabled(!isMuted);
+  }, [isMuted]);
+
+  const joinAgoraAudio = useCallback(async () => {
+    if (!session || !companion || joining || joined) return;
+    const appId = AGORA_APP_ID;
+    if (!appId) {
+      setError("Calling is not configured. Missing Agora App ID.");
+      return;
+    }
+
+    setJoining(true);
+    setError("");
+    try {
+      const client = await createAgoraClient();
+      clientRef.current = client;
+
+      client.on("user-published", async (user, mediaType) => {
+        await client.subscribe(user, mediaType);
+        if (mediaType === "audio") {
+          user.audioTrack?.play();
+          remoteAudioTrackRef.current = user.audioTrack ?? null;
+          setRemoteAudioReady(Boolean(user.audioTrack));
+          setSpeakerHintVisible(false);
+        }
+      });
+
+      client.on("user-unpublished", (_user, mediaType) => {
+        if (mediaType === "audio") {
+          setRemoteAudioReady(false);
+          remoteAudioTrackRef.current = null;
+          setSpeakerHintVisible(true);
+        }
+      });
+
+      client.on("user-left", () => {
+        setRemoteAudioReady(false);
+        remoteAudioTrackRef.current = null;
+      });
+
+      const tokenResponse = await getSessionAgoraToken(session.id);
+      const channelName = normalizeChannelName(session.id, tokenResponse.data?.channelName ?? session.channelName);
+      const uid = tokenResponse.data?.uid ?? buildAgoraUid(session.id, session.userId ?? "user");
+
+      await client.join(appId, channelName, tokenResponse.data?.token ?? null, uid);
+
+      const AgoraRTC = await import("agora-rtc-sdk-ng");
+      const localAudioTrack = await AgoraRTC.default.createMicrophoneAudioTrack();
+      localAudioTrackRef.current = localAudioTrack;
+      await client.publish([localAudioTrack]);
+      setJoined(true);
+    } catch (joinError) {
+      setError(joinError instanceof Error ? joinError.message : "Unable to connect audio call.");
+      await cleanupAgora();
+    } finally {
+      setJoining(false);
+    }
+  }, [cleanupAgora, companion, joined, joining, session]);
+
+  const enableMicrophoneAndJoin = async () => {
+    try {
+      await requestAudioPermission();
+      setPermissionReady(true);
+      await joinAgoraAudio();
+    } catch {
+      setError("Microphone permission is required for audio calls.");
+    }
+  };
 
   const handleCancel = async () => {
     if (!session?.id || isCancelling) return;
@@ -129,9 +243,16 @@ export default function AudioCallPage() {
     setIsCancelling(false);
     if (response.data) {
       setSession(response.data);
+      await cleanupAgora();
       return;
     }
     setError(response.error?.message || "Unable to cancel request.");
+  };
+
+  const handleEnableSpeaker = () => {
+    if (!remoteAudioTrackRef.current) return;
+    remoteAudioTrackRef.current.play();
+    setSpeakerHintVisible(false);
   };
 
   if (loading) {
@@ -184,7 +305,7 @@ export default function AudioCallPage() {
         <div className="w-full max-w-md rounded-2xl border border-white/20 bg-white/10 p-6 text-center">
           <p className="text-base font-semibold">
             {session.status === "FAILED"
-              ? "Your audio request was declined."
+              ? "Partner declined this call request."
               : session.status === "COMPLETED"
                 ? "This audio call has ended."
                 : "This audio call is not active right now."}
@@ -214,19 +335,39 @@ export default function AudioCallPage() {
             <ArrowLeft size={19} />
           </button>
         </div>
-        {!AGORA_APP_ID ? (
-          <p className="mt-4 rounded-xl border border-amber-200/80 bg-amber-100/15 px-3 py-2 text-xs text-amber-100">
-            Calling is not configured. Missing Agora App ID.
+        {!permissionReady ? (
+          <button
+            type="button"
+            onClick={() => {
+              void enableMicrophoneAndJoin();
+            }}
+            disabled={joining}
+            className="mt-4 rounded-xl border border-white/30 bg-white/10 px-3 py-2 text-xs text-cyan-100 disabled:opacity-70"
+          >
+            {joining ? "Enabling microphone..." : "Enable microphone"}
+          </button>
+        ) : null}
+        {permissionReady && !joined ? (
+          <button
+            type="button"
+            onClick={() => {
+              void joinAgoraAudio();
+            }}
+            disabled={joining}
+            className="mt-4 rounded-xl border border-white/30 bg-white/10 px-3 py-2 text-xs text-cyan-100 disabled:opacity-70"
+          >
+            {joining ? "Joining call..." : "Join call audio"}
+          </button>
+        ) : null}
+        {error ? (
+          <p className="mt-3 rounded-xl border border-amber-200/80 bg-amber-100/15 px-3 py-2 text-xs text-amber-100">
+            {error}
           </p>
-        ) : (
-          <p className="mt-4 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-xs text-cyan-100">
-            Session is accepted. Audio streaming connection is being prepared.
-          </p>
-        )}
+        ) : null}
         <div className="mt-6 text-center">
           <p className="text-xs uppercase tracking-[0.2em] text-cyan-200/90">Audio Call</p>
           <h1 className="mt-3 text-3xl font-semibold">{companion.name}</h1>
-          <p className="mt-2 text-base text-cyan-100/90">Connected</p>
+          <p className="mt-2 text-base text-cyan-100/90">{joined ? "Connected" : "Waiting for connection..."}</p>
           <p className="mt-1 text-lg font-semibold tabular-nums text-white/95">
             {String(Math.floor(elapsedSeconds / 60)).padStart(2, "0")}:{String(elapsedSeconds % 60).padStart(2, "0")}
           </p>
@@ -243,6 +384,18 @@ export default function AudioCallPage() {
             </span>
           )}
         </div>
+        {!remoteAudioReady ? (
+          <p className="mt-2 text-center text-xs text-cyan-100/85">Waiting for partner audio...</p>
+        ) : null}
+        {speakerHintVisible ? (
+          <button
+            type="button"
+            onClick={handleEnableSpeaker}
+            className="mx-auto mt-2 rounded-full border border-white/30 px-3 py-1 text-xs"
+          >
+            Tap to enable speaker
+          </button>
+        ) : null}
         <div className="pb-3 pt-4">
           <div className="flex w-full flex-wrap items-center justify-center gap-4">
             <button
@@ -256,10 +409,8 @@ export default function AudioCallPage() {
             </button>
             <button
               type="button"
-              onClick={() => setIsSpeakerOn((value) => !value)}
-              className={`inline-flex h-14 w-14 items-center justify-center rounded-full border text-white ${
-                isSpeakerOn ? "border-cyan-200/60 bg-cyan-400/30" : "border-white/25 bg-white/10 hover:bg-white/20"
-              }`}
+              onClick={handleEnableSpeaker}
+              className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-white/25 bg-white/10 text-white hover:bg-white/20"
             >
               <Volume2 size={20} />
             </button>

@@ -12,6 +12,9 @@ export type SessionRecord = {
   id: string;
   sessionCode?: string;
   channelName?: string;
+  type?: "CHAT" | "AUDIO" | "VIDEO";
+  agoraToken?: string | null;
+  agoraUid?: string | number | null;
   companionId: string;
   userId?: string;
   serviceType?: "CHAT" | "AUDIO" | "VIDEO";
@@ -22,6 +25,19 @@ export type SessionRecord = {
   amount?: number;
   user?: Record<string, unknown> | null;
   companion?: Record<string, unknown> | null;
+};
+
+export type SessionMessageRecord = {
+  id: string;
+  sessionId: string;
+  senderUserId: string;
+  body: string;
+  createdAt: string;
+  senderUser?: {
+    id: string;
+    phoneNumber?: string;
+    name?: string | null;
+  };
 };
 
 export async function createSession(payload: {
@@ -56,4 +72,30 @@ export async function cancelSession(sessionId: string) {
   });
   if (result.error) return { data: null, error: result.error };
   return { data: result.data?.session ?? null, error: null };
+}
+
+export async function getSessionMessages(sessionId: string) {
+  const result = await apiRequest<{ messages: SessionMessageRecord[] }>(`/api/sessions/${sessionId}/messages`);
+  if (result.error) return { data: [], error: result.error };
+  return { data: result.data?.messages ?? [], error: null };
+}
+
+export async function sendSessionMessage(sessionId: string, body: string) {
+  const result = await apiRequest<{ message: SessionMessageRecord }>(`/api/sessions/${sessionId}/messages`, {
+    method: "POST",
+    body: JSON.stringify({ body }),
+  });
+  if (result.error) return { data: null, error: result.error };
+  return { data: result.data?.message ?? null, error: null };
+}
+
+export async function getSessionAgoraToken(sessionId: string) {
+  const result = await apiRequest<{
+    appId: string;
+    token: string | null;
+    channelName: string;
+    uid: number | string;
+  }>(`/api/sessions/${sessionId}/agora-token`);
+  if (result.error) return { data: null, error: result.error };
+  return { data: result.data ?? null, error: null };
 }
