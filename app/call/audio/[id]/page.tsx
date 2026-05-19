@@ -7,6 +7,7 @@ import type { IAgoraRTCClient, IMicrophoneAudioTrack, IRemoteAudioTrack } from "
 import {
   cancelSession,
   createSession,
+  endSession,
   getSessionAgoraToken,
   getSessionById,
   type SessionRecord,
@@ -41,7 +42,7 @@ export default function AudioCallPage() {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
   const [joined, setJoined] = useState(false);
-  const [permissionReady, setPermissionReady] = useState(false);
+  const [needsPermissionAction, setNeedsPermissionAction] = useState(false);
   const [joining, setJoining] = useState(false);
   const [remoteAudioReady, setRemoteAudioReady] = useState(false);
   const [speakerHintVisible, setSpeakerHintVisible] = useState(false);
@@ -74,6 +75,7 @@ export default function AudioCallPage() {
     }
     setJoined(false);
     setRemoteAudioReady(false);
+    setNeedsPermissionAction(false);
   }, []);
 
   useEffect(() => {
@@ -166,21 +168,28 @@ export default function AudioCallPage() {
   }, [joined, session?.status]);
 
   useEffect(() => {
+    if (!session?.status || session.status === "LIVE" || !joined) return;
+    const timer = window.setTimeout(() => {
+      void cleanupAgora();
+    }, 0);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [cleanupAgora, joined, session?.status]);
+
+  useEffect(() => {
     if (!localAudioTrackRef.current) return;
     void localAudioTrackRef.current.setEnabled(!isMuted);
   }, [isMuted]);
 
   const joinAgoraAudio = useCallback(async () => {
     if (!session || !companion || joining || joined) return;
-    const appId = AGORA_APP_ID;
-    if (!appId) {
-      setError("Calling is not configured. Missing Agora App ID.");
-      return;
-    }
-
     setJoining(true);
     setError("");
     try {
+      await requestAudioPermission();
+      setNeedsPermissionAction(false);
+
       const client = await createAgoraClient();
       clientRef.current = client;
 
@@ -208,10 +217,22 @@ export default function AudioCallPage() {
       });
 
       const tokenResponse = await getSessionAgoraToken(session.id);
+      if (tokenResponse.error || !tokenResponse.data?.token) {
+        setError(tokenResponse.error?.message || "Could not prepare secure call token. Please retry.");
+        await cleanupAgora();
+        return;
+      }
+
+      const appId = tokenResponse.data.appId || AGORA_APP_ID;
+      if (!appId) {
+        setError("Calling is not configured. Missing Agora App ID.");
+        await cleanupAgora();
+        return;
+      }
       const channelName = normalizeChannelName(session.id, tokenResponse.data?.channelName ?? session.channelName);
       const uid = tokenResponse.data?.uid ?? buildAgoraUid(session.id, session.userId ?? "user");
 
-      await client.join(appId, channelName, tokenResponse.data?.token ?? null, uid);
+      await client.join(appId, channelName, tokenResponse.data.token, uid);
 
       const AgoraRTC = await import("agora-rtc-sdk-ng");
       const localAudioTrack = await AgoraRTC.default.createMicrophoneAudioTrack();
@@ -219,27 +240,33 @@ export default function AudioCallPage() {
       await client.publish([localAudioTrack]);
       setJoined(true);
     } catch (joinError) {
-      setError(joinError instanceof Error ? joinError.message : "Unable to connect audio call.");
+      const message = joinError instanceof Error ? joinError.message : "Unable to connect audio call.";
+      if (/permission|denied|notallowed/i.test(message)) {
+        setNeedsPermissionAction(true);
+        setError("Microphone permission is required for audio calls.");
+      } else {
+        setError(message);
+      }
       await cleanupAgora();
     } finally {
       setJoining(false);
     }
   }, [cleanupAgora, companion, joined, joining, session]);
 
-  const enableMicrophoneAndJoin = async () => {
-    try {
-      await requestAudioPermission();
-      setPermissionReady(true);
-      await joinAgoraAudio();
-    } catch {
-      setError("Microphone permission is required for audio calls.");
-    }
-  };
+  useEffect(() => {
+    if (session?.status !== "LIVE" || joined || joining) return;
+    const timer = window.setTimeout(() => {
+      void joinAgoraAudio();
+    }, 0);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [joinAgoraAudio, joined, joining, session?.status]);
 
   const handleCancel = async () => {
     if (!session?.id || isCancelling) return;
     setIsCancelling(true);
-    const response = await cancelSession(session.id);
+    const response = session.status === "PENDING" ? await cancelSession(session.id) : await endSession(session.id);
     setIsCancelling(false);
     if (response.data) {
       setSession(response.data);
@@ -323,7 +350,7 @@ export default function AudioCallPage() {
   }
 
   return (
-    <section className="relative h-screen min-h-screen overflow-hidden bg-gradient-to-b from-[#0f1d4d] via-[#2b235e] to-[#4d2a68] px-4 py-6 text-white sm:px-6">
+    <section className="relative h-[100dvh] min-h-[100dvh] overflow-hidden bg-gradient-to-b from-[#0f1d4d] via-[#2b235e] to-[#4d2a68] px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))] text-white sm:px-6">
       <div className="mx-auto flex h-full w-full max-w-xl flex-col">
         <div className="flex items-center justify-start">
           <button
@@ -335,19 +362,7 @@ export default function AudioCallPage() {
             <ArrowLeft size={19} />
           </button>
         </div>
-        {!permissionReady ? (
-          <button
-            type="button"
-            onClick={() => {
-              void enableMicrophoneAndJoin();
-            }}
-            disabled={joining}
-            className="mt-4 rounded-xl border border-white/30 bg-white/10 px-3 py-2 text-xs text-cyan-100 disabled:opacity-70"
-          >
-            {joining ? "Enabling microphone..." : "Enable microphone"}
-          </button>
-        ) : null}
-        {permissionReady && !joined ? (
+        {needsPermissionAction ? (
           <button
             type="button"
             onClick={() => {
@@ -356,7 +371,7 @@ export default function AudioCallPage() {
             disabled={joining}
             className="mt-4 rounded-xl border border-white/30 bg-white/10 px-3 py-2 text-xs text-cyan-100 disabled:opacity-70"
           >
-            {joining ? "Joining call..." : "Join call audio"}
+            {joining ? "Enabling microphone..." : "Enable microphone"}
           </button>
         ) : null}
         {error ? (

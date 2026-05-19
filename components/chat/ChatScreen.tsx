@@ -22,6 +22,8 @@ type ChatScreenProps = {
   composerDisabled?: boolean;
   disabledMessage?: string;
   emptyMessage?: string;
+  onEndSession?: () => void;
+  endingSession?: boolean;
 };
 
 function getInitials(name: string) {
@@ -44,6 +46,8 @@ export function ChatScreen({
   composerDisabled = false,
   disabledMessage = "",
   emptyMessage = "No messages yet. Say hello when you're ready.",
+  onEndSession,
+  endingSession = false,
 }: ChatScreenProps) {
   const router = useRouter();
 
@@ -100,6 +104,16 @@ export function ChatScreen({
           >
             <Video size={17} />
           </button>
+          {onEndSession ? (
+            <button
+              type="button"
+              onClick={onEndSession}
+              disabled={endingSession}
+              className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 disabled:opacity-60"
+            >
+              {endingSession ? "Ending..." : "End chat"}
+            </button>
+          ) : null}
         </div>
       </div>
 

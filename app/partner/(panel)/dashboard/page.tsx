@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { IncomingRequestScreen } from "@/components/partner/IncomingRequestScreen";
+import { requestAudioPermission, requestVideoPermission } from "@/lib/agora";
 import {
   acceptPartnerRequest,
   declinePartnerRequest,
@@ -11,6 +12,7 @@ import {
   type PartnerActiveSession,
   type PartnerIncomingRequest,
 } from "@/lib/api/partner";
+import { endSession } from "@/lib/api/sessions";
 import {
   fetchPartnerApprovalState,
   getLocalPartnerApprovalState,
@@ -126,6 +128,7 @@ export default function PartnerDashboardPage() {
   const [requestMessage, setRequestMessage] = useState("");
   const [requestAction, setRequestAction] = useState<"accept" | "decline" | null>(null);
   const [availabilityActionPending, setAvailabilityActionPending] = useState(false);
+  const [endingSessionId, setEndingSessionId] = useState<string | null>(null);
 
   const isApproved = isPartnerApproved(approvalState);
   const labels = getPartnerApprovalLabel(approvalState);
@@ -164,9 +167,11 @@ export default function PartnerDashboardPage() {
       const pendingRaw = Array.isArray(root.pendingRequests) ? root.pendingRequests : [];
       const sessionsRaw = Array.isArray(root.activeSessions) ? root.activeSessions : [];
       setPendingRequests(pendingRaw.map(normalizeRequest).filter((item): item is PartnerIncomingRequest => Boolean(item)));
-      setActiveSessions(
-        sessionsRaw.map(normalizeActiveSession).filter((item): item is PartnerActiveSession => Boolean(item)),
-      );
+      const normalizedSessions = sessionsRaw
+        .map(normalizeActiveSession)
+        .filter((item): item is PartnerActiveSession => Boolean(item));
+      const dedupedById = Array.from(new Map(normalizedSessions.map((item) => [item.id, item])).values());
+      setActiveSessions(dedupedById);
       setOnline(companionOnline);
       setPartnerOnlineStatus(companionOnline);
       setStatusMessage(
@@ -241,6 +246,24 @@ export default function PartnerDashboardPage() {
   const handleAccept = async () => {
     if (!overlayRequest || requestAction) return;
     setRequestMessage("");
+
+    if (overlayRequest.type === "AUDIO") {
+      try {
+        await requestAudioPermission();
+      } catch {
+        setRequestMessage("Microphone permission is required for audio calls.");
+        return;
+      }
+    }
+    if (overlayRequest.type === "VIDEO") {
+      try {
+        await requestVideoPermission();
+      } catch {
+        setRequestMessage("Camera and microphone permission are required for video calls.");
+        return;
+      }
+    }
+
     setRequestAction("accept");
     const response = await acceptPartnerRequest(overlayRequest.id);
     setRequestAction(null);
@@ -272,6 +295,19 @@ export default function PartnerDashboardPage() {
       return;
     }
     setPendingRequests((current) => current.filter((item) => item.id !== overlayRequest.id));
+    await loadDashboard();
+  };
+
+  const handleEndSession = async (sessionId: string) => {
+    if (endingSessionId) return;
+    setRequestMessage("");
+    setEndingSessionId(sessionId);
+    const response = await endSession(sessionId);
+    setEndingSessionId(null);
+    if (response.error) {
+      setRequestMessage(response.error.message || "Unable to end session right now.");
+      return;
+    }
     await loadDashboard();
   };
 
@@ -412,6 +448,35 @@ export default function PartnerDashboardPage() {
                   <p className="text-xs text-slate-500">
                     {formatRequestType(session.type)} - {session.status}
                   </p>
+                  <div className="mt-2 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (session.type === "AUDIO") {
+                          router.push(`/partner/audio-call/${session.id}`);
+                          return;
+                        }
+                        if (session.type === "VIDEO") {
+                          router.push(`/partner/video-call/${session.id}`);
+                          return;
+                        }
+                        router.push(`/partner/chat/${session.id}`);
+                      }}
+                      className="rounded-lg border border-[#dceae5] px-2.5 py-1 text-xs font-semibold text-slate-700"
+                    >
+                      Join
+                    </button>
+                    <button
+                      type="button"
+                      disabled={endingSessionId === session.id}
+                      onClick={() => {
+                        void handleEndSession(session.id);
+                      }}
+                      className="rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700 disabled:opacity-60"
+                    >
+                      {endingSessionId === session.id ? "Ending..." : "End"}
+                    </button>
+                  </div>
                 </div>
               ))
             )}

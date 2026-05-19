@@ -6,6 +6,7 @@ import { ChatScreen, type ChatScreenMessage } from "@/components/chat/ChatScreen
 import {
   cancelSession,
   createSession,
+  endSession,
   getSessionById,
   getSessionMessages,
   sendSessionMessage,
@@ -17,6 +18,7 @@ import {
   resolveCompanionRouteProfile,
   type CompanionRouteProfile,
 } from "@/lib/companionRoutes";
+import { requestAudioPermission, requestVideoPermission } from "@/lib/agora";
 
 function getUserToken() {
   if (typeof window === "undefined") return null;
@@ -54,6 +56,7 @@ export default function ChatPage() {
   const [messageInput, setMessageInput] = useState("");
   const [messages, setMessages] = useState<SessionMessageRecord[]>([]);
   const [messageError, setMessageError] = useState("");
+  const [isEndingSession, setIsEndingSession] = useState(false);
 
   const currentPath = useMemo(() => {
     const query = searchParams.toString();
@@ -195,6 +198,40 @@ export default function ChatPage() {
     setErrorMessage(response.error?.message || "Unable to cancel this request right now.");
   };
 
+  const handleEndLiveSession = async () => {
+    if (!session?.id || session.status !== "LIVE" || isEndingSession) return;
+    setIsEndingSession(true);
+    const response = await endSession(session.id);
+    setIsEndingSession(false);
+    if (!response.data) {
+      setMessageError(response.error?.message || "Unable to end chat session.");
+      return;
+    }
+    setSession(response.data);
+  };
+
+  const handleOpenAudio = async () => {
+    if (!session || !companion) return;
+    try {
+      await requestAudioPermission();
+    } catch {
+      setMessageError("Microphone permission is required for audio calls.");
+      return;
+    }
+    router.push(`/call/audio/${session.id}?companionId=${encodeURIComponent(companion.id)}`);
+  };
+
+  const handleOpenVideo = async () => {
+    if (!session || !companion) return;
+    try {
+      await requestVideoPermission();
+    } catch {
+      setMessageError("Camera and microphone permission are required for video calls.");
+      return;
+    }
+    router.push(`/call/video/${session.id}?companionId=${encodeURIComponent(companion.id)}`);
+  };
+
   const handleSendMessage = async () => {
     if (!session?.id || session.status !== "LIVE") return;
     const body = messageInput.trim();
@@ -326,9 +363,17 @@ export default function ChatPage() {
         onSend={() => {
           void handleSendMessage();
         }}
-        onOpenAudio={() => router.push(`/call/audio/${session.id}?companionId=${encodeURIComponent(companion.id)}`)}
-        onOpenVideo={() => router.push(`/call/video/${session.id}?companionId=${encodeURIComponent(companion.id)}`)}
+        onOpenAudio={() => {
+          void handleOpenAudio();
+        }}
+        onOpenVideo={() => {
+          void handleOpenVideo();
+        }}
         composerDisabled={false}
+        onEndSession={() => {
+          void handleEndLiveSession();
+        }}
+        endingSession={isEndingSession}
       />
     </main>
   );

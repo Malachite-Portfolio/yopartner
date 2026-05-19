@@ -74,6 +74,15 @@ export async function cancelSession(sessionId: string) {
   return { data: result.data?.session ?? null, error: null };
 }
 
+export async function endSession(sessionId: string) {
+  const result = await apiRequest<{ session: SessionRecord; message?: string }>(`/api/sessions/${sessionId}/end`, {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+  if (result.error) return { data: null, error: result.error };
+  return { data: result.data?.session ?? null, error: null };
+}
+
 export async function getSessionMessages(sessionId: string) {
   const result = await apiRequest<{ messages: SessionMessageRecord[] }>(`/api/sessions/${sessionId}/messages`);
   if (result.error) return { data: [], error: result.error };
@@ -92,9 +101,10 @@ export async function sendSessionMessage(sessionId: string, body: string) {
 export async function getSessionAgoraToken(sessionId: string) {
   const result = await apiRequest<{
     appId: string;
-    token: string | null;
+    token: string;
     channelName: string;
     uid: number | string;
+    expiresAt?: number;
   }>(`/api/sessions/${sessionId}/agora-token`);
   if (result.error) return { data: null, error: result.error };
   return { data: result.data ?? null, error: null };

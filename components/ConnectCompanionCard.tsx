@@ -3,10 +3,11 @@
 import { BadgeCheck, HeartHandshake, MessageCircle, Phone, ShieldCheck, Star, Video } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { USER_FIREBASE_TOKEN_KEY } from "@/lib/auth/firebasePhoneAuth";
 import { createSession } from "@/lib/api/sessions";
 import type { ConnectCompanion } from "@/lib/data";
+import { requestAudioPermission, requestVideoPermission } from "@/lib/agora";
 import { formatINRPrice } from "@/lib/priceFormat";
 
 type ConnectCompanionCardProps = {
@@ -89,6 +90,7 @@ function SupportAction({
 
 export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
   const router = useRouter();
+  const [actionError, setActionError] = useState("");
   const name = companion.name || "Verified Companion";
   const tagline = companion.tagline || "Calm, respectful conversations";
   const rating = safeNumber(companion.rating) ?? 0;
@@ -107,6 +109,7 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
     serviceType: "chat" | "audio" | "video",
   ) => {
     event.stopPropagation();
+    setActionError("");
     const returnUrl =
       serviceType === "chat"
         ? `/chat/${companion.id}`
@@ -121,6 +124,23 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
     if (!token) {
       router.push(`/login?returnUrl=${encodeURIComponent(returnUrl)}`);
       return;
+    }
+
+    if (serviceType === "audio") {
+      try {
+        await requestAudioPermission();
+      } catch {
+        setActionError("Microphone permission is required for audio calls.");
+        return;
+      }
+    }
+    if (serviceType === "video") {
+      try {
+        await requestVideoPermission();
+      } catch {
+        setActionError("Camera and microphone permission are required for video calls.");
+        return;
+      }
     }
 
     const sessionResponse = await createSession({
@@ -150,7 +170,7 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
       return;
     }
 
-    router.push(returnUrl);
+    setActionError(sessionResponse.error?.message || "Unable to start this session right now.");
   };
 
   return (
@@ -275,6 +295,7 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
           </Link>
         ) : null}
       </div>
+      {actionError ? <p className="mt-2 text-xs font-medium text-rose-600">{actionError}</p> : null}
     </article>
   );
 }

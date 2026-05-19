@@ -11,6 +11,7 @@ import { USER_FIREBASE_TOKEN_KEY } from "@/lib/auth/firebasePhoneAuth";
 import { getWallet } from "@/lib/api/wallet";
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import type { ConnectCompanion } from "@/lib/data";
+import { requestAudioPermission, requestVideoPermission } from "@/lib/agora";
 import { formatINR, getWalletBalance, subscribeWalletUpdates } from "@/lib/wallet";
 
 type ProfileBookingPanelProps = {
@@ -143,6 +144,23 @@ export function ProfileBookingPanel({
         if (!token) {
           router.push(`/login?returnUrl=${encodeURIComponent(currentPath)}`);
           return;
+        }
+
+        if (selectedType === "audio") {
+          try {
+            await requestAudioPermission();
+          } catch {
+            setActionMessage("Microphone permission is required for audio calls.");
+            return;
+          }
+        }
+        if (selectedType === "video") {
+          try {
+            await requestVideoPermission();
+          } catch {
+            setActionMessage("Camera and microphone permission are required for video calls.");
+            return;
+          }
         }
 
         const response = await createBooking({

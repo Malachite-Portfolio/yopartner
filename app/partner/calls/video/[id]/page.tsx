@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import type { IAgoraRTCClient, ICameraVideoTrack, IMicrophoneAudioTrack, IRemoteAudioTrack, IRemoteVideoTrack } from "agora-rtc-sdk-ng";
 import { PartnerGuard } from "@/components/partner/PartnerGuard";
-import { getSessionAgoraToken, getSessionById, type SessionRecord } from "@/lib/api/sessions";
+import { endSession, getSessionAgoraToken, getSessionById, type SessionRecord } from "@/lib/api/sessions";
 import { buildAgoraUid, createAgoraClient, normalizeChannelName, requestVideoPermission } from "@/lib/agora";
 
 const AGORA_APP_ID = process.env.NEXT_PUBLIC_AGORA_APP_ID?.trim() ?? "";
@@ -35,7 +35,7 @@ export default function PartnerVideoCallPage() {
   const [frontCamera, setFrontCamera] = useState(true);
   const [error, setError] = useState("");
   const [joined, setJoined] = useState(false);
-  const [permissionReady, setPermissionReady] = useState(false);
+  const [needsPermissionAction, setNeedsPermissionAction] = useState(false);
   const [joining, setJoining] = useState(false);
   const [remoteVideoReady, setRemoteVideoReady] = useState(false);
   const clientRef = useRef<IAgoraRTCClient | null>(null);
@@ -72,6 +72,7 @@ export default function PartnerVideoCallPage() {
     }
     setJoined(false);
     setRemoteVideoReady(false);
+    setNeedsPermissionAction(false);
   }, []);
 
   useEffect(() => {
@@ -108,6 +109,16 @@ export default function PartnerVideoCallPage() {
   }, [joined, session?.status]);
 
   useEffect(() => {
+    if (!session?.status || session.status === "LIVE" || !joined) return;
+    const timer = window.setTimeout(() => {
+      void cleanupAgora();
+    }, 0);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [cleanupAgora, joined, session?.status]);
+
+  useEffect(() => {
     if (!localAudioTrackRef.current) return;
     void localAudioTrackRef.current.setEnabled(!mute);
   }, [mute]);
@@ -119,15 +130,12 @@ export default function PartnerVideoCallPage() {
 
   const joinAgoraVideo = useCallback(async () => {
     if (!session || joining || joined) return;
-    const appId = AGORA_APP_ID;
-    if (!appId) {
-      setError("Calling is not configured. Missing Agora App ID.");
-      return;
-    }
-
     setJoining(true);
     setError("");
     try {
+      await requestVideoPermission();
+      setNeedsPermissionAction(false);
+
       const client = await createAgoraClient();
       clientRef.current = client;
       client.on("user-published", async (user, mediaType) => {
@@ -158,9 +166,21 @@ export default function PartnerVideoCallPage() {
       });
 
       const tokenResponse = await getSessionAgoraToken(session.id);
+      if (tokenResponse.error || !tokenResponse.data?.token) {
+        setError(tokenResponse.error?.message || "Could not prepare secure call token. Please retry.");
+        await cleanupAgora();
+        return;
+      }
+
+      const appId = tokenResponse.data.appId || AGORA_APP_ID;
+      if (!appId) {
+        setError("Calling is not configured. Missing Agora App ID.");
+        await cleanupAgora();
+        return;
+      }
       const channelName = normalizeChannelName(session.id, tokenResponse.data?.channelName ?? session.channelName);
       const uid = tokenResponse.data?.uid ?? buildAgoraUid(session.id, String(session.companion?.userId ?? "partner"));
-      await client.join(appId, channelName, tokenResponse.data?.token ?? null, uid);
+      await client.join(appId, channelName, tokenResponse.data.token, uid);
 
       const AgoraRTC = await import("agora-rtc-sdk-ng");
       const [localAudioTrack, localVideoTrack] = await AgoraRTC.default.createMicrophoneAndCameraTracks();
@@ -170,44 +190,38 @@ export default function PartnerVideoCallPage() {
       if (localVideoContainerRef.current) localVideoTrack.play(localVideoContainerRef.current);
       setJoined(true);
     } catch (joinError) {
-      setError(joinError instanceof Error ? joinError.message : "Unable to connect video call.");
+      const message = joinError instanceof Error ? joinError.message : "Unable to connect video call.";
+      if (/permission|denied|notallowed/i.test(message)) {
+        setNeedsPermissionAction(true);
+        setError("Camera and microphone permission are required for video calls.");
+      } else {
+        setError(message);
+      }
       await cleanupAgora();
     } finally {
       setJoining(false);
     }
   }, [cleanupAgora, joined, joining, session]);
 
-  const enableCameraAndMicrophone = async () => {
-    try {
-      await requestVideoPermission();
-      setPermissionReady(true);
-      await joinAgoraVideo();
-    } catch {
-      setError("Camera and microphone permission are required for video calls.");
-    }
-  };
+  useEffect(() => {
+    if (session?.status !== "LIVE" || joined || joining) return;
+    const timer = window.setTimeout(() => {
+      void joinAgoraVideo();
+    }, 0);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [joinAgoraVideo, joined, joining, session?.status]);
 
   const maskedPhone = useMemo(() => maskPhone(String(session?.user?.phoneNumber ?? "")), [session?.user]);
 
   return (
     <PartnerGuard requireOnboarding>
-      <section className="relative h-screen min-h-screen overflow-hidden bg-[#050814] text-white">
+      <section className="relative h-[100dvh] min-h-[100dvh] overflow-hidden bg-[#050814] text-white">
         <div className="absolute inset-0 bg-gradient-to-b from-[#0b1224] via-[#0a132a] to-[#03060f]" />
 
-        <div className="relative z-10 flex h-full flex-col p-4 sm:p-5">
-          {!permissionReady ? (
-            <button
-              type="button"
-              onClick={() => {
-                void enableCameraAndMicrophone();
-              }}
-              disabled={joining}
-              className="mb-3 rounded-xl border border-white/30 bg-white/10 px-3 py-2 text-center text-xs text-cyan-100 disabled:opacity-70"
-            >
-              {joining ? "Enabling camera & microphone..." : "Enable camera & microphone"}
-            </button>
-          ) : null}
-          {permissionReady && !joined ? (
+        <div className="relative z-10 flex h-full flex-col px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-5">
+          {needsPermissionAction ? (
             <button
               type="button"
               onClick={() => {
@@ -216,7 +230,7 @@ export default function PartnerVideoCallPage() {
               disabled={joining}
               className="mb-3 rounded-xl border border-white/30 bg-white/10 px-3 py-2 text-center text-xs text-cyan-100 disabled:opacity-70"
             >
-              {joining ? "Joining call..." : "Join video call"}
+              {joining ? "Enabling camera & microphone..." : "Enable camera & microphone"}
             </button>
           ) : null}
           {error ? (
@@ -292,8 +306,9 @@ export default function PartnerVideoCallPage() {
             </button>
             <button
               type="button"
-              onClick={() => {
-                void cleanupAgora();
+              onClick={async () => {
+                await endSession(sessionId);
+                await cleanupAgora();
                 router.push("/partner/dashboard");
               }}
               className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-red-600 text-white"

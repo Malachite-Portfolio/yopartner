@@ -4,12 +4,14 @@ import { Phone, SendHorizontal, Video } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
+  endSession,
   getSessionById,
   getSessionMessages,
   sendSessionMessage,
   type SessionMessageRecord,
   type SessionRecord,
 } from "@/lib/api/sessions";
+import { requestAudioPermission, requestVideoPermission } from "@/lib/agora";
 
 function maskPhone(value: string) {
   const digits = value.replace(/\D/g, "");
@@ -30,6 +32,7 @@ export default function PartnerChatDetailPage() {
   const [error, setError] = useState("");
   const [messages, setMessages] = useState<SessionMessageRecord[]>([]);
   const [input, setInput] = useState("");
+  const [isEndingSession, setIsEndingSession] = useState(false);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -45,6 +48,19 @@ export default function PartnerChatDetailPage() {
       setLoading(false);
     })();
   }, [sessionId]);
+
+  useEffect(() => {
+    if (!session?.id) return;
+    const timer = window.setInterval(async () => {
+      const response = await getSessionById(session.id);
+      if (response.data) {
+        setSession(response.data);
+      }
+    }, 3000);
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [session?.id]);
 
   useEffect(() => {
     if (!sessionId || session?.status !== "LIVE") return;
@@ -90,6 +106,39 @@ export default function PartnerChatDetailPage() {
     setError("");
   };
 
+  const handleEndChat = async () => {
+    if (!session || session.status !== "LIVE" || isEndingSession) return;
+    setIsEndingSession(true);
+    const response = await endSession(session.id);
+    setIsEndingSession(false);
+    if (!response.data) {
+      setError(response.error?.message || "Unable to end this chat.");
+      return;
+    }
+    setSession(response.data);
+    setError("");
+  };
+
+  const handleOpenAudio = async () => {
+    try {
+      await requestAudioPermission();
+    } catch {
+      setError("Microphone permission is required for audio calls.");
+      return;
+    }
+    router.push(`/partner/calls/audio/${sessionId}`);
+  };
+
+  const handleOpenVideo = async () => {
+    try {
+      await requestVideoPermission();
+    } catch {
+      setError("Camera and microphone permission are required for video calls.");
+      return;
+    }
+    router.push(`/partner/calls/video/${sessionId}`);
+  };
+
   if (loading) {
     return (
       <section className="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-600">
@@ -122,7 +171,9 @@ export default function PartnerChatDetailPage() {
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => router.push(`/partner/calls/audio/${sessionId}`)}
+            onClick={() => {
+              void handleOpenAudio();
+            }}
             className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-700"
             aria-label="Start audio call"
           >
@@ -130,11 +181,23 @@ export default function PartnerChatDetailPage() {
           </button>
           <button
             type="button"
-            onClick={() => router.push(`/partner/calls/video/${sessionId}`)}
+            onClick={() => {
+              void handleOpenVideo();
+            }}
             className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-700"
             aria-label="Start video call"
           >
             <Video size={16} />
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              void handleEndChat();
+            }}
+            disabled={!canMessage || isEndingSession}
+            className="rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-xs font-semibold text-rose-700 disabled:opacity-60"
+          >
+            {isEndingSession ? "Ending..." : "End chat"}
           </button>
         </div>
       </div>
@@ -142,7 +205,7 @@ export default function PartnerChatDetailPage() {
       <div className="flex-1 space-y-2 overflow-y-auto bg-slate-50 px-3 py-3">
         {messages.length === 0 ? (
           <p className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
-            No messages yet. Say hello when you’re ready.
+            No messages yet. Say hello.
           </p>
         ) : null}
         {messages.map((message) => {
@@ -169,7 +232,7 @@ export default function PartnerChatDetailPage() {
       <div className="border-t border-slate-200 bg-white p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         {!canMessage ? (
           <div className="mb-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
-            Waiting for partner to accept.
+            Session ended.
           </div>
         ) : null}
         {error ? (
