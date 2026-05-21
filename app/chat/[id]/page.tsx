@@ -328,10 +328,12 @@ export default function ChatPage() {
       <main className="flex h-screen items-center justify-center bg-[#eef3f8] p-4">
         <div className="w-full max-w-md rounded-2xl border border-[#dceae5] bg-white p-6 text-center">
           <p className="text-sm font-semibold text-slate-900">
-            {session.status === "FAILED"
+            {session.status === "DECLINED"
               ? "Partner declined this chat request."
-              : session.status === "COMPLETED"
+              : session.status === "ENDED"
                 ? "This chat session has ended."
+                : session.status === "CANCELLED" || session.status === "EXPIRED"
+                  ? "This chat session is no longer active."
                 : "This chat session is not active right now."}
           </p>
           <button

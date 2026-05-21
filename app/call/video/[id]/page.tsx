@@ -11,6 +11,7 @@ import {
   getSessionAgoraToken,
   getSessionById,
   type SessionRecord,
+  type SessionStatus,
 } from "@/lib/api/sessions";
 import { USER_FIREBASE_TOKEN_KEY } from "@/lib/auth/firebasePhoneAuth";
 import {
@@ -20,6 +21,19 @@ import {
 import { buildAgoraUid, createAgoraClient, normalizeChannelName, requestVideoPermission } from "@/lib/agora";
 
 const AGORA_APP_ID = process.env.NEXT_PUBLIC_AGORA_APP_ID?.trim() ?? "";
+const TERMINAL_SESSION_STATUSES: SessionStatus[] = ["DECLINED", "CANCELLED", "ENDED", "EXPIRED"];
+
+function isTerminalStatus(status?: SessionStatus) {
+  return Boolean(status && TERMINAL_SESSION_STATUSES.includes(status));
+}
+
+function getElapsedSeconds(session: SessionRecord | null, nowMs = Date.now()) {
+  const baseTime = session?.startedAt ?? session?.acceptedAt;
+  if (!baseTime) return 0;
+  const timestamp = new Date(baseTime).getTime();
+  if (Number.isNaN(timestamp)) return 0;
+  return Math.max(0, Math.floor((nowMs - timestamp) / 1000));
+}
 
 function getUserToken() {
   if (typeof window === "undefined") return null;
@@ -47,7 +61,7 @@ export default function VideoCallPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [isCancelling, setIsCancelling] = useState(false);
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [clockNow, setClockNow] = useState(() => Date.now());
   const [isMuted, setIsMuted] = useState(false);
   const [isCameraOn, setIsCameraOn] = useState(true);
   const [isFrontCamera, setIsFrontCamera] = useState(true);
@@ -62,6 +76,7 @@ export default function VideoCallPage() {
   const remoteVideoTrackRef = useRef<IRemoteVideoTrack | null>(null);
   const localVideoContainerRef = useRef<HTMLDivElement | null>(null);
   const remoteVideoContainerRef = useRef<HTMLDivElement | null>(null);
+  const elapsedSeconds = session?.status === "LIVE" ? getElapsedSeconds(session, clockNow) : 0;
 
   const cleanupAgora = useCallback(async () => {
     try {
@@ -170,30 +185,42 @@ export default function VideoCallPage() {
 
   useEffect(() => {
     if (!session?.id) return;
-    const timer = window.setInterval(async () => {
+    let cancelled = false;
+    const syncSession = async () => {
       const latest = await getSessionById(session.id);
-      if (latest.data) setSession(latest.data);
-    }, session.status === "PENDING" ? 4000 : 5000);
-    return () => window.clearInterval(timer);
-  }, [session?.id, session?.status]);
+      if (cancelled || !latest.data) return;
+      setSession(latest.data);
+      if (isTerminalStatus(latest.data.status)) {
+        await cleanupAgora();
+      }
+    };
+    const timer = window.setInterval(() => {
+      void syncSession();
+    }, 2000);
+    void syncSession();
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [cleanupAgora, session?.id]);
 
   useEffect(() => {
-    if (session?.status !== "LIVE" || !joined) return;
+    if (session?.status !== "LIVE") return;
     const timer = window.setInterval(() => {
-      setElapsedSeconds((value) => value + 1);
+      setClockNow(Date.now());
     }, 1000);
     return () => window.clearInterval(timer);
-  }, [joined, session?.status]);
+  }, [session?.status]);
 
   useEffect(() => {
-    if (!session?.status || session.status === "LIVE" || !joined) return;
+    if (!isTerminalStatus(session?.status)) return;
     const timer = window.setTimeout(() => {
       void cleanupAgora();
     }, 0);
     return () => {
       window.clearTimeout(timer);
     };
-  }, [cleanupAgora, joined, session?.status]);
+  }, [cleanupAgora, session?.status]);
 
   useEffect(() => {
     if (!localAudioTrackRef.current) return;
@@ -216,18 +243,36 @@ export default function VideoCallPage() {
       const client = await createAgoraClient();
       clientRef.current = client;
 
-      client.on("user-published", async (user, mediaType) => {
-        await client.subscribe(user, mediaType);
-        if (mediaType === "video") {
+      const syncRemoteMediaUser = async (user: {
+        hasAudio?: boolean;
+        hasVideo?: boolean;
+        audioTrack?: IRemoteAudioTrack | null;
+        videoTrack?: IRemoteVideoTrack | null;
+      }) => {
+        if (user.hasVideo) {
+          await client.subscribe(user as Parameters<typeof client.subscribe>[0], "video");
           if (remoteVideoContainerRef.current) {
             user.videoTrack?.play(remoteVideoContainerRef.current);
           }
           remoteVideoTrackRef.current = user.videoTrack ?? null;
           setRemoteVideoReady(Boolean(user.videoTrack));
         }
-        if (mediaType === "audio") {
+        if (user.hasAudio) {
+          await client.subscribe(user as Parameters<typeof client.subscribe>[0], "audio");
           user.audioTrack?.play();
           remoteAudioTrackRef.current = user.audioTrack ?? null;
+        }
+      };
+
+      client.on("user-joined", (user) => {
+        void syncRemoteMediaUser(user);
+      });
+      client.on("user-published", async (user, mediaType) => {
+        if (mediaType === "video") {
+          await syncRemoteMediaUser(user);
+        }
+        if (mediaType === "audio") {
+          await syncRemoteMediaUser(user);
         }
       });
 
@@ -273,6 +318,23 @@ export default function VideoCallPage() {
       if (localVideoContainerRef.current) {
         localVideoTrack.play(localVideoContainerRef.current);
       }
+      await Promise.all(
+        client.remoteUsers.map(async (remoteUser) => {
+          if (remoteUser.hasVideo) {
+            await client.subscribe(remoteUser, "video");
+            if (remoteVideoContainerRef.current) {
+              remoteUser.videoTrack?.play(remoteVideoContainerRef.current);
+            }
+            remoteVideoTrackRef.current = remoteUser.videoTrack ?? null;
+            setRemoteVideoReady(Boolean(remoteUser.videoTrack));
+          }
+          if (remoteUser.hasAudio) {
+            await client.subscribe(remoteUser, "audio");
+            remoteUser.audioTrack?.play();
+            remoteAudioTrackRef.current = remoteUser.audioTrack ?? null;
+          }
+        }),
+      );
       setJoined(true);
     } catch (joinError) {
       const message = joinError instanceof Error ? joinError.message : "Unable to connect video call.";
@@ -301,11 +363,19 @@ export default function VideoCallPage() {
   const handleCancel = async () => {
     if (!session?.id || isCancelling) return;
     setIsCancelling(true);
-    const response = session.status === "PENDING" ? await cancelSession(session.id) : await endSession(session.id);
+    let response;
+    if (session.status === "PENDING") {
+      response = await cancelSession(session.id);
+    } else {
+      const nowIso = new Date().toISOString();
+      const endPromise = endSession(session.id);
+      await cleanupAgora();
+      setSession((current) => (current ? { ...current, status: "ENDED", endedAt: current.endedAt ?? nowIso } : current));
+      response = await endPromise;
+    }
     setIsCancelling(false);
     if (response.data) {
       setSession(response.data);
-      await cleanupAgora();
       return;
     }
     setError(response.error?.message || "Unable to cancel request.");
@@ -353,17 +423,28 @@ export default function VideoCallPage() {
     );
   }
 
+  if (isTerminalStatus(session.status)) {
+    return (
+      <main className="flex h-screen items-center justify-center bg-[#0b1224] p-4 text-white">
+        <div className="w-full max-w-md rounded-2xl border border-white/20 bg-white/10 p-6 text-center">
+          <p className="text-base font-semibold">This call has ended.</p>
+          <button
+            type="button"
+            onClick={() => router.push(`/connect-now/${companion.id}`)}
+            className="mt-4 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white"
+          >
+            Back to profile
+          </button>
+        </div>
+      </main>
+    );
+  }
+
   if (session.status !== "LIVE") {
     return (
       <main className="flex h-screen items-center justify-center bg-[#0b1224] p-4 text-white">
         <div className="w-full max-w-md rounded-2xl border border-white/20 bg-white/10 p-6 text-center">
-          <p className="text-base font-semibold">
-            {session.status === "FAILED"
-              ? "Partner declined this call request."
-              : session.status === "COMPLETED"
-                ? "This video call has ended."
-                : "This video call is not active right now."}
-          </p>
+          <p className="text-base font-semibold">This video call is not active right now.</p>
           <button
             type="button"
             onClick={() => router.push(`/connect-now/${companion.id}`)}
@@ -400,7 +481,7 @@ export default function VideoCallPage() {
         <div className="flex items-center justify-between rounded-xl border border-white/10 bg-black/30 px-4 py-2.5">
           <div>
             <p className="text-sm font-semibold">{companion.name}</p>
-            <p className="text-xs text-cyan-100/85">{joined ? "Connected" : "Waiting for connection..."}</p>
+            <p className="text-xs text-cyan-100/85">{remoteVideoReady ? "Connected" : "Waiting for partner video..."}</p>
           </div>
           <p className="text-sm font-semibold tabular-nums">{formatTimer(elapsedSeconds)}</p>
         </div>

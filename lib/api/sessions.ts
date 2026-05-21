@@ -3,10 +3,12 @@ import { apiRequest } from "@/lib/api/client";
 export type SessionServiceType = "chat" | "audio" | "video";
 export type SessionStatus =
   | "PENDING"
+  | "ACCEPTED"
   | "LIVE"
-  | "COMPLETED"
-  | "FAILED"
-  | "FLAGGED";
+  | "DECLINED"
+  | "CANCELLED"
+  | "ENDED"
+  | "EXPIRED";
 
 export type SessionRecord = {
   id: string;
@@ -20,11 +22,25 @@ export type SessionRecord = {
   serviceType?: "CHAT" | "AUDIO" | "VIDEO";
   status?: SessionStatus;
   createdAt?: string;
+  acceptedAt?: string | null;
   startedAt?: string | null;
   endedAt?: string | null;
+  endedByUserId?: string | null;
+  lastHeartbeatAt?: string | null;
   amount?: number;
-  user?: Record<string, unknown> | null;
-  companion?: Record<string, unknown> | null;
+  user?: {
+    id: string;
+    name?: string | null;
+    phoneMasked?: string;
+    phoneNumber?: string;
+    [key: string]: unknown;
+  } | null;
+  companion?: {
+    id: string;
+    name?: string | null;
+    userId?: string;
+    [key: string]: unknown;
+  } | null;
 };
 
 export type SessionMessageRecord = {
