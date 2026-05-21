@@ -354,7 +354,7 @@ export default function AudioCallPage() {
             onClick={() => router.push("/connect-now")}
             className="mt-4 rounded-xl bg-[#0f766e] px-4 py-2 text-sm font-semibold text-white"
           >
-            Back to companions
+            Back to Connect
           </button>
         </div>
       </main>
@@ -389,10 +389,10 @@ export default function AudioCallPage() {
           <p className="text-base font-semibold">This call has ended.</p>
           <button
             type="button"
-            onClick={() => router.push(`/connect-now/${companion.id}`)}
+            onClick={() => router.push("/connect-now")}
             className="mt-4 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white"
           >
-            Back to profile
+            Back to Connect
           </button>
         </div>
       </main>
@@ -406,10 +406,10 @@ export default function AudioCallPage() {
           <p className="text-base font-semibold">This audio call is not active right now.</p>
           <button
             type="button"
-            onClick={() => router.push(`/connect-now/${companion.id}`)}
+            onClick={() => router.push("/connect-now")}
             className="mt-4 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white"
           >
-            Back to profile
+            Back to Connect
           </button>
         </div>
       </main>
@@ -423,7 +423,7 @@ export default function AudioCallPage() {
           <button
             type="button"
             aria-label="Go back"
-            onClick={() => router.push(`/connect-now/${companion.id}`)}
+            onClick={() => router.push("/connect-now")}
             className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#cde8e2] bg-white/70 text-[#0f172a] transition hover:bg-white"
           >
             <ArrowLeft size={18} />

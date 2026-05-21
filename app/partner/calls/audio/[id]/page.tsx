@@ -260,7 +260,7 @@ export default function PartnerAudioCallPage() {
               onClick={() => router.push("/partner/dashboard")}
               className="mt-4 rounded-xl bg-[#dc2626] px-4 py-2 text-sm font-semibold text-white"
             >
-              Back
+              Back to Dashboard
             </button>
           </div>
         </main>
@@ -279,7 +279,7 @@ export default function PartnerAudioCallPage() {
               onClick={() => router.push("/partner/dashboard")}
               className="mt-4 rounded-xl bg-[#dc2626] px-4 py-2 text-sm font-semibold text-white"
             >
-              Back
+              Back to Dashboard
             </button>
           </div>
         </main>
@@ -373,7 +373,7 @@ export default function PartnerAudioCallPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => router.push(`/partner/chats/${sessionId}`)}
+                  onClick={() => router.push(`/partner/chat/${sessionId}`)}
                   className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-[#cfe7e2] bg-white text-[#334155]"
                 >
                   <MessageCircle size={20} />

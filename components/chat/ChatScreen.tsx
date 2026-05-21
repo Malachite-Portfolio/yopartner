@@ -24,6 +24,8 @@ type ChatScreenProps = {
   emptyMessage?: string;
   onEndSession?: () => void;
   endingSession?: boolean;
+  backHref?: string;
+  backLabel?: string;
 };
 
 function getInitials(name: string) {
@@ -48,15 +50,13 @@ export function ChatScreen({
   emptyMessage = "No messages yet. Say hello.",
   onEndSession,
   endingSession = false,
+  backHref = "/connect-now",
+  backLabel = "Go back",
 }: ChatScreenProps) {
   const router = useRouter();
 
   const handleBack = () => {
-    if (typeof window !== "undefined" && window.history.length > 1) {
-      router.back();
-      return;
-    }
-    router.push(`/connect-now/${companion.id}`);
+    router.push(backHref);
   };
 
   return (
@@ -65,7 +65,7 @@ export function ChatScreen({
         <div className="flex min-w-0 items-center gap-2.5">
           <button
             type="button"
-            aria-label="Go back"
+            aria-label={backLabel}
             onClick={handleBack}
             className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[#0f766e] transition hover:bg-[#edf7f5]"
           >

@@ -49,9 +49,13 @@ export type SessionRecord = {
 export type SessionMessageRecord = {
   id: string;
   sessionId: string;
+  senderId?: string;
   senderUserId: string;
+  senderRole?: "USER" | "PARTNER" | "UNKNOWN";
+  text?: string;
   body: string;
   createdAt: string;
+  isMine?: boolean;
   senderUser?: {
     id: string;
     phoneNumber?: string;

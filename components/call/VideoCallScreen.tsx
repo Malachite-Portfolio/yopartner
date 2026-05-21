@@ -72,7 +72,7 @@ export function VideoCallScreen({ companion }: { companion: CompanionRouteProfil
           <button
             type="button"
             aria-label="Go back"
-            onClick={() => router.push(`/connect-now/${companion.id}`)}
+            onClick={() => router.push("/connect-now")}
             className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/35 text-white backdrop-blur"
           >
             <ArrowLeft size={18} />
@@ -137,7 +137,7 @@ export function VideoCallScreen({ companion }: { companion: CompanionRouteProfil
           <button
             type="button"
             aria-label="End call"
-            onClick={() => router.push(`/connect-now/${companion.id}`)}
+            onClick={() => router.push("/connect-now")}
             className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-red-600 text-white shadow-lg shadow-red-950/35 transition hover:bg-red-500"
           >
             <PhoneOff size={22} />

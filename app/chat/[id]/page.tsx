@@ -30,11 +30,11 @@ function toLoginUrl(returnUrl: string) {
   return `/login?returnUrl=${encodeURIComponent(returnUrl)}`;
 }
 
-function toScreenMessages(messages: SessionMessageRecord[], selfUserId: string): ChatScreenMessage[] {
+function toScreenMessages(messages: SessionMessageRecord[]): ChatScreenMessage[] {
   return messages.map((message) => ({
     id: message.id,
-    sender: message.senderUserId === selfUserId ? "self" : "other",
-    text: message.body,
+    sender: message.isMine ? "self" : "other",
+    text: message.text ?? message.body,
     timestamp: new Date(message.createdAt).toLocaleTimeString("en-IN", {
       hour: "2-digit",
       minute: "2-digit",
@@ -241,9 +241,13 @@ export default function ChatPage() {
     const optimistic: SessionMessageRecord = {
       id: `temp-${Date.now()}`,
       sessionId: session.id,
+      senderId: session.userId ?? "",
       senderUserId: session.userId ?? "",
+      senderRole: "USER",
+      text: body,
       body,
       createdAt: new Date().toISOString(),
+      isMine: true,
     };
     setMessages((current) => [...current, optimistic]);
 
@@ -278,7 +282,7 @@ export default function ChatPage() {
             onClick={() => router.push("/connect-now")}
             className="mt-4 rounded-xl bg-[#0f766e] px-4 py-2 text-sm font-semibold text-white"
           >
-            Back to companions
+            Back to Connect
           </button>
         </div>
       </main>
@@ -295,7 +299,7 @@ export default function ChatPage() {
             onClick={() => router.push("/connect-now")}
             className="mt-4 rounded-xl bg-[#0f766e] px-4 py-2 text-sm font-semibold text-white"
           >
-            Back to companions
+            Back to Connect
           </button>
         </div>
       </main>
@@ -338,17 +342,17 @@ export default function ChatPage() {
           </p>
           <button
             type="button"
-            onClick={() => router.push(`/connect-now/${companion.id}`)}
+            onClick={() => router.push("/connect-now")}
             className="mt-4 rounded-xl bg-[#0f766e] px-4 py-2 text-sm font-semibold text-white"
           >
-            Back to profile
+            Back to Connect
           </button>
         </div>
       </main>
     );
   }
 
-  const screenMessages = toScreenMessages(messages, session.userId ?? "");
+  const screenMessages = toScreenMessages(messages);
 
   return (
     <main className="h-[100dvh] min-h-[100dvh] overflow-hidden bg-[#eef3f8]">

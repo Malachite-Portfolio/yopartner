@@ -289,7 +289,7 @@ export default function PartnerVideoCallPage() {
               onClick={() => router.push("/partner/dashboard")}
               className="mt-4 rounded-xl bg-[#dc2626] px-4 py-2 text-sm font-semibold text-white"
             >
-              Back
+              Back to Dashboard
             </button>
           </div>
         </main>
@@ -308,7 +308,7 @@ export default function PartnerVideoCallPage() {
               onClick={() => router.push("/partner/dashboard")}
               className="mt-4 rounded-xl bg-[#dc2626] px-4 py-2 text-sm font-semibold text-white"
             >
-              Back
+              Back to Dashboard
             </button>
           </div>
         </main>
@@ -434,7 +434,7 @@ export default function PartnerVideoCallPage() {
               </button>
               <button
                 type="button"
-                onClick={() => router.push(`/partner/chats/${sessionId}`)}
+                onClick={() => router.push(`/partner/chat/${sessionId}`)}
                 className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/25 bg-white/10 text-white"
               >
                 <MessageCircle size={18} />

@@ -395,7 +395,7 @@ export default function VideoCallPage() {
             onClick={() => router.push("/connect-now")}
             className="mt-4 rounded-xl bg-[#0f766e] px-4 py-2 text-sm font-semibold text-white"
           >
-            Back to companions
+            Back to Connect
           </button>
         </div>
       </main>
@@ -430,10 +430,10 @@ export default function VideoCallPage() {
           <p className="text-base font-semibold">This call has ended.</p>
           <button
             type="button"
-            onClick={() => router.push(`/connect-now/${companion.id}`)}
+            onClick={() => router.push("/connect-now")}
             className="mt-4 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white"
           >
-            Back to profile
+            Back to Connect
           </button>
         </div>
       </main>
@@ -447,10 +447,10 @@ export default function VideoCallPage() {
           <p className="text-base font-semibold">This video call is not active right now.</p>
           <button
             type="button"
-            onClick={() => router.push(`/connect-now/${companion.id}`)}
+            onClick={() => router.push("/connect-now")}
             className="mt-4 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white"
           >
-            Back to profile
+            Back to Connect
           </button>
         </div>
       </main>
@@ -482,8 +482,8 @@ export default function VideoCallPage() {
         <div className="flex items-center justify-between">
           <button
             type="button"
-            aria-label="Back to profile"
-            onClick={() => router.push(`/connect-now/${companion.id}`)}
+            aria-label="Back to Connect"
+            onClick={() => router.push("/connect-now")}
             className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/35 text-white backdrop-blur"
           >
             <ArrowLeft size={18} />

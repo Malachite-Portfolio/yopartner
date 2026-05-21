@@ -72,7 +72,7 @@ export function AudioCallScreen({ companion }: { companion: CompanionRouteProfil
           <button
             type="button"
             aria-label="Go back"
-            onClick={() => router.push(`/connect-now/${companion.id}`)}
+            onClick={() => router.push("/connect-now")}
             className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#cde8e2] bg-white/70 text-[#0f172a]"
           >
             <ArrowLeft size={18} />
@@ -126,7 +126,7 @@ export function AudioCallScreen({ companion }: { companion: CompanionRouteProfil
           <button
             type="button"
             aria-label="End call"
-            onClick={() => router.push(`/connect-now/${companion.id}`)}
+            onClick={() => router.push("/connect-now")}
             className="inline-flex h-[68px] w-[68px] items-center justify-center rounded-full bg-[#dc2626] text-white shadow-lg shadow-red-700/25 transition hover:bg-red-500"
           >
             <PhoneOff size={24} />
