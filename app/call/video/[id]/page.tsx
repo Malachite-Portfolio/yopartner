@@ -1,6 +1,6 @@
 "use client";
 
-import { Camera, CameraOff, MessageCircle, Mic, PhoneOff, RefreshCcw } from "lucide-react";
+import { ArrowLeft, Camera, CameraOff, MessageCircle, Mic, PhoneOff, RefreshCcw } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import type { IAgoraRTCClient, ICameraVideoTrack, IMicrophoneAudioTrack, IRemoteAudioTrack, IRemoteVideoTrack } from "agora-rtc-sdk-ng";
@@ -21,7 +21,7 @@ import {
 import { buildAgoraUid, createAgoraClient, normalizeChannelName, requestVideoPermission } from "@/lib/agora";
 
 const AGORA_APP_ID = process.env.NEXT_PUBLIC_AGORA_APP_ID?.trim() ?? "";
-const TERMINAL_SESSION_STATUSES: SessionStatus[] = ["DECLINED", "CANCELLED", "ENDED", "EXPIRED"];
+const TERMINAL_SESSION_STATUSES: SessionStatus[] = ["DECLINED", "CANCELLED", "ENDED", "EXPIRED", "COMPLETED", "FAILED", "FLAGGED"];
 
 function isTerminalStatus(status?: SessionStatus) {
   return Boolean(status && TERMINAL_SESSION_STATUSES.includes(status));
@@ -382,12 +382,12 @@ export default function VideoCallPage() {
   };
 
   if (loading) {
-    return <main className="flex h-screen items-center justify-center bg-[#0b1224] p-4 text-white">Opening video call...</main>;
+    return <main className="flex h-[100dvh] min-h-[100dvh] items-center justify-center bg-[#0b1224] p-4 text-white">Opening video call...</main>;
   }
 
   if (!session || !companion) {
     return (
-      <main className="flex h-screen items-center justify-center bg-[#0b1224] p-4">
+      <main className="flex h-[100dvh] min-h-[100dvh] items-center justify-center bg-[#0b1224] p-4">
         <div className="w-full max-w-md rounded-2xl border border-amber-200 bg-amber-50 p-6 text-center">
           <p className="text-sm font-semibold text-amber-800">{error || "Video call request is not available."}</p>
           <button
@@ -404,7 +404,7 @@ export default function VideoCallPage() {
 
   if (session.status === "PENDING") {
     return (
-      <main className="flex h-screen items-center justify-center bg-[#0b1224] p-4 text-white">
+      <main className="flex h-[100dvh] min-h-[100dvh] items-center justify-center bg-[#0b1224] p-4 text-white">
         <div className="w-full max-w-md rounded-2xl border border-white/20 bg-white/10 p-6 text-center">
           <p className="text-base font-semibold">Calling partner...</p>
           <p className="mt-2 text-sm text-cyan-100">Waiting for partner to accept your video request.</p>
@@ -425,7 +425,7 @@ export default function VideoCallPage() {
 
   if (isTerminalStatus(session.status)) {
     return (
-      <main className="flex h-screen items-center justify-center bg-[#0b1224] p-4 text-white">
+      <main className="flex h-[100dvh] min-h-[100dvh] items-center justify-center bg-[#0b1224] p-4 text-white">
         <div className="w-full max-w-md rounded-2xl border border-white/20 bg-white/10 p-6 text-center">
           <p className="text-base font-semibold">This call has ended.</p>
           <button
@@ -442,7 +442,7 @@ export default function VideoCallPage() {
 
   if (session.status !== "LIVE") {
     return (
-      <main className="flex h-screen items-center justify-center bg-[#0b1224] p-4 text-white">
+      <main className="flex h-[100dvh] min-h-[100dvh] items-center justify-center bg-[#0b1224] p-4 text-white">
         <div className="w-full max-w-md rounded-2xl border border-white/20 bg-white/10 p-6 text-center">
           <p className="text-base font-semibold">This video call is not active right now.</p>
           <button
@@ -458,9 +458,10 @@ export default function VideoCallPage() {
   }
 
   return (
-    <section className="relative h-[100dvh] min-h-[100dvh] overflow-hidden bg-[#0b1224] text-white">
-      <div className="absolute inset-0 bg-gradient-to-b from-[#0b1224] via-[#0a132a] to-[#03060f]" />
-      <div className="relative z-10 flex h-full flex-col px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-5">
+    <section className="relative h-[100dvh] min-h-[100dvh] overflow-hidden bg-[#020617] text-white">
+      <div ref={remoteVideoContainerRef} className="absolute inset-0 [&_video]:h-full [&_video]:w-full [&_video]:object-cover" />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/65 via-black/10 to-black/75" />
+      <div className="relative z-10 flex h-full flex-col px-3.5 pt-[max(0.8rem,env(safe-area-inset-top))] pb-[max(0.95rem,env(safe-area-inset-bottom))] sm:px-5">
         {needsPermissionAction ? (
           <button
             type="button"
@@ -468,88 +469,107 @@ export default function VideoCallPage() {
               void joinAgoraVideo();
             }}
             disabled={joining}
-            className="mb-3 rounded-xl border border-white/30 bg-white/10 px-3 py-2 text-xs text-cyan-100 disabled:opacity-70"
+            className="mb-3 rounded-xl border border-white/25 bg-black/35 px-3 py-2 text-xs text-cyan-100 disabled:opacity-70"
           >
             {joining ? "Enabling camera & microphone..." : "Enable camera & microphone"}
           </button>
         ) : null}
         {error ? (
-          <p className="mb-3 rounded-xl border border-amber-200/80 bg-amber-100/15 px-3 py-2 text-xs text-amber-100">
+          <p className="mb-3 rounded-xl border border-amber-300/80 bg-amber-100/15 px-3 py-2 text-xs text-amber-100">
             {error}
           </p>
         ) : null}
-        <div className="flex items-center justify-between rounded-xl border border-white/10 bg-black/30 px-4 py-2.5">
-          <div>
-            <p className="text-sm font-semibold">{companion.name}</p>
-            <p className="text-xs text-cyan-100/85">{remoteVideoReady ? "Connected" : "Waiting for partner video..."}</p>
+        <div className="flex items-center justify-between">
+          <button
+            type="button"
+            aria-label="Back to profile"
+            onClick={() => router.push(`/connect-now/${companion.id}`)}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/35 text-white backdrop-blur"
+          >
+            <ArrowLeft size={18} />
+          </button>
+          <div className="min-w-0 flex-1 px-3">
+            <p className="truncate text-sm font-semibold">{companion.name}</p>
+            <p className="text-xs text-white/75">{formatTimer(elapsedSeconds)}</p>
           </div>
-          <p className="text-sm font-semibold tabular-nums">{formatTimer(elapsedSeconds)}</p>
+          <span className="rounded-full border border-cyan-300/40 bg-cyan-400/20 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-cyan-100">
+            {remoteVideoReady ? "Secure HD" : "Secure"}
+          </span>
         </div>
-        <div className="relative mt-4 flex flex-1 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-black/30">
-          <div ref={remoteVideoContainerRef} className="absolute inset-0" />
+
+        <div className="relative flex flex-1 items-center justify-center">
           {!remoteVideoReady ? (
             <div className="relative z-10 text-center">
-              <p className="text-xs uppercase tracking-[0.2em] text-cyan-100/80">Video</p>
-              <p className="mt-2 text-2xl font-semibold">Waiting for partner video...</p>
+              <span className="mx-auto inline-flex h-20 w-20 items-center justify-center rounded-full border border-white/30 bg-white/10 text-2xl font-semibold">
+                {companion.name.slice(0, 1).toUpperCase()}
+              </span>
+              <p className="mt-3 text-xl font-semibold">{companion.name}</p>
+              <p className="mt-1 text-sm text-white/80">Waiting for video...</p>
             </div>
           ) : null}
-          <div className="absolute bottom-4 right-4 h-28 w-40 overflow-hidden rounded-xl border border-white/20 bg-slate-900/80 sm:h-36 sm:w-52">
+
+          <div className="absolute right-0 top-5 h-32 w-[120px] overflow-hidden rounded-[20px] border-2 border-white/85 bg-slate-900 shadow-2xl shadow-black/40 sm:w-[138px]">
             {!isCameraOn ? (
-              <div className="flex h-full w-full items-center justify-center bg-slate-950/90 text-center">
+              <div className="flex h-full w-full items-center justify-center bg-slate-950/95 text-center">
                 <div>
                   <CameraOff size={20} className="mx-auto text-slate-100" />
-                  <p className="mt-1 text-xs text-slate-100">Camera Off</p>
+                  <p className="mt-1 text-[11px] text-slate-100">Camera Off</p>
                 </div>
               </div>
             ) : (
-              <div ref={localVideoContainerRef} className="h-full w-full" />
+              <div ref={localVideoContainerRef} className="h-full w-full [&_video]:h-full [&_video]:w-full [&_video]:object-cover" />
             )}
+            <span className="absolute bottom-2 left-2 rounded-md bg-black/50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white">
+              You
+            </span>
           </div>
         </div>
-        <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
-          <button
-            type="button"
-            onClick={() => setIsMuted((value) => !value)}
-            className={`inline-flex h-14 w-14 items-center justify-center rounded-full border ${
-              isMuted ? "border-cyan-300 bg-cyan-400/30" : "border-white/25 bg-white/10"
-            }`}
-          >
-            <Mic size={20} />
-          </button>
+        <div className="flex items-center justify-center">
+          <div className="flex w-full max-w-[540px] items-center justify-center gap-2.5 rounded-full border border-white/15 bg-black/45 px-3 py-2.5 shadow-2xl backdrop-blur">
           <button
             type="button"
             onClick={() => setIsCameraOn((value) => !value)}
-            className={`inline-flex h-14 w-14 items-center justify-center rounded-full border ${
-              isCameraOn ? "border-cyan-300 bg-cyan-400/30" : "border-white/25 bg-white/10"
+            className={`inline-flex h-12 w-12 items-center justify-center rounded-full border ${
+              isCameraOn ? "border-white/25 bg-white/10 text-white" : "border-red-300/30 bg-red-500/25 text-red-100"
             }`}
           >
-            {isCameraOn ? <Camera size={20} /> : <CameraOff size={20} />}
+            {isCameraOn ? <Camera size={18} /> : <CameraOff size={18} />}
           </button>
           <button
             type="button"
-            onClick={() => setIsFrontCamera((value) => !value)}
-            className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-white/25 bg-white/10"
-            aria-label="Switch camera"
-            title={isFrontCamera ? "Front camera selected" : "Rear camera selected"}
+            onClick={() => setIsMuted((value) => !value)}
+            className={`inline-flex h-12 w-12 items-center justify-center rounded-full border ${
+              isMuted ? "border-amber-300/40 bg-amber-400/25 text-amber-100" : "border-white/25 bg-white/10 text-white"
+            }`}
           >
-            <RefreshCcw size={20} />
-          </button>
-          <button
-            type="button"
-            onClick={() => router.push(`/chat/${session.id}?companionId=${encodeURIComponent(companion.id)}`)}
-            className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-white/25 bg-white/10"
-          >
-            <MessageCircle size={20} />
+            <Mic size={18} />
           </button>
           <button
             type="button"
             onClick={() => {
               void handleCancel();
             }}
-            className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-red-600 text-white"
+            className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-[#dc2626] text-white shadow-lg shadow-red-950/35"
           >
-            <PhoneOff size={24} />
+            <PhoneOff size={22} />
           </button>
+          <button
+            type="button"
+            onClick={() => setIsFrontCamera((value) => !value)}
+            className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/25 bg-white/10 text-white"
+            aria-label="Switch camera"
+            title={isFrontCamera ? "Front camera selected" : "Rear camera selected"}
+          >
+            <RefreshCcw size={18} />
+          </button>
+          <button
+            type="button"
+            onClick={() => router.push(`/chat/${session.id}?companionId=${encodeURIComponent(companion.id)}`)}
+            className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/25 bg-white/10 text-white"
+          >
+            <MessageCircle size={18} />
+          </button>
+          </div>
         </div>
       </div>
     </section>

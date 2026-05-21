@@ -260,7 +260,7 @@ export default function ChatPage() {
 
   if (isLoading) {
     return (
-      <main className="flex h-screen items-center justify-center bg-[#eef3f8] p-4">
+      <main className="flex h-[100dvh] min-h-[100dvh] items-center justify-center bg-[#eef3f8] p-4">
         <div className="w-full max-w-md rounded-2xl border border-[#dceae5] bg-white p-6 text-center text-sm text-slate-700">
           Opening chat...
         </div>
@@ -270,7 +270,7 @@ export default function ChatPage() {
 
   if (errorMessage) {
     return (
-      <main className="flex h-screen items-center justify-center bg-[#eef3f8] p-4">
+      <main className="flex h-[100dvh] min-h-[100dvh] items-center justify-center bg-[#eef3f8] p-4">
         <div className="w-full max-w-md rounded-2xl border border-amber-200 bg-amber-50 p-6 text-center">
           <p className="text-sm font-semibold text-amber-800">{errorMessage}</p>
           <button
@@ -287,7 +287,7 @@ export default function ChatPage() {
 
   if (!companion || !session) {
     return (
-      <main className="flex h-screen items-center justify-center bg-[#eef3f8] p-4">
+      <main className="flex h-[100dvh] min-h-[100dvh] items-center justify-center bg-[#eef3f8] p-4">
         <div className="w-full max-w-md rounded-2xl border border-amber-200 bg-amber-50 p-6 text-center">
           <p className="text-sm font-semibold text-amber-800">Chat will open after your session is created.</p>
           <button
@@ -304,7 +304,7 @@ export default function ChatPage() {
 
   if (session.status === "PENDING") {
     return (
-      <main className="flex h-screen items-center justify-center bg-[#eef3f8] p-4">
+      <main className="flex h-[100dvh] min-h-[100dvh] items-center justify-center bg-[#eef3f8] p-4">
         <div className="w-full max-w-md rounded-2xl border border-[#dceae5] bg-white p-6 text-center">
           <p className="text-sm font-semibold text-slate-900">Waiting for partner to accept your chat request...</p>
           <p className="mt-2 text-xs text-slate-500">We&apos;ll connect you as soon as they accept.</p>
@@ -325,7 +325,7 @@ export default function ChatPage() {
 
   if (session.status !== "LIVE") {
     return (
-      <main className="flex h-screen items-center justify-center bg-[#eef3f8] p-4">
+      <main className="flex h-[100dvh] min-h-[100dvh] items-center justify-center bg-[#eef3f8] p-4">
         <div className="w-full max-w-md rounded-2xl border border-[#dceae5] bg-white p-6 text-center">
           <p className="text-sm font-semibold text-slate-900">
             {session.status === "DECLINED"
@@ -351,7 +351,7 @@ export default function ChatPage() {
   const screenMessages = toScreenMessages(messages, session.userId ?? "");
 
   return (
-    <main className="h-screen overflow-hidden bg-[#eef3f8]">
+    <main className="h-[100dvh] min-h-[100dvh] overflow-hidden bg-[#eef3f8]">
       {messageError ? (
         <div className="absolute left-1/2 top-3 z-50 -translate-x-1/2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
           {messageError}

@@ -1,6 +1,6 @@
 "use client";
 
-import { MessageCircle, Mic, PhoneOff, Volume2 } from "lucide-react";
+import { ArrowLeft, Lock, MessageCircle, Mic, PhoneOff, Volume2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import type { IAgoraRTCClient, IMicrophoneAudioTrack, IRemoteAudioTrack } from "agora-rtc-sdk-ng";
@@ -9,7 +9,7 @@ import { endSession, getSessionAgoraToken, getSessionById, type SessionRecord, t
 import { buildAgoraUid, createAgoraClient, normalizeChannelName, requestAudioPermission } from "@/lib/agora";
 
 const AGORA_APP_ID = process.env.NEXT_PUBLIC_AGORA_APP_ID?.trim() ?? "";
-const TERMINAL_SESSION_STATUSES: SessionStatus[] = ["DECLINED", "CANCELLED", "ENDED", "EXPIRED"];
+const TERMINAL_SESSION_STATUSES: SessionStatus[] = ["DECLINED", "CANCELLED", "ENDED", "EXPIRED", "COMPLETED", "FAILED", "FLAGGED"];
 
 function isTerminalStatus(status?: SessionStatus) {
   return Boolean(status && TERMINAL_SESSION_STATUSES.includes(status));
@@ -252,13 +252,13 @@ export default function PartnerAudioCallPage() {
   if (session && isTerminalStatus(session.status)) {
     return (
       <PartnerGuard requireOnboarding>
-        <main className="flex h-[100dvh] min-h-[100dvh] items-center justify-center bg-gradient-to-b from-[#0f1f4d] via-[#1f3a8a] to-[#0ea5a6] p-4 text-white">
-          <div className="w-full max-w-md rounded-2xl border border-white/20 bg-white/10 p-6 text-center">
+        <main className="flex h-[100dvh] min-h-[100dvh] items-center justify-center bg-gradient-to-b from-[#f3fbf9] via-[#e8f6f3] to-[#d9efea] p-4 text-[#0f172a]">
+          <div className="w-full max-w-md rounded-2xl border border-[#cde8e2] bg-white/80 p-6 text-center">
             <p className="text-base font-semibold">This call has ended.</p>
             <button
               type="button"
               onClick={() => router.push("/partner/dashboard")}
-              className="mt-4 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white"
+              className="mt-4 rounded-xl bg-[#dc2626] px-4 py-2 text-sm font-semibold text-white"
             >
               Back
             </button>
@@ -271,13 +271,13 @@ export default function PartnerAudioCallPage() {
   if (session && session.status !== "LIVE") {
     return (
       <PartnerGuard requireOnboarding>
-        <main className="flex h-[100dvh] min-h-[100dvh] items-center justify-center bg-gradient-to-b from-[#0f1f4d] via-[#1f3a8a] to-[#0ea5a6] p-4 text-white">
-          <div className="w-full max-w-md rounded-2xl border border-white/20 bg-white/10 p-6 text-center">
+        <main className="flex h-[100dvh] min-h-[100dvh] items-center justify-center bg-gradient-to-b from-[#f3fbf9] via-[#e8f6f3] to-[#d9efea] p-4 text-[#0f172a]">
+          <div className="w-full max-w-md rounded-2xl border border-[#cde8e2] bg-white/80 p-6 text-center">
             <p className="text-base font-semibold">This audio call is not active right now.</p>
             <button
               type="button"
               onClick={() => router.push("/partner/dashboard")}
-              className="mt-4 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white"
+              className="mt-4 rounded-xl bg-[#dc2626] px-4 py-2 text-sm font-semibold text-white"
             >
               Back
             </button>
@@ -289,8 +289,24 @@ export default function PartnerAudioCallPage() {
 
   return (
     <PartnerGuard requireOnboarding>
-      <section className="relative flex h-[100dvh] min-h-[100dvh] flex-col overflow-hidden bg-gradient-to-b from-[#0f1f4d] via-[#1f3a8a] to-[#0ea5a6] px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))] text-white">
+      <section className="relative flex h-[100dvh] min-h-[100dvh] flex-col overflow-hidden bg-gradient-to-b from-[#f3fbf9] via-[#e8f6f3] to-[#d9efea] px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] text-[#0f172a]">
         <div className="mx-auto flex h-full w-full max-w-xl flex-col items-center justify-between">
+          <div className="flex w-full items-center justify-between">
+            <button
+              type="button"
+              onClick={() => router.push("/partner/dashboard")}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#cde8e2] bg-white/70 text-[#0f172a]"
+            >
+              <ArrowLeft size={18} />
+            </button>
+            <div className="rounded-full border border-[#b7dfd7] bg-white/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.15em] text-[#0f766e]">
+              YoPartner Secure Call
+            </div>
+            <span className="inline-flex items-center gap-1 rounded-full bg-[#d6f3ed] px-2.5 py-1 text-[11px] font-semibold text-[#0f766e]">
+              <Lock size={12} />
+              Secure
+            </span>
+          </div>
           {needsPermissionAction ? (
             <button
               type="button"
@@ -298,88 +314,89 @@ export default function PartnerAudioCallPage() {
                 void joinAgoraAudio();
               }}
               disabled={joining}
-              className="w-full rounded-xl border border-white/30 bg-white/10 px-3 py-2 text-center text-xs text-cyan-100 disabled:opacity-70"
+              className="mt-3 w-full rounded-xl border border-[#b7dfd7] bg-white/80 px-3 py-2 text-center text-xs text-[#0f766e] disabled:opacity-70"
             >
               {joining ? "Enabling microphone..." : "Enable microphone"}
             </button>
           ) : null}
           {error ? (
-            <p className="mt-2 w-full rounded-xl border border-rose-200/70 bg-rose-100/10 px-3 py-2 text-center text-xs text-rose-100">
+            <p className="mt-2 w-full rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-center text-xs text-rose-700">
               {error}
             </p>
           ) : null}
-          <div className="pt-6 text-center">
-            <p className="text-sm font-medium uppercase tracking-[0.2em] text-cyan-100/90">
-              {remoteAudioReady ? "Connected" : "Waiting for member audio..."}
-            </p>
-            <h1 className="mt-2 text-3xl font-semibold">{maskedPhone}</h1>
-            <p className="mt-2 text-xl font-semibold tabular-nums">{formatTimer(elapsed)}</p>
+          <div className="pt-4 text-center">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#0f766e]">Audio Call</p>
+            <h1 className="mt-2 text-[28px] font-semibold leading-tight text-[#0f172a]">{maskedPhone}</h1>
+            <p className="mt-1 text-base text-[#334155]">{remoteAudioReady ? "Connected" : "Waiting for audio..."}</p>
+            <p className="mt-2 text-3xl font-semibold tabular-nums text-[#0f172a]">{formatTimer(elapsed)}</p>
           </div>
 
           <div className="relative flex flex-1 items-center justify-center">
-            <span className="absolute h-48 w-48 rounded-full border border-white/35" />
-            <span className="absolute h-40 w-40 rounded-full border border-white/25" />
-            <span className="relative inline-flex h-36 w-36 items-center justify-center rounded-full bg-white/20 text-4xl font-bold">
+            <span className="absolute h-[280px] w-[280px] rounded-full bg-[#0f766e]/8" />
+            <span className="absolute h-[240px] w-[240px] rounded-full border border-[#b7dfd7]" />
+            <span className="relative inline-flex h-48 w-48 items-center justify-center rounded-full border-4 border-white bg-[#d6f3ed] text-5xl font-bold text-[#0f766e] shadow-[0_22px_45px_rgba(15,23,42,0.18)]">
               {maskedPhone.slice(-2)}
             </span>
           </div>
 
           {session?.status === "LIVE" && !remoteAudioReady ? (
-            <p className="text-xs text-cyan-100/85">Waiting for member audio...</p>
+            <p className="text-xs text-[#334155]">Waiting for audio...</p>
           ) : null}
           {speakerHintVisible ? (
             <button
               type="button"
               onClick={handleEnableSpeaker}
-              className="mt-2 rounded-full border border-white/30 px-3 py-1 text-xs"
+              className="mt-2 rounded-full border border-[#b7dfd7] bg-white px-3 py-1 text-xs text-[#0f766e]"
             >
               Tap to enable speaker
             </button>
           ) : null}
 
-          <div className="w-full pb-4">
-            <div className="flex flex-wrap items-center justify-center gap-3">
-              <button
-                type="button"
-                onClick={() => setMute((current) => !current)}
-                className={`inline-flex h-14 w-14 items-center justify-center rounded-full border ${
-                  mute ? "border-cyan-200 bg-cyan-400/35" : "border-white/25 bg-white/10"
-                }`}
-              >
-                <Mic size={20} />
-              </button>
-              <button
-                type="button"
-                onClick={handleEnableSpeaker}
-                className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-white/25 bg-white/10"
-              >
-                <Volume2 size={20} />
-              </button>
-              <button
-                type="button"
-                onClick={() => router.push(`/partner/chats/${sessionId}`)}
-                className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-white/25 bg-white/10"
-              >
-                <MessageCircle size={20} />
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  const nowIso = new Date().toISOString();
-                  const endPromise = endSession(sessionId);
-                  await cleanupAgora();
-                  setSession((current) => (current ? { ...current, status: "ENDED", endedAt: current.endedAt ?? nowIso } : current));
-                  const response = await endPromise;
-                  if (response.data) {
-                    setSession(response.data);
-                    return;
-                  }
-                  setError(response.error?.message || "Unable to end call right now.");
-                }}
-                className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-red-600 text-white"
-              >
-                <PhoneOff size={24} />
-              </button>
+          <div className="w-full pb-2">
+            <div className="rounded-[28px] border border-[#cde8e2] bg-white/80 p-4 shadow-[0_20px_45px_rgba(15,23,42,0.12)] backdrop-blur">
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setMute((current) => !current)}
+                  className={`inline-flex h-14 w-14 items-center justify-center rounded-full border ${
+                    mute ? "border-[#0d9488] bg-[#d6f3ed] text-[#0f766e]" : "border-[#cfe7e2] bg-white text-[#334155]"
+                  }`}
+                >
+                  <Mic size={20} />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleEnableSpeaker}
+                  className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-[#cfe7e2] bg-white text-[#334155]"
+                >
+                  <Volume2 size={20} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => router.push(`/partner/chats/${sessionId}`)}
+                  className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-[#cfe7e2] bg-white text-[#334155]"
+                >
+                  <MessageCircle size={20} />
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const nowIso = new Date().toISOString();
+                    const endPromise = endSession(sessionId);
+                    await cleanupAgora();
+                    setSession((current) => (current ? { ...current, status: "ENDED", endedAt: current.endedAt ?? nowIso } : current));
+                    const response = await endPromise;
+                    if (response.data) {
+                      setSession(response.data);
+                      return;
+                    }
+                    setError(response.error?.message || "Unable to end call right now.");
+                  }}
+                  className="inline-flex h-[68px] w-[68px] items-center justify-center rounded-full bg-[#dc2626] text-white shadow-lg shadow-red-700/25"
+                >
+                  <PhoneOff size={24} />
+                </button>
+              </div>
             </div>
           </div>
         </div>

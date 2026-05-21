@@ -1,6 +1,6 @@
 "use client";
 
-import { Camera, CameraOff, MessageCircle, Mic, PhoneOff, RefreshCcw } from "lucide-react";
+import { ArrowLeft, Camera, CameraOff, MessageCircle, Mic, PhoneOff, RefreshCcw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import type { IAgoraRTCClient, ICameraVideoTrack, IMicrophoneAudioTrack, IRemoteAudioTrack, IRemoteVideoTrack } from "agora-rtc-sdk-ng";
@@ -9,7 +9,7 @@ import { endSession, getSessionAgoraToken, getSessionById, type SessionRecord, t
 import { buildAgoraUid, createAgoraClient, normalizeChannelName, requestVideoPermission } from "@/lib/agora";
 
 const AGORA_APP_ID = process.env.NEXT_PUBLIC_AGORA_APP_ID?.trim() ?? "";
-const TERMINAL_SESSION_STATUSES: SessionStatus[] = ["DECLINED", "CANCELLED", "ENDED", "EXPIRED"];
+const TERMINAL_SESSION_STATUSES: SessionStatus[] = ["DECLINED", "CANCELLED", "ENDED", "EXPIRED", "COMPLETED", "FAILED", "FLAGGED"];
 
 function isTerminalStatus(status?: SessionStatus) {
   return Boolean(status && TERMINAL_SESSION_STATUSES.includes(status));
@@ -281,13 +281,13 @@ export default function PartnerVideoCallPage() {
   if (session && isTerminalStatus(session.status)) {
     return (
       <PartnerGuard requireOnboarding>
-        <main className="flex h-[100dvh] min-h-[100dvh] items-center justify-center bg-[#050814] p-4 text-white">
+        <main className="flex h-[100dvh] min-h-[100dvh] items-center justify-center bg-[#020617] p-4 text-white">
           <div className="w-full max-w-md rounded-2xl border border-white/20 bg-white/10 p-6 text-center">
             <p className="text-base font-semibold">This call has ended.</p>
             <button
               type="button"
               onClick={() => router.push("/partner/dashboard")}
-              className="mt-4 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white"
+              className="mt-4 rounded-xl bg-[#dc2626] px-4 py-2 text-sm font-semibold text-white"
             >
               Back
             </button>
@@ -300,13 +300,13 @@ export default function PartnerVideoCallPage() {
   if (session && session.status !== "LIVE") {
     return (
       <PartnerGuard requireOnboarding>
-        <main className="flex h-[100dvh] min-h-[100dvh] items-center justify-center bg-[#050814] p-4 text-white">
+        <main className="flex h-[100dvh] min-h-[100dvh] items-center justify-center bg-[#020617] p-4 text-white">
           <div className="w-full max-w-md rounded-2xl border border-white/20 bg-white/10 p-6 text-center">
             <p className="text-base font-semibold">This video call is not active right now.</p>
             <button
               type="button"
               onClick={() => router.push("/partner/dashboard")}
-              className="mt-4 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white"
+              className="mt-4 rounded-xl bg-[#dc2626] px-4 py-2 text-sm font-semibold text-white"
             >
               Back
             </button>
@@ -318,10 +318,11 @@ export default function PartnerVideoCallPage() {
 
   return (
     <PartnerGuard requireOnboarding>
-      <section className="relative h-[100dvh] min-h-[100dvh] overflow-hidden bg-[#050814] text-white">
-        <div className="absolute inset-0 bg-gradient-to-b from-[#0b1224] via-[#0a132a] to-[#03060f]" />
+      <section className="relative h-[100dvh] min-h-[100dvh] overflow-hidden bg-[#020617] text-white">
+        <div ref={remoteVideoContainerRef} className="absolute inset-0 [&_video]:h-full [&_video]:w-full [&_video]:object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/65 via-black/10 to-black/75" />
 
-        <div className="relative z-10 flex h-full flex-col px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-5">
+        <div className="relative z-10 flex h-full flex-col px-3.5 pt-[max(0.8rem,env(safe-area-inset-top))] pb-[max(0.95rem,env(safe-area-inset-bottom))] sm:px-5">
           {needsPermissionAction ? (
             <button
               type="button"
@@ -329,100 +330,116 @@ export default function PartnerVideoCallPage() {
                 void joinAgoraVideo();
               }}
               disabled={joining}
-              className="mb-3 rounded-xl border border-white/30 bg-white/10 px-3 py-2 text-center text-xs text-cyan-100 disabled:opacity-70"
+              className="mb-3 rounded-xl border border-white/25 bg-black/35 px-3 py-2 text-center text-xs text-cyan-100 disabled:opacity-70"
             >
               {joining ? "Enabling camera & microphone..." : "Enable camera & microphone"}
             </button>
           ) : null}
           {error ? (
-            <p className="mb-3 rounded-xl border border-rose-200/70 bg-rose-100/10 px-3 py-2 text-center text-xs text-rose-100">
+            <p className="mb-3 rounded-xl border border-rose-300/70 bg-rose-100/10 px-3 py-2 text-center text-xs text-rose-100">
               {error}
             </p>
           ) : null}
-          <div className="flex items-center justify-between rounded-xl border border-white/10 bg-black/30 px-4 py-2.5">
-            <div>
-              <p className="text-sm font-semibold">{maskedPhone}</p>
-              <p className="text-xs text-cyan-100/85">{remoteVideoReady ? "Connected" : "Waiting for member video..."}</p>
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => router.push("/partner/dashboard")}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/35 text-white backdrop-blur"
+            >
+              <ArrowLeft size={18} />
+            </button>
+            <div className="min-w-0 flex-1 px-3">
+              <p className="truncate text-sm font-semibold">{maskedPhone}</p>
+              <p className="text-xs text-white/75">{formatTimer(elapsed)}</p>
             </div>
-            <p className="text-sm font-semibold tabular-nums">{formatTimer(elapsed)}</p>
+            <span className="rounded-full border border-cyan-300/40 bg-cyan-400/20 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-cyan-100">
+              {remoteVideoReady ? "Secure HD" : "Secure"}
+            </span>
           </div>
 
-          <div className="relative mt-4 flex flex-1 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-black/30">
-            <div ref={remoteVideoContainerRef} className="absolute inset-0" />
+          <div className="relative flex flex-1 items-center justify-center">
             {!remoteVideoReady ? (
               <div className="relative z-10 text-center">
-                <p className="text-xs uppercase tracking-[0.2em] text-cyan-100/80">Video</p>
-                <p className="mt-2 text-2xl font-semibold">Waiting for member video...</p>
+                <span className="mx-auto inline-flex h-20 w-20 items-center justify-center rounded-full border border-white/30 bg-white/10 text-2xl font-semibold">
+                  {maskedPhone.slice(-2)}
+                </span>
+                <p className="mt-3 text-xl font-semibold">{maskedPhone}</p>
+                <p className="mt-1 text-sm text-white/80">Waiting for video...</p>
               </div>
             ) : null}
 
-            <div className="absolute bottom-4 right-4 h-28 w-40 overflow-hidden rounded-xl border border-white/20 bg-slate-900/80 sm:h-36 sm:w-52">
+            <div className="absolute right-0 top-5 h-32 w-[120px] overflow-hidden rounded-[20px] border-2 border-white/85 bg-slate-900 shadow-2xl shadow-black/40 sm:w-[138px]">
               {!cameraOn ? (
-                <div className="flex h-full w-full items-center justify-center bg-slate-950/90 text-center">
+                <div className="flex h-full w-full items-center justify-center bg-slate-950/95 text-center">
                   <div>
                     <CameraOff size={20} className="mx-auto text-slate-100" />
-                    <p className="mt-1 text-xs text-slate-100">Camera Off</p>
+                    <p className="mt-1 text-[11px] text-slate-100">Camera Off</p>
                   </div>
                 </div>
               ) : (
-                <div ref={localVideoContainerRef} className="h-full w-full" />
+                <div ref={localVideoContainerRef} className="h-full w-full [&_video]:h-full [&_video]:w-full [&_video]:object-cover" />
               )}
+              <span className="absolute bottom-2 left-2 rounded-md bg-black/50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white">
+                You
+              </span>
             </div>
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
-            <button
-              type="button"
-              onClick={() => setMute((current) => !current)}
-              className={`inline-flex h-14 w-14 items-center justify-center rounded-full border ${
-                mute ? "border-cyan-300 bg-cyan-400/30" : "border-white/25 bg-white/10"
-              }`}
-            >
-              <Mic size={20} />
-            </button>
-            <button
-              type="button"
-              onClick={() => setCameraOn((current) => !current)}
-              className={`inline-flex h-14 w-14 items-center justify-center rounded-full border ${
-                cameraOn ? "border-cyan-300 bg-cyan-400/30" : "border-white/25 bg-white/10"
-              }`}
-            >
-              {cameraOn ? <Camera size={20} /> : <CameraOff size={20} />}
-            </button>
-            <button
-              type="button"
-              onClick={() => setFrontCamera((current) => !current)}
-              className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-white/25 bg-white/10"
-              aria-label="Switch camera"
-              title={frontCamera ? "Front camera selected" : "Rear camera selected"}
-            >
-              <RefreshCcw size={20} />
-            </button>
-            <button
-              type="button"
-              onClick={() => router.push(`/partner/chats/${sessionId}`)}
-              className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-white/25 bg-white/10"
-            >
-              <MessageCircle size={20} />
-            </button>
-            <button
-              type="button"
-              onClick={async () => {
-                const nowIso = new Date().toISOString();
-                const endPromise = endSession(sessionId);
-                await cleanupAgora();
-                setSession((current) => (current ? { ...current, status: "ENDED", endedAt: current.endedAt ?? nowIso } : current));
-                const response = await endPromise;
-                if (response.data) {
-                  setSession(response.data);
-                  return;
-                }
-                setError(response.error?.message || "Unable to end call right now.");
-              }}
-              className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-red-600 text-white"
-            >
-              <PhoneOff size={24} />
-            </button>
+          <div className="flex items-center justify-center">
+            <div className="flex w-full max-w-[540px] items-center justify-center gap-2.5 rounded-full border border-white/15 bg-black/45 px-3 py-2.5 shadow-2xl backdrop-blur">
+              <button
+                type="button"
+                onClick={() => setCameraOn((current) => !current)}
+                className={`inline-flex h-12 w-12 items-center justify-center rounded-full border ${
+                  cameraOn ? "border-white/25 bg-white/10 text-white" : "border-red-300/30 bg-red-500/25 text-red-100"
+                }`}
+              >
+                {cameraOn ? <Camera size={18} /> : <CameraOff size={18} />}
+              </button>
+              <button
+                type="button"
+                onClick={() => setMute((current) => !current)}
+                className={`inline-flex h-12 w-12 items-center justify-center rounded-full border ${
+                  mute ? "border-amber-300/40 bg-amber-400/25 text-amber-100" : "border-white/25 bg-white/10 text-white"
+                }`}
+              >
+                <Mic size={18} />
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const nowIso = new Date().toISOString();
+                  const endPromise = endSession(sessionId);
+                  await cleanupAgora();
+                  setSession((current) => (current ? { ...current, status: "ENDED", endedAt: current.endedAt ?? nowIso } : current));
+                  const response = await endPromise;
+                  if (response.data) {
+                    setSession(response.data);
+                    return;
+                  }
+                  setError(response.error?.message || "Unable to end call right now.");
+                }}
+                className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-[#dc2626] text-white shadow-lg shadow-red-950/35"
+              >
+                <PhoneOff size={22} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setFrontCamera((current) => !current)}
+                className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/25 bg-white/10 text-white"
+                aria-label="Switch camera"
+                title={frontCamera ? "Front camera selected" : "Rear camera selected"}
+              >
+                <RefreshCcw size={18} />
+              </button>
+              <button
+                type="button"
+                onClick={() => router.push(`/partner/chats/${sessionId}`)}
+                className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/25 bg-white/10 text-white"
+              >
+                <MessageCircle size={18} />
+              </button>
+            </div>
           </div>
         </div>
       </section>

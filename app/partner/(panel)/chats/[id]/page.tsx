@@ -1,6 +1,6 @@
 "use client";
 
-import { Phone, SendHorizontal, Video } from "lucide-react";
+import { ArrowLeft, CheckCheck, CirclePlus, EllipsisVertical, Phone, SendHorizontal, Smile, Video } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -78,7 +78,7 @@ export default function PartnerChatDetailPage() {
   }, [session?.status, sessionId]);
 
   const userPhone = useMemo(() => {
-    const raw = String(session?.user?.phoneNumber ?? "");
+    const raw = String(session?.user?.phoneMasked ?? session?.user?.phoneNumber ?? "");
     return maskPhone(raw);
   }, [session?.user]);
 
@@ -141,7 +141,7 @@ export default function PartnerChatDetailPage() {
 
   if (loading) {
     return (
-      <section className="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-600">
+      <section className="flex h-[100dvh] min-h-[100dvh] items-center justify-center bg-[#f7fbfa] p-5 text-sm text-slate-600">
         Opening conversation...
       </section>
     );
@@ -149,9 +149,11 @@ export default function PartnerChatDetailPage() {
 
   if (!session) {
     return (
-      <section className="rounded-xl border border-amber-200 bg-amber-50 p-5">
-        <h2 className="text-xl font-semibold text-amber-800">Conversation unavailable</h2>
-        <p className="mt-2 text-sm text-amber-700">{error || "Session was not found."}</p>
+      <section className="flex h-[100dvh] min-h-[100dvh] items-center justify-center bg-[#f7fbfa] p-4">
+        <div className="w-full max-w-md rounded-2xl border border-amber-200 bg-amber-50 p-5">
+          <h2 className="text-xl font-semibold text-amber-800">Conversation unavailable</h2>
+          <p className="mt-2 text-sm text-amber-700">{error || "Session was not found."}</p>
+        </div>
       </section>
     );
   }
@@ -160,34 +162,46 @@ export default function PartnerChatDetailPage() {
   const canMessage = session.status === "LIVE";
 
   return (
-    <section className="flex min-h-[calc(100vh-140px)] flex-col rounded-xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
-        <div>
-          <p className="text-sm font-semibold text-slate-900">{userPhone}</p>
-          <p className="text-xs text-slate-500">
-            Conversation type: {session.type || session.serviceType || "CHAT"} - Status: {session.status || "LIVE"}
-          </p>
+    <section className="relative flex h-[100dvh] min-h-[100dvh] flex-col overflow-hidden bg-[#f7fbfa] text-[#0f172a]">
+      <header className="z-20 flex h-[62px] items-center justify-between border-b border-[#d9ece7] bg-white/95 px-3.5 pt-[max(0rem,env(safe-area-inset-top))] backdrop-blur">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <button
+            type="button"
+            aria-label="Back"
+            onClick={() => router.push("/partner/chats")}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[#0f766e] transition hover:bg-[#edf7f5]"
+          >
+            <ArrowLeft size={18} />
+          </button>
+          <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#d8f4ee] text-sm font-semibold text-[#0f766e]">
+            {userPhone.slice(-2)}
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-[17px] font-semibold leading-none">{userPhone}</p>
+            <p className="mt-1 text-[12px] text-[#0f766e]">{canMessage ? "Private session" : "Session ended"}</p>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
+
+        <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={() => {
               void handleOpenAudio();
             }}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-700"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[#0f766e] transition hover:bg-[#edf7f5]"
             aria-label="Start audio call"
           >
-            <Phone size={16} />
+            <Phone size={17} />
           </button>
           <button
             type="button"
             onClick={() => {
               void handleOpenVideo();
             }}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-700"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[#0f766e] transition hover:bg-[#edf7f5]"
             aria-label="Start video call"
           >
-            <Video size={16} />
+            <Video size={17} />
           </button>
           <button
             type="button"
@@ -195,52 +209,71 @@ export default function PartnerChatDetailPage() {
               void handleEndChat();
             }}
             disabled={!canMessage || isEndingSession}
-            className="rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-xs font-semibold text-rose-700 disabled:opacity-60"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[#64748b] transition hover:bg-[#f1f5f9] disabled:opacity-50"
+            title={isEndingSession ? "Ending..." : "End chat"}
           >
-            {isEndingSession ? "Ending..." : "End chat"}
+            <EllipsisVertical size={16} />
           </button>
         </div>
-      </div>
+      </header>
 
-      <div className="flex-1 space-y-2 overflow-y-auto bg-slate-50 px-3 py-3">
+      <div className="relative min-h-0 flex-1 overflow-y-auto px-[14px] py-4 pb-32">
+        <div className="mb-4 flex justify-center">
+          <span className="rounded-full bg-[#e5e7eb] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#475569]">
+            Today
+          </span>
+        </div>
+
         {messages.length === 0 ? (
-          <p className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
+          <p className="mx-auto max-w-xs rounded-2xl bg-white px-4 py-2.5 text-center text-[14px] text-[#64748b] shadow-sm">
             No messages yet. Say hello.
           </p>
         ) : null}
-        {messages.map((message) => {
-          const own = message.senderUserId === selfId;
-          return (
-            <div key={message.id} className={`flex ${own ? "justify-end" : "justify-start"}`}>
-              <div
-                className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm ${
-                  own
-                    ? "rounded-br-md bg-gradient-to-r from-[#1d4ed8] to-[#0ea5a6] text-white"
-                    : "rounded-bl-md bg-white text-slate-800"
-                }`}
-              >
-                <p>{message.body}</p>
-                <p className={`mt-1 text-[11px] ${own ? "text-white/85" : "text-slate-400"}`}>
-                  {formatMessageTime(message.createdAt)}
-                </p>
+
+        <div className="space-y-3">
+          {messages.map((message) => {
+            const own = message.senderUserId === selfId;
+            return (
+              <div key={message.id} className={`flex items-end gap-2 ${own ? "justify-end" : "justify-start"}`}>
+                {!own ? (
+                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#d8f4ee] text-[10px] font-semibold text-[#0f766e]">
+                    {userPhone.slice(-2)}
+                  </span>
+                ) : null}
+                <div
+                  className={`max-w-[78%] rounded-2xl px-3.5 py-2.5 shadow-sm ${
+                    own
+                      ? "rounded-br-md bg-[#0f172a] text-white"
+                      : "rounded-bl-md bg-[#7de1d6] text-[#0f172a]"
+                  }`}
+                >
+                  <p className="text-[14.5px] leading-relaxed">{message.body}</p>
+                  <div className={`mt-1.5 flex items-center gap-1 text-[11px] ${own ? "justify-end text-white/80" : "text-[#0f172a]/75"}`}>
+                    <span>{formatMessageTime(message.createdAt)}</span>
+                    {own ? <CheckCheck size={12} /> : null}
+                  </div>
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
 
-      <div className="border-t border-slate-200 bg-white p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <div className="absolute inset-x-0 bottom-0 border-t border-[#d9ece7] bg-white/95 px-[14px] pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2.5 backdrop-blur">
         {!canMessage ? (
-          <div className="mb-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
-            Session ended.
-          </div>
+          <div className="mb-2 rounded-xl bg-[#f1f5f9] px-3 py-2 text-[12px] text-[#64748b]">Session ended</div>
         ) : null}
         {error ? (
-          <div className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
-            {error}
-          </div>
+          <div className="mb-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">{error}</div>
         ) : null}
-        <div className="flex items-center gap-2 rounded-xl border border-slate-200 px-2 py-1.5">
+        <div className="flex items-center gap-2 rounded-full border border-[#d9ece7] bg-[#f8fafc] px-2.5 py-1.5 shadow-sm">
+          <button
+            type="button"
+            aria-label="Add"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#0f172a] text-white"
+          >
+            <CirclePlus size={18} />
+          </button>
           <input
             value={input}
             onChange={(event) => setInput(event.target.value)}
@@ -250,19 +283,26 @@ export default function PartnerChatDetailPage() {
                 void handleSend();
               }
             }}
-            placeholder="Type a reply..."
-            className="h-9 flex-1 border-none bg-transparent px-2 text-sm outline-none"
+            placeholder="Type a message..."
+            className="h-9 min-w-0 flex-1 border-none bg-transparent text-[15px] text-[#0f172a] outline-none placeholder:text-[#94a3b8]"
             disabled={!canMessage}
           />
+          <button
+            type="button"
+            aria-label="Emoji"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[#64748b] transition hover:bg-[#e2e8f0]"
+          >
+            <Smile size={18} />
+          </button>
           <button
             type="button"
             onClick={() => {
               void handleSend();
             }}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[#1d4ed8] text-white disabled:opacity-50"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#0d9488] text-white disabled:opacity-50"
             disabled={!canMessage}
           >
-            <SendHorizontal size={15} />
+            <SendHorizontal size={16} />
           </button>
         </div>
       </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, MessageCircle, Mic, PhoneOff, Volume2 } from "lucide-react";
+import { ArrowLeft, Lock, MessageCircle, Mic, PhoneOff, Volume2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import type { IAgoraRTCClient, IMicrophoneAudioTrack, IRemoteAudioTrack } from "agora-rtc-sdk-ng";
@@ -21,7 +21,7 @@ import {
 import { buildAgoraUid, createAgoraClient, normalizeChannelName, requestAudioPermission } from "@/lib/agora";
 
 const AGORA_APP_ID = process.env.NEXT_PUBLIC_AGORA_APP_ID?.trim() ?? "";
-const TERMINAL_SESSION_STATUSES: SessionStatus[] = ["DECLINED", "CANCELLED", "ENDED", "EXPIRED"];
+const TERMINAL_SESSION_STATUSES: SessionStatus[] = ["DECLINED", "CANCELLED", "ENDED", "EXPIRED", "COMPLETED", "FAILED", "FLAGGED"];
 
 function isTerminalStatus(status?: SessionStatus) {
   return Boolean(status && TERMINAL_SESSION_STATUSES.includes(status));
@@ -340,13 +340,13 @@ export default function AudioCallPage() {
 
   if (loading) {
     return (
-      <main className="flex h-screen items-center justify-center bg-[#0f1d4d] p-4 text-white">Opening audio call...</main>
+      <main className="flex h-[100dvh] min-h-[100dvh] items-center justify-center bg-[#0f1d4d] p-4 text-white">Opening audio call...</main>
     );
   }
 
   if (!session || !companion) {
     return (
-      <main className="flex h-screen items-center justify-center bg-[#0f1d4d] p-4">
+      <main className="flex h-[100dvh] min-h-[100dvh] items-center justify-center bg-[#0f1d4d] p-4">
         <div className="w-full max-w-md rounded-2xl border border-amber-200 bg-amber-50 p-6 text-center">
           <p className="text-sm font-semibold text-amber-800">{error || "Audio call request is not available."}</p>
           <button
@@ -363,7 +363,7 @@ export default function AudioCallPage() {
 
   if (session.status === "PENDING") {
     return (
-      <main className="flex h-screen items-center justify-center bg-[#0f1d4d] p-4 text-white">
+      <main className="flex h-[100dvh] min-h-[100dvh] items-center justify-center bg-[#0f1d4d] p-4 text-white">
         <div className="w-full max-w-md rounded-2xl border border-white/20 bg-white/10 p-6 text-center">
           <p className="text-base font-semibold">Calling partner...</p>
           <p className="mt-2 text-sm text-cyan-100">Waiting for partner to accept your audio request.</p>
@@ -384,7 +384,7 @@ export default function AudioCallPage() {
 
   if (isTerminalStatus(session.status)) {
     return (
-      <main className="flex h-screen items-center justify-center bg-[#0f1d4d] p-4 text-white">
+      <main className="flex h-[100dvh] min-h-[100dvh] items-center justify-center bg-[#0f1d4d] p-4 text-white">
         <div className="w-full max-w-md rounded-2xl border border-white/20 bg-white/10 p-6 text-center">
           <p className="text-base font-semibold">This call has ended.</p>
           <button
@@ -401,7 +401,7 @@ export default function AudioCallPage() {
 
   if (session.status !== "LIVE") {
     return (
-      <main className="flex h-screen items-center justify-center bg-[#0f1d4d] p-4 text-white">
+      <main className="flex h-[100dvh] min-h-[100dvh] items-center justify-center bg-[#0f1d4d] p-4 text-white">
         <div className="w-full max-w-md rounded-2xl border border-white/20 bg-white/10 p-6 text-center">
           <p className="text-base font-semibold">This audio call is not active right now.</p>
           <button
@@ -417,17 +417,24 @@ export default function AudioCallPage() {
   }
 
   return (
-    <section className="relative h-[100dvh] min-h-[100dvh] overflow-hidden bg-gradient-to-b from-[#0f1d4d] via-[#2b235e] to-[#4d2a68] px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))] text-white sm:px-6">
+    <section className="relative h-[100dvh] min-h-[100dvh] overflow-hidden bg-gradient-to-b from-[#f3fbf9] via-[#e8f6f3] to-[#d9efea] px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] text-[#0f172a] sm:px-6">
       <div className="mx-auto flex h-full w-full max-w-xl flex-col">
-        <div className="flex items-center justify-start">
+        <div className="flex items-center justify-between">
           <button
             type="button"
             aria-label="Go back"
             onClick={() => router.push(`/connect-now/${companion.id}`)}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/30 bg-white/10 text-white transition hover:bg-white/20"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#cde8e2] bg-white/70 text-[#0f172a] transition hover:bg-white"
           >
-            <ArrowLeft size={19} />
+            <ArrowLeft size={18} />
           </button>
+          <div className="rounded-full border border-[#b7dfd7] bg-white/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.15em] text-[#0f766e]">
+            YoPartner Secure Call
+          </div>
+          <span className="inline-flex items-center gap-1 rounded-full bg-[#d6f3ed] px-2.5 py-1 text-[11px] font-semibold text-[#0f766e]">
+            <Lock size={12} />
+            Secure
+          </span>
         </div>
         {needsPermissionAction ? (
           <button
@@ -436,57 +443,59 @@ export default function AudioCallPage() {
               void joinAgoraAudio();
             }}
             disabled={joining}
-            className="mt-4 rounded-xl border border-white/30 bg-white/10 px-3 py-2 text-xs text-cyan-100 disabled:opacity-70"
+            className="mt-4 rounded-xl border border-[#b7dfd7] bg-white/80 px-3 py-2 text-xs text-[#0f766e] disabled:opacity-70"
           >
             {joining ? "Enabling microphone..." : "Enable microphone"}
           </button>
         ) : null}
         {error ? (
-          <p className="mt-3 rounded-xl border border-amber-200/80 bg-amber-100/15 px-3 py-2 text-xs text-amber-100">
+          <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
             {error}
           </p>
         ) : null}
         <div className="mt-6 text-center">
-          <p className="text-xs uppercase tracking-[0.2em] text-cyan-200/90">Audio Call</p>
-          <h1 className="mt-3 text-3xl font-semibold">{companion.name}</h1>
-          <p className="mt-2 text-base text-cyan-100/90">
-            {remoteAudioReady ? "Connected" : "Waiting for partner audio..."}
+          <p className="text-xs uppercase tracking-[0.18em] text-[#0f766e]">Audio Call</p>
+          <h1 className="mt-2 text-[28px] font-semibold leading-tight text-[#0f172a]">{companion.name}</h1>
+          <p className="mt-2 text-base text-[#334155]">
+            {remoteAudioReady ? "Connected" : "Waiting for audio..."}
           </p>
-          <p className="mt-1 text-lg font-semibold tabular-nums text-white/95">
+          <p className="mt-1 text-[30px] font-semibold tabular-nums text-[#0f172a]">
             {String(Math.floor(elapsedSeconds / 60)).padStart(2, "0")}:{String(elapsedSeconds % 60).padStart(2, "0")}
           </p>
         </div>
-        <div className="relative mt-8 flex flex-1 items-center justify-center">
-          <span className="absolute h-48 w-48 rounded-full bg-cyan-300/20 blur-md" />
-          <span className="absolute h-44 w-44 animate-ping rounded-full border border-cyan-200/40" />
+        <div className="relative mt-6 flex flex-1 items-center justify-center">
+          <span className="absolute h-[280px] w-[280px] rounded-full bg-[#0f766e]/8" />
+          <span className="absolute h-[240px] w-[240px] rounded-full border border-[#b7dfd7]" />
+          {remoteAudioReady ? <span className="absolute h-[220px] w-[220px] animate-pulse rounded-full border border-[#7dcfbe]/60" /> : null}
           {companion.image ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={companion.image} alt={companion.name} className="relative h-40 w-40 rounded-full border-4 border-white/30 object-cover shadow-2xl" />
+            <img src={companion.image} alt={companion.name} className="relative h-48 w-48 rounded-full border-4 border-white object-cover shadow-[0_22px_45px_rgba(15,23,42,0.18)]" />
           ) : (
-            <span className="relative inline-flex h-40 w-40 items-center justify-center rounded-full border-4 border-white/30 bg-white/10 text-4xl font-semibold shadow-2xl">
+            <span className="relative inline-flex h-48 w-48 items-center justify-center rounded-full border-4 border-white bg-[#d6f3ed] text-4xl font-semibold text-[#0f766e] shadow-[0_22px_45px_rgba(15,23,42,0.18)]">
               {companion.name.slice(0, 1).toUpperCase()}
             </span>
           )}
         </div>
         {session.status === "LIVE" && !remoteAudioReady ? (
-          <p className="mt-2 text-center text-xs text-cyan-100/85">Waiting for partner audio...</p>
+          <p className="mt-2 text-center text-xs text-[#334155]">Waiting for audio...</p>
         ) : null}
         {speakerHintVisible ? (
           <button
             type="button"
             onClick={handleEnableSpeaker}
-            className="mx-auto mt-2 rounded-full border border-white/30 px-3 py-1 text-xs"
+            className="mx-auto mt-2 rounded-full border border-[#b7dfd7] bg-white px-3 py-1 text-xs text-[#0f766e]"
           >
             Tap to enable speaker
           </button>
         ) : null}
-        <div className="pb-3 pt-4">
-          <div className="flex w-full flex-wrap items-center justify-center gap-4">
+        <div className="pb-2 pt-4">
+          <div className="rounded-[28px] border border-[#cde8e2] bg-white/80 p-4 shadow-[0_20px_45px_rgba(15,23,42,0.12)] backdrop-blur">
+            <div className="flex w-full flex-wrap items-center justify-center gap-4">
             <button
               type="button"
               onClick={() => setIsMuted((value) => !value)}
-              className={`inline-flex h-14 w-14 items-center justify-center rounded-full border text-white ${
-                isMuted ? "border-cyan-200/60 bg-cyan-400/30" : "border-white/25 bg-white/10 hover:bg-white/20"
+              className={`inline-flex h-14 w-14 items-center justify-center rounded-full border ${
+                isMuted ? "border-[#0d9488] bg-[#d6f3ed] text-[#0f766e]" : "border-[#cfe7e2] bg-white text-[#334155]"
               }`}
             >
               <Mic size={20} />
@@ -494,14 +503,14 @@ export default function AudioCallPage() {
             <button
               type="button"
               onClick={handleEnableSpeaker}
-              className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-white/25 bg-white/10 text-white hover:bg-white/20"
+              className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-[#cfe7e2] bg-white text-[#334155]"
             >
               <Volume2 size={20} />
             </button>
             <button
               type="button"
               onClick={() => router.push(`/chat/${session.id}?companionId=${encodeURIComponent(companion.id)}`)}
-              className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-white/25 bg-white/10 text-white hover:bg-white/20"
+              className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-[#cfe7e2] bg-white text-[#334155]"
             >
               <MessageCircle size={20} />
             </button>
@@ -510,10 +519,11 @@ export default function AudioCallPage() {
               onClick={() => {
                 void handleCancel();
               }}
-              className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-red-600 text-white shadow-lg shadow-red-900/30 transition hover:bg-red-500"
+              className="inline-flex h-[68px] w-[68px] items-center justify-center rounded-full bg-[#dc2626] text-white shadow-lg shadow-red-700/25 transition hover:bg-red-500"
             >
               <PhoneOff size={24} />
             </button>
+            </div>
           </div>
         </div>
       </div>

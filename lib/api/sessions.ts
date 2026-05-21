@@ -8,7 +8,10 @@ export type SessionStatus =
   | "DECLINED"
   | "CANCELLED"
   | "ENDED"
-  | "EXPIRED";
+  | "EXPIRED"
+  | "COMPLETED"
+  | "FAILED"
+  | "FLAGGED";
 
 export type SessionRecord = {
   id: string;

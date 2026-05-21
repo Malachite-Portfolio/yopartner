@@ -1,6 +1,6 @@
 "use client";
 
-import { Camera, CameraOff, MessageCircle, Mic, PhoneOff, RefreshCcw } from "lucide-react";
+import { ArrowLeft, Camera, CameraOff, MessageCircle, Mic, PhoneOff, RefreshCcw } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
@@ -58,42 +58,48 @@ export function VideoCallScreen({ companion }: { companion: CompanionRouteProfil
   }, []);
 
   return (
-    <section className="relative h-screen min-h-screen overflow-hidden bg-[#0b1224] text-white">
+    <section className="relative h-[100dvh] min-h-[100dvh] overflow-hidden bg-[#020617] text-white">
       <div className="absolute inset-0">
         {companion.image ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={companion.image} alt={companion.name} className="h-full w-full object-cover opacity-35 blur-[2px]" />
+          <img src={companion.image} alt={companion.name} className="h-full w-full object-cover" />
         ) : null}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#0a1227]/70 via-[#111c3a]/75 to-[#050914]/90" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/20 to-black/75" />
       </div>
 
-      <div className="relative z-10 mx-auto flex h-full w-full max-w-6xl flex-col px-4 py-4 sm:px-6 sm:py-5">
-        <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/25 px-4 py-3 backdrop-blur">
-          <div className="min-w-0">
+      <div className="relative z-10 flex h-full flex-col px-4 pt-[max(0.8rem,env(safe-area-inset-top))] pb-[max(0.95rem,env(safe-area-inset-bottom))] sm:px-6">
+        <div className="flex items-center justify-between">
+          <button
+            type="button"
+            aria-label="Go back"
+            onClick={() => router.push(`/connect-now/${companion.id}`)}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/35 text-white backdrop-blur"
+          >
+            <ArrowLeft size={18} />
+          </button>
+          <div className="min-w-0 flex-1 px-3">
             <p className="truncate text-base font-semibold">{companion.name}</p>
-            <p className="text-xs text-cyan-100/85">{elapsedSeconds === 0 ? "Calling..." : "Connected"}</p>
+            <p className="text-xs text-white/75">{formatTimer(elapsedSeconds)}</p>
           </div>
-          <p className="text-sm font-semibold tabular-nums text-cyan-100">{formatTimer(elapsedSeconds)}</p>
+          <span className="rounded-full border border-cyan-300/40 bg-cyan-400/20 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-cyan-100">
+            Secure HD
+          </span>
         </div>
 
-        <div className="relative mt-4 flex flex-1 overflow-hidden rounded-3xl border border-white/10 bg-black/25 backdrop-blur">
-          <div className="flex flex-1 items-center justify-center px-6 text-center">
-            <div>
-              <p className="text-xs uppercase tracking-[0.22em] text-cyan-100/80">Live Demo</p>
-              <h1 className="mt-3 text-2xl font-semibold sm:text-4xl">Video Call with {companion.name}</h1>
-              <p className="mt-3 text-sm text-cyan-50/85 sm:text-base">
-                Frontend preview only. No real camera or streaming is active.
-              </p>
-            </div>
+        <div className="relative flex flex-1 items-center justify-center text-center">
+          <div>
+            <span className="mx-auto inline-flex h-20 w-20 items-center justify-center rounded-full border border-white/30 bg-white/10 text-2xl font-semibold backdrop-blur">
+              {companion.name.slice(0, 1).toUpperCase()}
+            </span>
+            <p className="mt-3 text-xl font-semibold">{elapsedSeconds === 0 ? "Calling..." : "Connected"}</p>
+            <p className="mt-1 text-sm text-white/80">Waiting for video...</p>
           </div>
 
-          <div className="absolute bottom-4 right-4 h-28 w-40 overflow-hidden rounded-xl border border-white/20 bg-slate-900/80 shadow-xl sm:h-36 sm:w-52">
+          <div className="absolute right-0 top-5 h-32 w-[120px] overflow-hidden rounded-[20px] border-2 border-white/85 bg-slate-900 shadow-2xl shadow-black/40 sm:w-[138px]">
             {isCameraOn ? (
-              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#1e3a8a] to-[#0891b2]">
+              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#164e63] to-[#0f766e]">
                 <div className="text-center">
                   <Camera size={22} className="mx-auto text-white/90" />
-                  <p className="mt-1 text-xs font-medium text-white/90">You</p>
-                  <p className="text-[11px] text-white/70">{isFrontCamera ? "Front Camera" : "Rear Camera"}</p>
                 </div>
               </div>
             ) : (
@@ -101,14 +107,17 @@ export function VideoCallScreen({ companion }: { companion: CompanionRouteProfil
                 <div>
                   <CameraOff size={20} className="mx-auto text-slate-200" />
                   <p className="mt-1 text-xs font-medium text-slate-100">Camera Off</p>
-                  <p className="text-[11px] text-slate-400">You</p>
                 </div>
               </div>
             )}
+            <span className="absolute bottom-2 left-2 rounded-md bg-black/50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white">
+              You
+            </span>
           </div>
         </div>
 
-        <div className="mt-4 shrink-0 flex flex-wrap items-center justify-center gap-3 pb-2">
+        <div className="flex shrink-0 items-center justify-center">
+          <div className="flex w-full max-w-[540px] items-center justify-center gap-2.5 rounded-full border border-white/15 bg-black/45 px-3 py-2.5 shadow-2xl backdrop-blur">
           <ToggleControl active={isMuted} label="Toggle mute" onClick={() => setIsMuted((value) => !value)}>
             <Mic size={19} />
           </ToggleControl>
@@ -133,6 +142,7 @@ export function VideoCallScreen({ companion }: { companion: CompanionRouteProfil
           >
             <PhoneOff size={22} />
           </button>
+          </div>
         </div>
       </div>
     </section>
