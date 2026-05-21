@@ -4,9 +4,12 @@ import { ArrowLeft, Lock, MessageCircle, Mic, PhoneOff, Volume2 } from "lucide-r
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import type { IAgoraRTCClient, IMicrophoneAudioTrack, IRemoteAudioTrack } from "agora-rtc-sdk-ng";
+import { EndSessionConfirmModal } from "@/components/session/EndSessionConfirmModal";
 import { PartnerGuard } from "@/components/partner/PartnerGuard";
+import { useSessionExitGuard } from "@/hooks/useSessionExitGuard";
 import { endSession, getSessionAgoraToken, getSessionById, type SessionRecord, type SessionStatus } from "@/lib/api/sessions";
 import { buildAgoraUid, createAgoraClient, normalizeChannelName, requestAudioPermission } from "@/lib/agora";
+import { isActiveSessionStatus } from "@/lib/sessionStatus";
 
 const AGORA_APP_ID = process.env.NEXT_PUBLIC_AGORA_APP_ID?.trim() ?? "";
 const TERMINAL_SESSION_STATUSES: SessionStatus[] = ["DECLINED", "CANCELLED", "ENDED", "EXPIRED", "COMPLETED", "FAILED", "FLAGGED"];
@@ -244,6 +247,43 @@ export default function PartnerAudioCallPage() {
     setSpeakerHintVisible(false);
   };
 
+  const activeSessionId = session?.id;
+
+  const handleConfirmEndSession = useCallback(async () => {
+    if (!activeSessionId) return;
+    const responsePromise = endSession(activeSessionId);
+    await cleanupAgora();
+    const response = await responsePromise;
+    if (!response.data) {
+      const message = response.error?.message || "Unable to end this session. Please try again.";
+      setError(message);
+      throw new Error(message);
+    }
+    setSession(response.data);
+  }, [activeSessionId, cleanupAgora]);
+
+  const navigateAfterExit = useCallback(() => {
+    router.push("/partner/dashboard");
+  }, [router]);
+
+  const exitGuard = useSessionExitGuard({
+    active: isActiveSessionStatus(session?.status),
+    onEndSession: handleConfirmEndSession,
+    onNavigateAway: navigateAfterExit,
+  });
+
+  const exitConfirmModal = (
+    <EndSessionConfirmModal
+      open={exitGuard.confirmOpen}
+      loading={exitGuard.confirmLoading}
+      error={exitGuard.confirmError}
+      onStay={exitGuard.stay}
+      onEndSession={() => {
+        void exitGuard.endAndExit();
+      }}
+    />
+  );
+
   const maskedPhone = useMemo(
     () => String(session?.user?.phoneMasked ?? maskPhone(String(session?.user?.phoneNumber ?? ""))),
     [session?.user],
@@ -272,6 +312,7 @@ export default function PartnerAudioCallPage() {
     return (
       <PartnerGuard requireOnboarding>
         <main className="flex h-[100dvh] min-h-[100dvh] items-center justify-center bg-gradient-to-b from-[#f3fbf9] via-[#e8f6f3] to-[#d9efea] p-4 text-[#0f172a]">
+          {exitConfirmModal}
           <div className="w-full max-w-md rounded-2xl border border-[#cde8e2] bg-white/80 p-6 text-center">
             <p className="text-base font-semibold">This audio call is not active right now.</p>
             <button
@@ -290,11 +331,12 @@ export default function PartnerAudioCallPage() {
   return (
     <PartnerGuard requireOnboarding>
       <section className="relative flex h-[100dvh] min-h-[100dvh] flex-col overflow-hidden bg-gradient-to-b from-[#f3fbf9] via-[#e8f6f3] to-[#d9efea] px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] text-[#0f172a]">
+        {exitConfirmModal}
         <div className="mx-auto flex h-full w-full max-w-xl flex-col items-center justify-between">
           <div className="flex w-full items-center justify-between">
             <button
               type="button"
-              onClick={() => router.push("/partner/dashboard")}
+              onClick={exitGuard.requestExit}
               className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#cde8e2] bg-white/70 text-[#0f172a]"
             >
               <ArrowLeft size={18} />

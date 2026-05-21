@@ -11,6 +11,8 @@ import type {
   IRemoteAudioTrack,
   IRemoteVideoTrack,
 } from "agora-rtc-sdk-ng";
+import { EndSessionConfirmModal } from "@/components/session/EndSessionConfirmModal";
+import { useSessionExitGuard } from "@/hooks/useSessionExitGuard";
 import {
   cancelSession,
   createSession,
@@ -26,6 +28,7 @@ import {
   type CompanionRouteProfile,
 } from "@/lib/companionRoutes";
 import { buildAgoraUid, createAgoraClient, normalizeChannelName, requestVideoPermission } from "@/lib/agora";
+import { isActiveSessionStatus } from "@/lib/sessionStatus";
 
 const AGORA_APP_ID = process.env.NEXT_PUBLIC_AGORA_APP_ID?.trim() ?? "";
 const TERMINAL_SESSION_STATUSES: SessionStatus[] = ["DECLINED", "CANCELLED", "ENDED", "EXPIRED", "COMPLETED", "FAILED", "FLAGGED"];
@@ -397,6 +400,47 @@ export default function VideoCallPage() {
     setError(response.error?.message || "Unable to cancel request.");
   };
 
+  const handleConfirmEndSession = useCallback(async () => {
+    if (!session?.id) return;
+    if (isCancelling) throw new Error("Session is already ending.");
+    setIsCancelling(true);
+    try {
+      const responsePromise = endSession(session.id);
+      await cleanupAgora();
+      const response = await responsePromise;
+      if (!response.data) {
+        const message = response.error?.message || "Unable to end this session. Please try again.";
+        setError(message);
+        throw new Error(message);
+      }
+      setSession(response.data);
+    } finally {
+      setIsCancelling(false);
+    }
+  }, [cleanupAgora, isCancelling, session?.id]);
+
+  const navigateAfterExit = useCallback(() => {
+    router.push("/connect-now");
+  }, [router]);
+
+  const exitGuard = useSessionExitGuard({
+    active: isActiveSessionStatus(session?.status),
+    onEndSession: handleConfirmEndSession,
+    onNavigateAway: navigateAfterExit,
+  });
+
+  const exitConfirmModal = (
+    <EndSessionConfirmModal
+      open={exitGuard.confirmOpen}
+      loading={exitGuard.confirmLoading}
+      error={exitGuard.confirmError}
+      onStay={exitGuard.stay}
+      onEndSession={() => {
+        void exitGuard.endAndExit();
+      }}
+    />
+  );
+
   if (loading) {
     return <main className="flex h-[100dvh] min-h-[100dvh] items-center justify-center bg-[#0b1224] p-4 text-white">Opening video call...</main>;
   }
@@ -421,6 +465,7 @@ export default function VideoCallPage() {
   if (session.status === "PENDING") {
     return (
       <main className="flex h-[100dvh] min-h-[100dvh] items-center justify-center bg-[#0b1224] p-4 text-white">
+        {exitConfirmModal}
         <div className="w-full max-w-md rounded-2xl border border-white/20 bg-white/10 p-6 text-center">
           <p className="text-base font-semibold">Calling partner...</p>
           <p className="mt-2 text-sm text-cyan-100">Waiting for partner to accept your video request.</p>
@@ -459,6 +504,7 @@ export default function VideoCallPage() {
   if (session.status !== "LIVE") {
     return (
       <main className="flex h-[100dvh] min-h-[100dvh] items-center justify-center bg-[#0b1224] p-4 text-white">
+        {exitConfirmModal}
         <div className="w-full max-w-md rounded-2xl border border-white/20 bg-white/10 p-6 text-center">
           <p className="text-base font-semibold">This video call is not active right now.</p>
           <button
@@ -475,6 +521,7 @@ export default function VideoCallPage() {
 
   return (
     <section className="relative h-[100dvh] min-h-[100dvh] overflow-hidden bg-[#020617] text-white">
+      {exitConfirmModal}
       <div ref={remoteVideoContainerRef} className="absolute inset-0 [&_video]:h-full [&_video]:w-full [&_video]:object-cover" />
       <div className="absolute inset-0 bg-gradient-to-b from-black/65 via-black/10 to-black/75" />
       <div className="relative z-10 flex h-full flex-col px-3.5 pt-[max(0.8rem,env(safe-area-inset-top))] pb-[max(0.95rem,env(safe-area-inset-bottom))] sm:px-5">
@@ -499,7 +546,7 @@ export default function VideoCallPage() {
           <button
             type="button"
             aria-label="Back to Connect"
-            onClick={() => router.push("/connect-now")}
+            onClick={exitGuard.requestExit}
             className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/35 text-white backdrop-blur"
           >
             <ArrowLeft size={18} />

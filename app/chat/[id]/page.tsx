@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ChatScreen, type ChatScreenMessage } from "@/components/chat/ChatScreen";
+import { EndSessionConfirmModal } from "@/components/session/EndSessionConfirmModal";
+import { useSessionExitGuard } from "@/hooks/useSessionExitGuard";
 import {
   cancelSession,
   createSession,
@@ -19,6 +21,7 @@ import {
   type CompanionRouteProfile,
 } from "@/lib/companionRoutes";
 import { requestAudioPermission, requestVideoPermission } from "@/lib/agora";
+import { isActiveSessionStatus } from "@/lib/sessionStatus";
 
 function getUserToken() {
   if (typeof window === "undefined") return null;
@@ -210,6 +213,43 @@ export default function ChatPage() {
     setSession(response.data);
   };
 
+  const handleConfirmEndSession = useCallback(async () => {
+    if (!session?.id) return;
+    if (isEndingSession) throw new Error("Session is already ending.");
+    setIsEndingSession(true);
+    try {
+      const response = await endSession(session.id);
+      if (!response.data) {
+        throw new Error(response.error?.message || "Unable to end this session. Please try again.");
+      }
+      setSession(response.data);
+    } finally {
+      setIsEndingSession(false);
+    }
+  }, [isEndingSession, session?.id]);
+
+  const navigateAfterExit = useCallback(() => {
+    router.push("/connect-now");
+  }, [router]);
+
+  const exitGuard = useSessionExitGuard({
+    active: isActiveSessionStatus(session?.status),
+    onEndSession: handleConfirmEndSession,
+    onNavigateAway: navigateAfterExit,
+  });
+
+  const exitConfirmModal = (
+    <EndSessionConfirmModal
+      open={exitGuard.confirmOpen}
+      loading={exitGuard.confirmLoading}
+      error={exitGuard.confirmError}
+      onStay={exitGuard.stay}
+      onEndSession={() => {
+        void exitGuard.endAndExit();
+      }}
+    />
+  );
+
   const handleOpenAudio = async () => {
     if (!session || !companion) return;
     try {
@@ -309,6 +349,7 @@ export default function ChatPage() {
   if (session.status === "PENDING") {
     return (
       <main className="flex h-[100dvh] min-h-[100dvh] items-center justify-center bg-[#eef3f8] p-4">
+        {exitConfirmModal}
         <div className="w-full max-w-md rounded-2xl border border-[#dceae5] bg-white p-6 text-center">
           <p className="text-sm font-semibold text-slate-900">Waiting for partner to accept your chat request...</p>
           <p className="mt-2 text-xs text-slate-500">We&apos;ll connect you as soon as they accept.</p>
@@ -330,6 +371,7 @@ export default function ChatPage() {
   if (session.status !== "LIVE") {
     return (
       <main className="flex h-[100dvh] min-h-[100dvh] items-center justify-center bg-[#eef3f8] p-4">
+        {exitConfirmModal}
         <div className="w-full max-w-md rounded-2xl border border-[#dceae5] bg-white p-6 text-center">
           <p className="text-sm font-semibold text-slate-900">
             {session.status === "DECLINED"
@@ -356,6 +398,7 @@ export default function ChatPage() {
 
   return (
     <main className="h-[100dvh] min-h-[100dvh] overflow-hidden bg-[#eef3f8]">
+      {exitConfirmModal}
       {messageError ? (
         <div className="absolute left-1/2 top-3 z-50 -translate-x-1/2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
           {messageError}
@@ -380,6 +423,7 @@ export default function ChatPage() {
           void handleEndLiveSession();
         }}
         endingSession={isEndingSession}
+        onBackRequest={exitGuard.requestExit}
       />
     </main>
   );

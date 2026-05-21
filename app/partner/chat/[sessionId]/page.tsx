@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { PartnerGuard } from "@/components/partner/PartnerGuard";
 import { ChatScreen, type ChatScreenMessage } from "@/components/chat/ChatScreen";
+import { EndSessionConfirmModal } from "@/components/session/EndSessionConfirmModal";
+import { useSessionExitGuard } from "@/hooks/useSessionExitGuard";
 import {
   endSession,
   getSessionById,
@@ -14,6 +16,7 @@ import {
 } from "@/lib/api/sessions";
 import { requestAudioPermission, requestVideoPermission } from "@/lib/agora";
 import type { CompanionRouteProfile } from "@/lib/companionRoutes";
+import { isActiveSessionStatus } from "@/lib/sessionStatus";
 
 function maskPhone(value: string) {
   const digits = value.replace(/\D/g, "");
@@ -140,6 +143,44 @@ export default function PartnerChatSessionPage() {
     setError("");
   };
 
+  const handleConfirmEndSession = useCallback(async () => {
+    if (!session?.id) return;
+    if (isEndingSession) throw new Error("Session is already ending.");
+    setIsEndingSession(true);
+    try {
+      const response = await endSession(session.id);
+      if (!response.data) {
+        throw new Error(response.error?.message || "Unable to end this session. Please try again.");
+      }
+      setSession(response.data);
+      setError("");
+    } finally {
+      setIsEndingSession(false);
+    }
+  }, [isEndingSession, session?.id]);
+
+  const navigateAfterExit = useCallback(() => {
+    router.push("/partner/dashboard");
+  }, [router]);
+
+  const exitGuard = useSessionExitGuard({
+    active: isActiveSessionStatus(session?.status),
+    onEndSession: handleConfirmEndSession,
+    onNavigateAway: navigateAfterExit,
+  });
+
+  const exitConfirmModal = (
+    <EndSessionConfirmModal
+      open={exitGuard.confirmOpen}
+      loading={exitGuard.confirmLoading}
+      error={exitGuard.confirmError}
+      onStay={exitGuard.stay}
+      onEndSession={() => {
+        void exitGuard.endAndExit();
+      }}
+    />
+  );
+
   const handleOpenAudio = async () => {
     try {
       await requestAudioPermission();
@@ -163,6 +204,7 @@ export default function PartnerChatSessionPage() {
   return (
     <PartnerGuard requireOnboarding>
       <main className="fixed inset-0 z-[9999] h-[100dvh] min-h-[100dvh] overflow-hidden bg-[#f7fbfa]">
+        {exitConfirmModal}
         {loading ? (
           <section className="flex h-full items-center justify-center p-5 text-sm text-slate-600">
             Opening conversation...
@@ -203,6 +245,7 @@ export default function PartnerChatSessionPage() {
               endingSession={isEndingSession}
               backHref="/partner/dashboard"
               backLabel="Back to Dashboard"
+              onBackRequest={exitGuard.requestExit}
             />
           </>
         )}

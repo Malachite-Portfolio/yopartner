@@ -26,6 +26,7 @@ type ChatScreenProps = {
   endingSession?: boolean;
   backHref?: string;
   backLabel?: string;
+  onBackRequest?: () => void;
 };
 
 function getInitials(name: string) {
@@ -52,10 +53,15 @@ export function ChatScreen({
   endingSession = false,
   backHref = "/connect-now",
   backLabel = "Go back",
+  onBackRequest,
 }: ChatScreenProps) {
   const router = useRouter();
 
   const handleBack = () => {
+    if (onBackRequest) {
+      onBackRequest();
+      return;
+    }
     router.push(backHref);
   };
 

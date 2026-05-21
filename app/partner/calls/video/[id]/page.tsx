@@ -11,9 +11,12 @@ import type {
   IRemoteAudioTrack,
   IRemoteVideoTrack,
 } from "agora-rtc-sdk-ng";
+import { EndSessionConfirmModal } from "@/components/session/EndSessionConfirmModal";
 import { PartnerGuard } from "@/components/partner/PartnerGuard";
+import { useSessionExitGuard } from "@/hooks/useSessionExitGuard";
 import { endSession, getSessionAgoraToken, getSessionById, type SessionRecord, type SessionStatus } from "@/lib/api/sessions";
 import { buildAgoraUid, createAgoraClient, normalizeChannelName, requestVideoPermission } from "@/lib/agora";
+import { isActiveSessionStatus } from "@/lib/sessionStatus";
 
 const AGORA_APP_ID = process.env.NEXT_PUBLIC_AGORA_APP_ID?.trim() ?? "";
 const TERMINAL_SESSION_STATUSES: SessionStatus[] = ["DECLINED", "CANCELLED", "ENDED", "EXPIRED", "COMPLETED", "FAILED", "FLAGGED"];
@@ -297,6 +300,42 @@ export default function PartnerVideoCallPage() {
     () => String(session?.user?.phoneMasked ?? maskPhone(String(session?.user?.phoneNumber ?? ""))),
     [session?.user],
   );
+  const activeSessionId = session?.id;
+
+  const handleConfirmEndSession = useCallback(async () => {
+    if (!activeSessionId) return;
+    const responsePromise = endSession(activeSessionId);
+    await cleanupAgora();
+    const response = await responsePromise;
+    if (!response.data) {
+      const message = response.error?.message || "Unable to end this session. Please try again.";
+      setError(message);
+      throw new Error(message);
+    }
+    setSession(response.data);
+  }, [activeSessionId, cleanupAgora]);
+
+  const navigateAfterExit = useCallback(() => {
+    router.push("/partner/dashboard");
+  }, [router]);
+
+  const exitGuard = useSessionExitGuard({
+    active: isActiveSessionStatus(session?.status),
+    onEndSession: handleConfirmEndSession,
+    onNavigateAway: navigateAfterExit,
+  });
+
+  const exitConfirmModal = (
+    <EndSessionConfirmModal
+      open={exitGuard.confirmOpen}
+      loading={exitGuard.confirmLoading}
+      error={exitGuard.confirmError}
+      onStay={exitGuard.stay}
+      onEndSession={() => {
+        void exitGuard.endAndExit();
+      }}
+    />
+  );
 
   if (session && isTerminalStatus(session.status)) {
     return (
@@ -321,6 +360,7 @@ export default function PartnerVideoCallPage() {
     return (
       <PartnerGuard requireOnboarding>
         <main className="flex h-[100dvh] min-h-[100dvh] items-center justify-center bg-[#020617] p-4 text-white">
+          {exitConfirmModal}
           <div className="w-full max-w-md rounded-2xl border border-white/20 bg-white/10 p-6 text-center">
             <p className="text-base font-semibold">This video call is not active right now.</p>
             <button
@@ -339,6 +379,7 @@ export default function PartnerVideoCallPage() {
   return (
     <PartnerGuard requireOnboarding>
       <section className="relative h-[100dvh] min-h-[100dvh] overflow-hidden bg-[#020617] text-white">
+        {exitConfirmModal}
         <div ref={remoteVideoContainerRef} className="absolute inset-0 [&_video]:h-full [&_video]:w-full [&_video]:object-cover" />
         <div className="absolute inset-0 bg-gradient-to-b from-black/65 via-black/10 to-black/75" />
 
@@ -363,7 +404,7 @@ export default function PartnerVideoCallPage() {
           <div className="flex items-center justify-between">
             <button
               type="button"
-              onClick={() => router.push("/partner/dashboard")}
+              onClick={exitGuard.requestExit}
               className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/35 text-white backdrop-blur"
             >
               <ArrowLeft size={18} />

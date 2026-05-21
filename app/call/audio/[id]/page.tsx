@@ -4,6 +4,8 @@ import { ArrowLeft, Lock, MessageCircle, Mic, PhoneOff, Volume2 } from "lucide-r
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import type { IAgoraRTCClient, IMicrophoneAudioTrack, IRemoteAudioTrack } from "agora-rtc-sdk-ng";
+import { EndSessionConfirmModal } from "@/components/session/EndSessionConfirmModal";
+import { useSessionExitGuard } from "@/hooks/useSessionExitGuard";
 import {
   cancelSession,
   createSession,
@@ -19,6 +21,7 @@ import {
   type CompanionRouteProfile,
 } from "@/lib/companionRoutes";
 import { buildAgoraUid, createAgoraClient, normalizeChannelName, requestAudioPermission } from "@/lib/agora";
+import { isActiveSessionStatus } from "@/lib/sessionStatus";
 
 const AGORA_APP_ID = process.env.NEXT_PUBLIC_AGORA_APP_ID?.trim() ?? "";
 const TERMINAL_SESSION_STATUSES: SessionStatus[] = ["DECLINED", "CANCELLED", "ENDED", "EXPIRED", "COMPLETED", "FAILED", "FLAGGED"];
@@ -332,6 +335,47 @@ export default function AudioCallPage() {
     setError(response.error?.message || "Unable to cancel request.");
   };
 
+  const handleConfirmEndSession = useCallback(async () => {
+    if (!session?.id) return;
+    if (isCancelling) throw new Error("Session is already ending.");
+    setIsCancelling(true);
+    try {
+      const responsePromise = endSession(session.id);
+      await cleanupAgora();
+      const response = await responsePromise;
+      if (!response.data) {
+        const message = response.error?.message || "Unable to end this session. Please try again.";
+        setError(message);
+        throw new Error(message);
+      }
+      setSession(response.data);
+    } finally {
+      setIsCancelling(false);
+    }
+  }, [cleanupAgora, isCancelling, session?.id]);
+
+  const navigateAfterExit = useCallback(() => {
+    router.push("/connect-now");
+  }, [router]);
+
+  const exitGuard = useSessionExitGuard({
+    active: isActiveSessionStatus(session?.status),
+    onEndSession: handleConfirmEndSession,
+    onNavigateAway: navigateAfterExit,
+  });
+
+  const exitConfirmModal = (
+    <EndSessionConfirmModal
+      open={exitGuard.confirmOpen}
+      loading={exitGuard.confirmLoading}
+      error={exitGuard.confirmError}
+      onStay={exitGuard.stay}
+      onEndSession={() => {
+        void exitGuard.endAndExit();
+      }}
+    />
+  );
+
   const handleEnableSpeaker = () => {
     if (!remoteAudioTrackRef.current) return;
     remoteAudioTrackRef.current.play();
@@ -364,6 +408,7 @@ export default function AudioCallPage() {
   if (session.status === "PENDING") {
     return (
       <main className="flex h-[100dvh] min-h-[100dvh] items-center justify-center bg-[#0f1d4d] p-4 text-white">
+        {exitConfirmModal}
         <div className="w-full max-w-md rounded-2xl border border-white/20 bg-white/10 p-6 text-center">
           <p className="text-base font-semibold">Calling partner...</p>
           <p className="mt-2 text-sm text-cyan-100">Waiting for partner to accept your audio request.</p>
@@ -402,6 +447,7 @@ export default function AudioCallPage() {
   if (session.status !== "LIVE") {
     return (
       <main className="flex h-[100dvh] min-h-[100dvh] items-center justify-center bg-[#0f1d4d] p-4 text-white">
+        {exitConfirmModal}
         <div className="w-full max-w-md rounded-2xl border border-white/20 bg-white/10 p-6 text-center">
           <p className="text-base font-semibold">This audio call is not active right now.</p>
           <button
@@ -418,12 +464,13 @@ export default function AudioCallPage() {
 
   return (
     <section className="relative h-[100dvh] min-h-[100dvh] overflow-hidden bg-gradient-to-b from-[#f3fbf9] via-[#e8f6f3] to-[#d9efea] px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] text-[#0f172a] sm:px-6">
+      {exitConfirmModal}
       <div className="mx-auto flex h-full w-full max-w-xl flex-col">
         <div className="flex items-center justify-between">
           <button
             type="button"
             aria-label="Go back"
-            onClick={() => router.push("/connect-now")}
+            onClick={exitGuard.requestExit}
             className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#cde8e2] bg-white/70 text-[#0f172a] transition hover:bg-white"
           >
             <ArrowLeft size={18} />
