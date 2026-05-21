@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { isClientDemoEnabled, isClientDemoPartnerSessionActive } from "@/lib/clientDemoData";
-import { getCurrentFirebaseUser } from "@/lib/auth/firebasePhoneAuth";
+import { PARTNER_FIREBASE_TOKEN_KEY } from "@/lib/auth/firebasePhoneAuth";
 import {
   getPartnerProfile,
   isPartnerLoggedIn,
@@ -41,7 +41,9 @@ export default function PartnerApplicationStatusPage() {
   const profile = getPartnerProfile<PartnerProfile>(defaultPartnerProfile);
 
   useEffect(() => {
-    const hasSession = isPartnerLoggedIn() || Boolean(getCurrentFirebaseUser());
+    const hasSession =
+      isPartnerLoggedIn() ||
+      (typeof window !== "undefined" && Boolean(window.localStorage.getItem(PARTNER_FIREBASE_TOKEN_KEY)?.trim()));
     if (!hasSession) {
       router.replace("/partner/login");
       return;

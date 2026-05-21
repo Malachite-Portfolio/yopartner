@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Camera, CameraOff, MessageCircle, Mic, PhoneOff, RefreshCcw } from "lucide-react";
+import { ArrowLeft, Camera, CameraOff, Mic, PhoneOff, RefreshCcw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import type {
@@ -55,7 +55,11 @@ export default function PartnerVideoCallPage() {
   const [clockNow, setClockNow] = useState(() => Date.now());
   const [mute, setMute] = useState(false);
   const [cameraOn, setCameraOn] = useState(true);
+  const [localAudioReady, setLocalAudioReady] = useState(false);
+  const [localVideoReady, setLocalVideoReady] = useState(false);
   const [frontCamera, setFrontCamera] = useState(true);
+  const [cameraSwitchMessage, setCameraSwitchMessage] = useState("");
+  const [audioAssistMessage, setAudioAssistMessage] = useState("");
   const [error, setError] = useState("");
   const [joined, setJoined] = useState(false);
   const [needsPermissionAction, setNeedsPermissionAction] = useState(false);
@@ -69,6 +73,7 @@ export default function PartnerVideoCallPage() {
   const remoteVideoTrackRef = useRef<IRemoteVideoTrack | null>(null);
   const localVideoContainerRef = useRef<HTMLDivElement | null>(null);
   const remoteVideoContainerRef = useRef<HTMLDivElement | null>(null);
+  const remoteAudioElementRef = useRef<HTMLAudioElement | null>(null);
   const elapsed = session?.status === "LIVE" ? getElapsedSeconds(session, clockNow) : 0;
 
   const cleanupAgora = useCallback(async () => {
@@ -96,6 +101,8 @@ export default function PartnerVideoCallPage() {
       clientRef.current = null;
     }
     setJoined(false);
+    setLocalAudioReady(false);
+    setLocalVideoReady(false);
     setRemoteVideoReady(false);
     setRemoteUserJoined(false);
     setNeedsPermissionAction(false);
@@ -158,15 +165,128 @@ export default function PartnerVideoCallPage() {
     };
   }, [cleanupAgora, session?.status]);
 
-  useEffect(() => {
-    if (!localAudioTrackRef.current) return;
-    void localAudioTrackRef.current.setEnabled(!mute);
+  const playRemoteAudio = useCallback(async () => {
+    const remoteAudioTrack = remoteAudioTrackRef.current;
+    if (!remoteAudioTrack) {
+      setAudioAssistMessage("Remote audio is not available yet.");
+      return false;
+    }
+
+    try {
+      const audioElement = remoteAudioElementRef.current;
+      if (audioElement) {
+        const mediaTrack = remoteAudioTrack.getMediaStreamTrack?.();
+        if (mediaTrack) {
+          audioElement.srcObject = new MediaStream([mediaTrack]);
+          await audioElement.play();
+        } else {
+          remoteAudioTrack.play();
+        }
+        const sinkElement = audioElement as HTMLAudioElement & { setSinkId?: (sinkId: string) => Promise<void> };
+        if (typeof sinkElement.setSinkId === "function") {
+          try {
+            await sinkElement.setSinkId("default");
+            setAudioAssistMessage("");
+          } catch {
+            setAudioAssistMessage("Speaker control depends on your browser. Use phone volume/output controls if needed.");
+          }
+        } else {
+          setAudioAssistMessage("Speaker control depends on your browser. Use phone volume/output controls if needed.");
+        }
+      } else {
+        remoteAudioTrack.play();
+      }
+      return true;
+    } catch {
+      setAudioAssistMessage("Speaker control depends on your browser. Use phone volume/output controls if needed.");
+      return false;
+    }
+  }, []);
+
+  const toggleMute = useCallback(async () => {
+    const audioTrack = localAudioTrackRef.current;
+    if (!audioTrack) {
+      setError("Microphone is not ready yet.");
+      return;
+    }
+    const nextMute = !mute;
+    try {
+      await audioTrack.setEnabled(!nextMute);
+      setMute(nextMute);
+    } catch {
+      setError("Unable to update microphone state right now.");
+    }
   }, [mute]);
 
-  useEffect(() => {
-    if (!localVideoTrackRef.current) return;
-    void localVideoTrackRef.current.setEnabled(cameraOn);
+  const toggleCamera = useCallback(async () => {
+    const videoTrack = localVideoTrackRef.current;
+    if (!videoTrack) {
+      setError("Camera is not ready yet.");
+      return;
+    }
+    const nextCameraOn = !cameraOn;
+    try {
+      await videoTrack.setEnabled(nextCameraOn);
+      setCameraOn(nextCameraOn);
+    } catch {
+      setError("Unable to update camera state right now.");
+    }
   }, [cameraOn]);
+
+  const handleFlipCamera = useCallback(async () => {
+    const client = clientRef.current;
+    const currentTrack = localVideoTrackRef.current;
+    if (!client || !currentTrack) {
+      setCameraSwitchMessage("Camera switch is not available on this device.");
+      return;
+    }
+
+    try {
+      setCameraSwitchMessage("");
+      const AgoraRTC = await import("agora-rtc-sdk-ng");
+      const cameras = await AgoraRTC.default.getCameras();
+      if (!cameras || cameras.length <= 1) {
+        setCameraSwitchMessage("Camera switch is not available on this device.");
+        return;
+      }
+
+      const nextFront = !frontCamera;
+      const front = cameras.find((camera) => /front|user/i.test(camera.label));
+      const rear = cameras.find((camera) => /back|rear|environment/i.test(camera.label));
+      const preferred = nextFront ? front : rear;
+      const mediaTrack = currentTrack.getMediaStreamTrack?.();
+      const currentDeviceId = mediaTrack?.getSettings?.().deviceId;
+      const currentIndex = currentDeviceId ? cameras.findIndex((camera) => camera.deviceId === currentDeviceId) : -1;
+      const fallbackCamera =
+        currentIndex >= 0 ? cameras[(currentIndex + 1) % cameras.length] : cameras[nextFront ? 0 : cameras.length - 1];
+      const targetCamera = preferred ?? fallbackCamera;
+
+      const setDeviceTrack = currentTrack as ICameraVideoTrack & { setDevice?: (deviceId: string) => Promise<void> };
+      if (typeof setDeviceTrack.setDevice === "function") {
+        await setDeviceTrack.setDevice(targetCamera.deviceId);
+        setFrontCamera(nextFront);
+        return;
+      }
+
+      await client.unpublish([currentTrack]);
+      currentTrack.stop();
+      currentTrack.close();
+
+      const replacementTrack = await AgoraRTC.default.createCameraVideoTrack({
+        cameraId: targetCamera.deviceId,
+      });
+      localVideoTrackRef.current = replacementTrack;
+      setLocalVideoReady(true);
+      await replacementTrack.setEnabled(cameraOn);
+      await client.publish([replacementTrack]);
+      if (localVideoContainerRef.current) {
+        replacementTrack.play(localVideoContainerRef.current);
+      }
+      setFrontCamera(nextFront);
+    } catch {
+      setCameraSwitchMessage("Camera switch is not available on this device.");
+    }
+  }, [cameraOn, frontCamera]);
 
   const joinAgoraVideo = useCallback(async () => {
     if (!session || joining || joined) return;
@@ -207,8 +327,8 @@ export default function PartnerVideoCallPage() {
             // Safe to ignore duplicate subscriptions from delayed sweeps.
           }
           if (user.audioTrack) {
-            user.audioTrack.play();
             remoteAudioTrackRef.current = user.audioTrack;
+            await playRemoteAudio();
           }
         }
       };
@@ -262,6 +382,8 @@ export default function PartnerVideoCallPage() {
       const [localAudioTrack, localVideoTrack] = await AgoraRTC.default.createMicrophoneAndCameraTracks();
       localAudioTrackRef.current = localAudioTrack;
       localVideoTrackRef.current = localVideoTrack;
+      setLocalAudioReady(true);
+      setLocalVideoReady(true);
       await client.publish([localAudioTrack, localVideoTrack]);
       if (localVideoContainerRef.current) localVideoTrack.play(localVideoContainerRef.current);
       await sweepRemoteUsers();
@@ -284,7 +406,7 @@ export default function PartnerVideoCallPage() {
     } finally {
       setJoining(false);
     }
-  }, [cleanupAgora, joined, joining, session]);
+  }, [cleanupAgora, joined, joining, playRemoteAudio, session]);
 
   useEffect(() => {
     if (session?.status !== "LIVE" || joined || joining) return;
@@ -401,6 +523,27 @@ export default function PartnerVideoCallPage() {
               {error}
             </p>
           ) : null}
+          {cameraSwitchMessage ? (
+            <p className="mb-3 rounded-xl border border-slate-200/40 bg-black/25 px-3 py-2 text-center text-xs text-slate-100">
+              {cameraSwitchMessage}
+            </p>
+          ) : null}
+          {audioAssistMessage ? (
+            <p className="mb-3 rounded-xl border border-slate-200/40 bg-black/25 px-3 py-2 text-center text-xs text-slate-100">
+              {audioAssistMessage}
+            </p>
+          ) : null}
+          {remoteUserJoined ? (
+            <button
+              type="button"
+              onClick={() => {
+                void playRemoteAudio();
+              }}
+              className="mb-3 self-center rounded-full border border-white/30 bg-black/35 px-3 py-1 text-xs text-white"
+            >
+              Enable sound
+            </button>
+          ) : null}
           <div className="flex items-center justify-between">
             <button
               type="button"
@@ -452,19 +595,25 @@ export default function PartnerVideoCallPage() {
             <div className="flex w-full max-w-[540px] items-center justify-center gap-2.5 rounded-full border border-white/15 bg-black/45 px-3 py-2.5 shadow-2xl backdrop-blur">
               <button
                 type="button"
-                onClick={() => setCameraOn((current) => !current)}
+                disabled={!localVideoReady}
+                onClick={() => {
+                  void toggleCamera();
+                }}
                 className={`inline-flex h-12 w-12 items-center justify-center rounded-full border ${
                   cameraOn ? "border-white/25 bg-white/10 text-white" : "border-red-300/30 bg-red-500/25 text-red-100"
-                }`}
+                } disabled:cursor-not-allowed disabled:opacity-60`}
               >
                 {cameraOn ? <Camera size={18} /> : <CameraOff size={18} />}
               </button>
               <button
                 type="button"
-                onClick={() => setMute((current) => !current)}
+                disabled={!localAudioReady}
+                onClick={() => {
+                  void toggleMute();
+                }}
                 className={`inline-flex h-12 w-12 items-center justify-center rounded-full border ${
                   mute ? "border-amber-300/40 bg-amber-400/25 text-amber-100" : "border-white/25 bg-white/10 text-white"
-                }`}
+                } disabled:cursor-not-allowed disabled:opacity-60`}
               >
                 <Mic size={18} />
               </button>
@@ -488,23 +637,19 @@ export default function PartnerVideoCallPage() {
               </button>
               <button
                 type="button"
-                onClick={() => setFrontCamera((current) => !current)}
+                onClick={() => {
+                  void handleFlipCamera();
+                }}
                 className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/25 bg-white/10 text-white"
                 aria-label="Switch camera"
                 title={frontCamera ? "Front camera selected" : "Rear camera selected"}
               >
                 <RefreshCcw size={18} />
               </button>
-              <button
-                type="button"
-                onClick={() => router.push(`/partner/chat/${sessionId}`)}
-                className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/25 bg-white/10 text-white"
-              >
-                <MessageCircle size={18} />
-              </button>
             </div>
           </div>
         </div>
+        <audio ref={remoteAudioElementRef} className="hidden" autoPlay playsInline />
       </section>
     </PartnerGuard>
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { getCurrentFirebaseUser, subscribeFirebaseAuthState } from "@/lib/auth/firebasePhoneAuth";
+import { PARTNER_FIREBASE_TOKEN_KEY, subscribeFirebaseAuthState } from "@/lib/auth/firebasePhoneAuth";
 import { useRouter } from "next/navigation";
 import { resolvePartnerLandingRoute } from "@/lib/partnerApproval";
 import {
@@ -12,8 +12,12 @@ export default function PartnerEntryPage() {
   const router = useRouter();
 
   useEffect(() => {
+    const hasPartnerToken = () =>
+      typeof window !== "undefined" &&
+      Boolean(window.localStorage.getItem(PARTNER_FIREBASE_TOKEN_KEY)?.trim());
+
     const sync = async () => {
-      const isLoggedIn = isPartnerLoggedIn() || Boolean(getCurrentFirebaseUser());
+      const isLoggedIn = isPartnerLoggedIn() || hasPartnerToken();
       if (!isLoggedIn) {
         router.replace("/partner/login");
         return;

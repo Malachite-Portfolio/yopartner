@@ -1,3 +1,15 @@
+import {
+  PARTNER_FIREBASE_PHONE_KEY,
+  PARTNER_FIREBASE_TOKEN_KEY,
+  PARTNER_FIREBASE_UID_KEY,
+  USER_FIREBASE_PHONE_KEY,
+  USER_FIREBASE_TOKEN_KEY,
+  USER_FIREBASE_UID_KEY,
+  getCurrentFirebaseUser,
+  subscribeFirebaseAuthState,
+} from "@/lib/auth/firebasePhoneAuth";
+import { PARTNER_LOGGED_IN_KEY, PARTNER_PHONE_KEY } from "@/lib/partnerAuth";
+
 export type ApiClientError = {
   message: string;
   status?: number;
@@ -8,16 +20,38 @@ export type ApiResult<T> = {
   error: ApiClientError | null;
 };
 
+type AuthScope = "user" | "partner" | "admin";
+
+const ADMIN_AUTH_TOKEN_KEY = "yopartner_admin_auth_token";
+const ADMIN_LOGIN_KEY = "yopartner_admin_login";
+const ADMIN_LOGIN_ID_KEY = "yopartner_admin_login_id";
+const ADMIN_FIREBASE_UID_KEY = "yopartner_admin_firebase_uid";
+const ADMIN_FIREBASE_PHONE_KEY = "yopartner_admin_phone";
+const ADMIN_FIREBASE_TOKEN_KEY = "yopartner_admin_firebase_id_token";
+
 const PARTNER_SESSION_EXPIRED_MESSAGE =
   "Your login session could not be verified. Please login again as a partner.";
 const PARTNER_SESSION_EXPIRED_REASON = "session-expired";
+
+const USER_AUTH_STORAGE_KEYS = [USER_FIREBASE_UID_KEY, USER_FIREBASE_PHONE_KEY, USER_FIREBASE_TOKEN_KEY];
 const PARTNER_AUTH_STORAGE_KEYS = [
-  "yopartner_partner_logged_in",
-  "yopartner_partner_phone",
-  "yopartner_partner_firebase_uid",
-  "yopartner_partner_firebase_phone",
-  "yopartner_partner_firebase_id_token",
+  PARTNER_LOGGED_IN_KEY,
+  PARTNER_PHONE_KEY,
+  PARTNER_FIREBASE_UID_KEY,
+  PARTNER_FIREBASE_PHONE_KEY,
+  PARTNER_FIREBASE_TOKEN_KEY,
 ];
+const ADMIN_AUTH_STORAGE_KEYS = [
+  ADMIN_AUTH_TOKEN_KEY,
+  ADMIN_LOGIN_ID_KEY,
+  ADMIN_FIREBASE_UID_KEY,
+  ADMIN_FIREBASE_PHONE_KEY,
+  ADMIN_FIREBASE_TOKEN_KEY,
+];
+
+function canUseStorage() {
+  return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+}
 
 function resolveApiUrl(input: string) {
   if (!input.startsWith("/")) return input;
@@ -26,26 +60,46 @@ function resolveApiUrl(input: string) {
   return `${baseUrl.replace(/\/+$/, "")}${input}`;
 }
 
-export function isApiBaseUrlConfigured() {
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
-  return Boolean(baseUrl);
+function normalizeToken(raw: string | null | undefined) {
+  if (!raw) return null;
+  const token = raw.trim();
+  return token.length > 0 ? token : null;
 }
 
-function logPartnerTokenUsage(path: string, token: string | null) {
-  if (process.env.NODE_ENV === "production") return;
-  if (!path.startsWith("/api/partner")) return;
-  console.debug("[apiRequest partner auth]", {
-    path,
-    partnerTokenPresent: Boolean(token),
-    partnerTokenLength: token?.length ?? 0,
-  });
+function resolveScope(path = ""): AuthScope {
+  if (path.startsWith("/api/partner")) return "partner";
+  if (path.startsWith("/api/admin")) return "admin";
+  return "user";
 }
 
-function clearPartnerAuthKeys() {
-  if (typeof window === "undefined") return;
-  PARTNER_AUTH_STORAGE_KEYS.forEach((key) => {
-    window.localStorage.removeItem(key);
-  });
+function getScopeTokenKey(scope: AuthScope) {
+  if (scope === "partner") return PARTNER_FIREBASE_TOKEN_KEY;
+  if (scope === "admin") return ADMIN_AUTH_TOKEN_KEY;
+  return USER_FIREBASE_TOKEN_KEY;
+}
+
+function getStoredTokenForScope(scope: AuthScope) {
+  if (!canUseStorage()) return null;
+  return normalizeToken(window.localStorage.getItem(getScopeTokenKey(scope)));
+}
+
+function setStoredTokenForScope(scope: AuthScope, token: string) {
+  if (!canUseStorage()) return;
+  window.localStorage.setItem(getScopeTokenKey(scope), token);
+}
+
+function clearScopeAuth(scope: AuthScope) {
+  if (!canUseStorage()) return;
+  const keys =
+    scope === "partner"
+      ? PARTNER_AUTH_STORAGE_KEYS
+      : scope === "admin"
+        ? ADMIN_AUTH_STORAGE_KEYS
+        : USER_AUTH_STORAGE_KEYS;
+  keys.forEach((key) => window.localStorage.removeItem(key));
+  if (scope === "admin") {
+    window.localStorage.setItem(ADMIN_LOGIN_KEY, "false");
+  }
 }
 
 function redirectToPartnerLogin() {
@@ -64,47 +118,130 @@ function redirectToPartnerLogin() {
   window.location.assign(target);
 }
 
-function handlePartnerUnauthorized(path: string, status: number) {
-  if (status !== 401 || !path.startsWith("/api/partner")) return;
-  clearPartnerAuthKeys();
-  redirectToPartnerLogin();
+function handleUnauthorized(scope: AuthScope, status: number) {
+  if (status !== 401) return;
+  clearScopeAuth(scope);
+  if (scope === "partner") {
+    redirectToPartnerLogin();
+  }
+}
+
+async function waitForFirebaseUser(timeoutMs = 1500) {
+  const existingUser = getCurrentFirebaseUser();
+  if (existingUser) return existingUser;
+  if (typeof window === "undefined") return null;
+
+  return new Promise<ReturnType<typeof getCurrentFirebaseUser>>((resolve) => {
+    let settled = false;
+    const finish = (value: ReturnType<typeof getCurrentFirebaseUser>) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timer);
+      unsubscribe();
+      resolve(value);
+    };
+
+    const unsubscribe = subscribeFirebaseAuthState((user) => {
+      finish(user);
+    });
+
+    const timer = window.setTimeout(() => {
+      finish(getCurrentFirebaseUser());
+    }, timeoutMs);
+  });
+}
+
+async function tryRefreshFirebaseScopeToken(scope: AuthScope, forceRefresh: boolean) {
+  if (scope !== "user" && scope !== "partner") return null;
+  const user = (await waitForFirebaseUser()) ?? getCurrentFirebaseUser();
+  if (!user) return null;
+
+  try {
+    const refreshedToken = await user.getIdToken(forceRefresh);
+    const normalized = normalizeToken(refreshedToken);
+    if (!normalized) return null;
+    setStoredTokenForScope(scope, normalized);
+    return normalized;
+  } catch {
+    return null;
+  }
+}
+
+async function getRequestToken(scope: AuthScope) {
+  const existingToken = getStoredTokenForScope(scope);
+  if (existingToken) return existingToken;
+  return tryRefreshFirebaseScopeToken(scope, false);
+}
+
+async function fetchJson<T>(input: string, init: RequestInit | undefined, token: string | null) {
+  const headers = new Headers(init?.headers);
+  headers.set("Content-Type", "application/json");
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  const response = await fetch(resolveApiUrl(input), {
+    ...init,
+    headers,
+    cache: "no-store",
+  });
+
+  const payload = (await response.json().catch(() => ({}))) as { message?: string; error?: string } & T;
+  return { response, payload };
+}
+
+function toApiError(status: number, payload: { message?: string; error?: string }): ApiClientError {
+  return {
+    status,
+    message:
+      payload.message ||
+      payload.error ||
+      (status === 501
+        ? "Network request failed. Please check your connection or backend URL."
+        : "Request failed."),
+  };
+}
+
+export function isApiBaseUrlConfigured() {
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
+  return Boolean(baseUrl);
 }
 
 export async function apiRequest<T>(input: string, init?: RequestInit): Promise<ApiResult<T>> {
   try {
-    const token = getStoredAuthToken(input);
-    const headers = new Headers(init?.headers);
-    headers.set("Content-Type", "application/json");
-    if (token) {
-      headers.set("Authorization", `Bearer ${token}`);
-    }
-    const response = await fetch(resolveApiUrl(input), {
-      ...init,
-      headers,
-      cache: "no-store",
-    });
+    const scope = resolveScope(input);
+    const token = await getRequestToken(scope);
+    const first = await fetchJson<T>(input, init, token);
 
-    const payload = (await response.json().catch(() => ({}))) as { message?: string; error?: string } & T;
-
-    if (!response.ok) {
-      handlePartnerUnauthorized(input, response.status);
+    if (first.response.ok) {
       return {
-        data: null,
-        error: {
-          status: response.status,
-          message:
-            payload.message ||
-            payload.error ||
-            (response.status === 501
-              ? "Network request failed. Please check your connection or backend URL."
-              : "Request failed."),
-        },
+        data: first.payload as T,
+        error: null,
       };
     }
 
+    if (first.response.status === 401 && (scope === "user" || scope === "partner")) {
+      const refreshedToken = await tryRefreshFirebaseScopeToken(scope, true);
+      if (refreshedToken) {
+        const retry = await fetchJson<T>(input, init, refreshedToken);
+        if (retry.response.ok) {
+          return {
+            data: retry.payload as T,
+            error: null,
+          };
+        }
+        handleUnauthorized(scope, retry.response.status);
+        return {
+          data: null,
+          error: toApiError(retry.response.status, retry.payload),
+        };
+      }
+    }
+
+    handleUnauthorized(scope, first.response.status);
     return {
-      data: payload as T,
-      error: null,
+      data: null,
+      error: toApiError(first.response.status, first.payload),
     };
   } catch {
     return {
@@ -127,26 +264,6 @@ export function notConnectedError(message: string): ApiResult<never> {
 }
 
 export function getStoredAuthToken(path = "") {
-  if (typeof window === "undefined") return null;
-  const isAdminRoute = path.startsWith("/api/admin");
-  const isPartnerRoute = path.startsWith("/api/partner");
-  if (isPartnerRoute) {
-    const partnerToken = window.localStorage.getItem("yopartner_partner_firebase_id_token");
-    const normalized = partnerToken && partnerToken.trim().length > 0 ? partnerToken.trim() : null;
-    logPartnerTokenUsage(path, normalized);
-    return normalized;
-  }
-  const keys = isAdminRoute
-    ? [
-        "yopartner_admin_auth_token",
-      ]
-    : [
-        "yopartner_firebase_id_token",
-        "yopartner_partner_firebase_id_token",
-      ];
-  for (const key of keys) {
-    const token = window.localStorage.getItem(key);
-    if (token && token.trim().length > 0) return token.trim();
-  }
-  return null;
+  const scope = resolveScope(path);
+  return getStoredTokenForScope(scope);
 }

@@ -13,7 +13,7 @@ const navItems = [
   { label: "Talk Now", href: "/connect-now" },
   { label: "How it Works", href: "/how-it-works" },
   { label: "Safety", href: "/trust-safety" },
-  { label: "Become a Companion", href: "/partner/login" },
+  { label: "Become a Companion", href: "/partner" },
   { label: "Support", href: "/support" },
 ];
 

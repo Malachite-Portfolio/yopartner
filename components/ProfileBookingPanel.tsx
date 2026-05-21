@@ -180,9 +180,6 @@ export function ProfileBookingPanel({
         });
 
         if (sessionResponse.error?.status === 401) {
-          if (typeof window !== "undefined") {
-            window.localStorage.removeItem(USER_FIREBASE_TOKEN_KEY);
-          }
           router.push(`/login?returnUrl=${encodeURIComponent(currentPath)}`);
           return;
         }

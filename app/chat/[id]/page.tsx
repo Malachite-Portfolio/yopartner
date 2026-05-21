@@ -93,9 +93,6 @@ export default function ChatPage() {
       if (!active) return;
 
       if (fetched.error?.status === 401) {
-        if (typeof window !== "undefined") {
-          window.localStorage.removeItem(USER_FIREBASE_TOKEN_KEY);
-        }
         router.replace(toLoginUrl(currentPath));
         return;
       }
@@ -131,9 +128,6 @@ export default function ChatPage() {
       });
       if (!active) return;
       if (created.error?.status === 401) {
-        if (typeof window !== "undefined") {
-          window.localStorage.removeItem(USER_FIREBASE_TOKEN_KEY);
-        }
         router.replace(toLoginUrl(currentPath));
         return;
       }

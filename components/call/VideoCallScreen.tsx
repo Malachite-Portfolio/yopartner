@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Camera, CameraOff, MessageCircle, Mic, PhoneOff, RefreshCcw } from "lucide-react";
+import { ArrowLeft, Camera, CameraOff, Mic, PhoneOff, RefreshCcw } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
@@ -132,9 +132,6 @@ export function VideoCallScreen({ companion }: { companion: CompanionRouteProfil
             onClick={() => setIsFrontCamera((value) => !value)}
           >
             <RefreshCcw size={19} />
-          </ToggleControl>
-          <ToggleControl active={false} label="Open chat" onClick={() => router.push(`/chat/${companion.id}`)}>
-            <MessageCircle size={19} />
           </ToggleControl>
           <button
             type="button"

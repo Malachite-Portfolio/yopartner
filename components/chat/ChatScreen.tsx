@@ -27,6 +27,7 @@ type ChatScreenProps = {
   backHref?: string;
   backLabel?: string;
   onBackRequest?: () => void;
+  showCallActions?: boolean;
 };
 
 function getInitials(name: string) {
@@ -54,6 +55,7 @@ export function ChatScreen({
   backHref = "/connect-now",
   backLabel = "Go back",
   onBackRequest,
+  showCallActions = true,
 }: ChatScreenProps) {
   const router = useRouter();
 
@@ -94,22 +96,26 @@ export function ChatScreen({
         </div>
 
         <div className="flex items-center gap-1">
-          <button
-            type="button"
-            aria-label="Start audio call"
-            onClick={onOpenAudio}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[#0f766e] transition hover:bg-[#edf7f5]"
-          >
-            <Phone size={17} />
-          </button>
-          <button
-            type="button"
-            aria-label="Start video call"
-            onClick={onOpenVideo}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[#0f766e] transition hover:bg-[#edf7f5]"
-          >
-            <Video size={17} />
-          </button>
+          {showCallActions ? (
+            <button
+              type="button"
+              aria-label="Start audio call"
+              onClick={onOpenAudio}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[#0f766e] transition hover:bg-[#edf7f5]"
+            >
+              <Phone size={17} />
+            </button>
+          ) : null}
+          {showCallActions ? (
+            <button
+              type="button"
+              aria-label="Start video call"
+              onClick={onOpenVideo}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[#0f766e] transition hover:bg-[#edf7f5]"
+            >
+              <Video size={17} />
+            </button>
+          ) : null}
           {onEndSession ? (
             <button
               type="button"

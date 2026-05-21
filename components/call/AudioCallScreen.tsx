@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Lock, MessageCircle, Mic, PhoneOff, Volume2 } from "lucide-react";
+import { ArrowLeft, Lock, Mic, PhoneOff, Volume2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
@@ -119,9 +119,6 @@ export function AudioCallScreen({ companion }: { companion: CompanionRouteProfil
           </ControlButton>
           <ControlButton active={isSpeakerOn} label="Toggle speaker" onClick={() => setIsSpeakerOn((value) => !value)}>
             <Volume2 size={20} />
-          </ControlButton>
-          <ControlButton active={false} label="Open chat" onClick={() => router.push(`/chat/${companion.id}`)}>
-            <MessageCircle size={20} />
           </ControlButton>
           <button
             type="button"

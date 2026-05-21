@@ -201,7 +201,7 @@ export function HomeWellnessSections() {
             <p className="mt-3 text-sm leading-7 text-[#d7f3ef]">
               Apply to become a verified YoPartner companion and help people feel heard in a safe, respectful space.
             </p>
-            <Link href="/partner/login" className="mt-5 inline-flex rounded-full bg-white px-5 py-3 text-sm font-semibold text-[#0f766e]">
+            <Link href="/partner" className="mt-5 inline-flex rounded-full bg-white px-5 py-3 text-sm font-semibold text-[#0f766e]">
               Apply as a companion
             </Link>
           </article>

@@ -246,6 +246,7 @@ export default function PartnerChatSessionPage() {
               backHref="/partner/dashboard"
               backLabel="Back to Dashboard"
               onBackRequest={exitGuard.requestExit}
+              showCallActions={false}
             />
           </>
         )}

@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 const companyLinks = [
   { label: "Talk Now", href: "/connect-now" },
   { label: "About Us", href: "/about" },
-  { label: "Become a Companion", href: "/partner/login" },
+  { label: "Become a Companion", href: "/partner" },
 ];
 
 const serviceLinks = [
@@ -51,7 +51,7 @@ export function Footer() {
           <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <h3 className="text-2xl font-semibold">Use your empathy to help people feel heard</h3>
             <Link
-              href="/partner/login"
+              href="/partner"
               className="rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-[#0f766e] transition hover:bg-[#eef8f5]"
             >
               Apply as a companion

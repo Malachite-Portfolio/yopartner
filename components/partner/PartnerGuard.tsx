@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { getCurrentFirebaseUser, subscribeFirebaseAuthState } from "@/lib/auth/firebasePhoneAuth";
+import { PARTNER_FIREBASE_TOKEN_KEY, subscribeFirebaseAuthState } from "@/lib/auth/firebasePhoneAuth";
 import { resolvePartnerLandingRoute } from "@/lib/partnerApproval";
 import { isPartnerLoggedIn } from "@/lib/partnerAuth";
 
@@ -18,9 +18,12 @@ export function PartnerGuard({ children, requireOnboarding = true }: PartnerGuar
   const [hasAccess, setHasAccess] = useState(false);
 
   useEffect(() => {
+    const hasPartnerToken = () =>
+      typeof window !== "undefined" &&
+      Boolean(window.localStorage.getItem(PARTNER_FIREBASE_TOKEN_KEY)?.trim());
+
     const sync = async () => {
-      const hasFirebaseUser = Boolean(getCurrentFirebaseUser());
-      const hasPartnerSession = isPartnerLoggedIn() || hasFirebaseUser;
+      const hasPartnerSession = isPartnerLoggedIn() || hasPartnerToken();
       if (!hasPartnerSession) {
         setHasAccess(false);
         setChecking(false);
@@ -55,8 +58,9 @@ export function PartnerGuard({ children, requireOnboarding = true }: PartnerGuar
 
   useEffect(() => {
     if (checking) return;
-    const hasFirebaseUser = Boolean(getCurrentFirebaseUser());
-    const hasPartnerSession = isPartnerLoggedIn() || hasFirebaseUser;
+    const hasPartnerSession =
+      isPartnerLoggedIn() ||
+      (typeof window !== "undefined" && Boolean(window.localStorage.getItem(PARTNER_FIREBASE_TOKEN_KEY)?.trim()));
     if (!hasPartnerSession) {
       router.replace("/partner/login");
     }

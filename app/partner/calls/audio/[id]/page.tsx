@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Lock, MessageCircle, Mic, PhoneOff, Volume2 } from "lucide-react";
+import { ArrowLeft, Lock, Mic, PhoneOff, Volume2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import type { IAgoraRTCClient, IMicrophoneAudioTrack, IRemoteAudioTrack } from "agora-rtc-sdk-ng";
@@ -47,15 +47,18 @@ export default function PartnerAudioCallPage() {
   const [session, setSession] = useState<SessionRecord | null>(null);
   const [clockNow, setClockNow] = useState(() => Date.now());
   const [mute, setMute] = useState(false);
+  const [localAudioReady, setLocalAudioReady] = useState(false);
   const [error, setError] = useState("");
   const [joined, setJoined] = useState(false);
   const [needsPermissionAction, setNeedsPermissionAction] = useState(false);
   const [joining, setJoining] = useState(false);
   const [remoteAudioReady, setRemoteAudioReady] = useState(false);
   const [speakerHintVisible, setSpeakerHintVisible] = useState(false);
+  const [speakerMessage, setSpeakerMessage] = useState("");
   const clientRef = useRef<IAgoraRTCClient | null>(null);
   const localAudioTrackRef = useRef<IMicrophoneAudioTrack | null>(null);
   const remoteAudioTrackRef = useRef<IRemoteAudioTrack | null>(null);
+  const remoteAudioElementRef = useRef<HTMLAudioElement | null>(null);
   const elapsed = session?.status === "LIVE" ? getElapsedSeconds(session, clockNow) : 0;
 
   const cleanupAgora = useCallback(async () => {
@@ -78,6 +81,7 @@ export default function PartnerAudioCallPage() {
       clientRef.current = null;
     }
     setJoined(false);
+    setLocalAudioReady(false);
     setRemoteAudioReady(false);
     setNeedsPermissionAction(false);
   }, []);
@@ -144,6 +148,62 @@ export default function PartnerAudioCallPage() {
     void localAudioTrackRef.current.setEnabled(!mute);
   }, [mute]);
 
+  const replayRemoteAudio = useCallback(async () => {
+    const remoteTrack = remoteAudioTrackRef.current;
+    if (!remoteTrack) {
+      setSpeakerHintVisible(true);
+      setSpeakerMessage("Remote audio is not available yet.");
+      return false;
+    }
+
+    try {
+      const audioElement = remoteAudioElementRef.current;
+      if (audioElement) {
+        const mediaTrack = remoteTrack.getMediaStreamTrack?.();
+        if (mediaTrack) {
+          audioElement.srcObject = new MediaStream([mediaTrack]);
+          await audioElement.play();
+        } else {
+          remoteTrack.play();
+        }
+        const sinkElement = audioElement as HTMLAudioElement & { setSinkId?: (sinkId: string) => Promise<void> };
+        if (typeof sinkElement.setSinkId === "function") {
+          try {
+            await sinkElement.setSinkId("default");
+            setSpeakerMessage("");
+          } catch {
+            setSpeakerMessage("Speaker control depends on your browser. Use phone volume/output controls if needed.");
+          }
+        } else {
+          setSpeakerMessage("Speaker control depends on your browser. Use phone volume/output controls if needed.");
+        }
+      } else {
+        remoteTrack.play();
+      }
+      setSpeakerHintVisible(false);
+      return true;
+    } catch {
+      setSpeakerHintVisible(true);
+      setSpeakerMessage("Speaker control depends on your browser. Use phone volume/output controls if needed.");
+      return false;
+    }
+  }, []);
+
+  const toggleMute = useCallback(async () => {
+    const track = localAudioTrackRef.current;
+    if (!track) {
+      setError("Microphone is not ready yet.");
+      return;
+    }
+    const nextMute = !mute;
+    try {
+      await track.setEnabled(!nextMute);
+      setMute(nextMute);
+    } catch {
+      setError("Unable to update microphone state right now.");
+    }
+  }, [mute]);
+
   const joinAgoraAudio = useCallback(async () => {
     if (!session || joining || joined) return;
     setJoining(true);
@@ -160,10 +220,11 @@ export default function PartnerAudioCallPage() {
       }) => {
         if (!user.hasAudio) return;
         await client.subscribe(user as Parameters<typeof client.subscribe>[0], "audio");
-        user.audioTrack?.play();
         remoteAudioTrackRef.current = user.audioTrack ?? null;
         setRemoteAudioReady(Boolean(user.audioTrack));
-        setSpeakerHintVisible(false);
+        if (user.audioTrack) {
+          await replayRemoteAudio();
+        }
       };
       client.on("user-joined", (user) => {
         void syncRemoteAudioUser(user);
@@ -205,15 +266,17 @@ export default function PartnerAudioCallPage() {
       const AgoraRTC = await import("agora-rtc-sdk-ng");
       const localTrack = await AgoraRTC.default.createMicrophoneAudioTrack();
       localAudioTrackRef.current = localTrack;
+      setLocalAudioReady(true);
       await client.publish([localTrack]);
       await Promise.all(
         client.remoteUsers.map(async (remoteUser) => {
           if (!remoteUser.hasAudio) return;
           await client.subscribe(remoteUser, "audio");
-          remoteUser.audioTrack?.play();
           remoteAudioTrackRef.current = remoteUser.audioTrack ?? null;
           setRemoteAudioReady(Boolean(remoteUser.audioTrack));
-          setSpeakerHintVisible(false);
+          if (remoteUser.audioTrack) {
+            await replayRemoteAudio();
+          }
         }),
       );
       setJoined(true);
@@ -229,7 +292,7 @@ export default function PartnerAudioCallPage() {
     } finally {
       setJoining(false);
     }
-  }, [cleanupAgora, joined, joining, session]);
+  }, [cleanupAgora, joined, joining, replayRemoteAudio, session]);
 
   useEffect(() => {
     if (session?.status !== "LIVE" || joined || joining) return;
@@ -242,9 +305,7 @@ export default function PartnerAudioCallPage() {
   }, [joinAgoraAudio, joined, joining, session?.status]);
 
   const handleEnableSpeaker = () => {
-    if (!remoteAudioTrackRef.current) return;
-    remoteAudioTrackRef.current.play();
-    setSpeakerHintVisible(false);
+    void replayRemoteAudio();
   };
 
   const activeSessionId = session?.id;
@@ -366,6 +427,11 @@ export default function PartnerAudioCallPage() {
               {error}
             </p>
           ) : null}
+          {speakerMessage ? (
+            <p className="mt-2 w-full rounded-xl border border-slate-200 bg-white/80 px-3 py-2 text-center text-xs text-slate-600">
+              {speakerMessage}
+            </p>
+          ) : null}
           <div className="pt-4 text-center">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#0f766e]">Audio Call</p>
             <h1 className="mt-2 text-[28px] font-semibold leading-tight text-[#0f172a]">{maskedPhone}</h1>
@@ -390,7 +456,7 @@ export default function PartnerAudioCallPage() {
               onClick={handleEnableSpeaker}
               className="mt-2 rounded-full border border-[#b7dfd7] bg-white px-3 py-1 text-xs text-[#0f766e]"
             >
-              Tap to enable speaker
+              Enable sound
             </button>
           ) : null}
 
@@ -399,10 +465,13 @@ export default function PartnerAudioCallPage() {
               <div className="flex flex-wrap items-center justify-center gap-3">
                 <button
                   type="button"
-                  onClick={() => setMute((current) => !current)}
+                  disabled={!localAudioReady}
+                  onClick={() => {
+                    void toggleMute();
+                  }}
                   className={`inline-flex h-14 w-14 items-center justify-center rounded-full border ${
                     mute ? "border-[#0d9488] bg-[#d6f3ed] text-[#0f766e]" : "border-[#cfe7e2] bg-white text-[#334155]"
-                  }`}
+                  } disabled:cursor-not-allowed disabled:opacity-60`}
                 >
                   <Mic size={20} />
                 </button>
@@ -412,13 +481,6 @@ export default function PartnerAudioCallPage() {
                   className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-[#cfe7e2] bg-white text-[#334155]"
                 >
                   <Volume2 size={20} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => router.push(`/partner/chat/${sessionId}`)}
-                  className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-[#cfe7e2] bg-white text-[#334155]"
-                >
-                  <MessageCircle size={20} />
                 </button>
                 <button
                   type="button"
@@ -442,6 +504,7 @@ export default function PartnerAudioCallPage() {
             </div>
           </div>
         </div>
+        <audio ref={remoteAudioElementRef} className="hidden" autoPlay playsInline />
       </section>
     </PartnerGuard>
   );
