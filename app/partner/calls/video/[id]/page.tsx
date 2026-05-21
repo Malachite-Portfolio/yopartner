@@ -3,7 +3,14 @@
 import { ArrowLeft, Camera, CameraOff, MessageCircle, Mic, PhoneOff, RefreshCcw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import type { IAgoraRTCClient, ICameraVideoTrack, IMicrophoneAudioTrack, IRemoteAudioTrack, IRemoteVideoTrack } from "agora-rtc-sdk-ng";
+import type {
+  IAgoraRTCClient,
+  IAgoraRTCRemoteUser,
+  ICameraVideoTrack,
+  IMicrophoneAudioTrack,
+  IRemoteAudioTrack,
+  IRemoteVideoTrack,
+} from "agora-rtc-sdk-ng";
 import { PartnerGuard } from "@/components/partner/PartnerGuard";
 import { endSession, getSessionAgoraToken, getSessionById, type SessionRecord, type SessionStatus } from "@/lib/api/sessions";
 import { buildAgoraUid, createAgoraClient, normalizeChannelName, requestVideoPermission } from "@/lib/agora";
@@ -51,6 +58,7 @@ export default function PartnerVideoCallPage() {
   const [needsPermissionAction, setNeedsPermissionAction] = useState(false);
   const [joining, setJoining] = useState(false);
   const [remoteVideoReady, setRemoteVideoReady] = useState(false);
+  const [remoteUserJoined, setRemoteUserJoined] = useState(false);
   const clientRef = useRef<IAgoraRTCClient | null>(null);
   const localAudioTrackRef = useRef<IMicrophoneAudioTrack | null>(null);
   const localVideoTrackRef = useRef<ICameraVideoTrack | null>(null);
@@ -86,6 +94,7 @@ export default function PartnerVideoCallPage() {
     }
     setJoined(false);
     setRemoteVideoReady(false);
+    setRemoteUserJoined(false);
     setNeedsPermissionAction(false);
   }, []);
 
@@ -166,34 +175,52 @@ export default function PartnerVideoCallPage() {
 
       const client = await createAgoraClient();
       clientRef.current = client;
-      const syncRemoteMediaUser = async (user: {
-        hasAudio?: boolean;
-        hasVideo?: boolean;
-        audioTrack?: IRemoteAudioTrack | null;
-        videoTrack?: IRemoteVideoTrack | null;
-      }) => {
-        if (user.hasVideo) {
-          await client.subscribe(user as Parameters<typeof client.subscribe>[0], "video");
-          if (remoteVideoContainerRef.current) user.videoTrack?.play(remoteVideoContainerRef.current);
-          remoteVideoTrackRef.current = user.videoTrack ?? null;
-          setRemoteVideoReady(Boolean(user.videoTrack));
+      const subscribeRemoteUser = async (user: IAgoraRTCRemoteUser, mediaType?: "audio" | "video") => {
+        setRemoteUserJoined(true);
+        const shouldSubscribeVideo = (!mediaType || mediaType === "video") && user.hasVideo;
+        const shouldSubscribeAudio = (!mediaType || mediaType === "audio") && user.hasAudio;
+
+        if (shouldSubscribeVideo) {
+          try {
+            await client.subscribe(user, "video");
+          } catch {
+            // Repeated sweeps can hit an already-subscribed Agora track.
+          }
+          if (user.videoTrack && remoteVideoContainerRef.current) {
+            try {
+              user.videoTrack.play(remoteVideoContainerRef.current);
+              remoteVideoTrackRef.current = user.videoTrack;
+              setRemoteVideoReady(true);
+            } catch {
+              setRemoteVideoReady(false);
+            }
+          }
         }
-        if (user.hasAudio) {
-          await client.subscribe(user as Parameters<typeof client.subscribe>[0], "audio");
-          user.audioTrack?.play();
-          remoteAudioTrackRef.current = user.audioTrack ?? null;
+
+        if (shouldSubscribeAudio) {
+          try {
+            await client.subscribe(user, "audio");
+          } catch {
+            // Safe to ignore duplicate subscriptions from delayed sweeps.
+          }
+          if (user.audioTrack) {
+            user.audioTrack.play();
+            remoteAudioTrackRef.current = user.audioTrack;
+          }
         }
       };
+
+      const sweepRemoteUsers = async () => {
+        if (client.remoteUsers.length > 0) setRemoteUserJoined(true);
+        await Promise.all(client.remoteUsers.map((remoteUser) => subscribeRemoteUser(remoteUser)));
+      };
       client.on("user-joined", (user) => {
-        void syncRemoteMediaUser(user);
+        setRemoteUserJoined(true);
+        void subscribeRemoteUser(user);
       });
       client.on("user-published", async (user, mediaType) => {
-        if (mediaType === "video") {
-          await syncRemoteMediaUser(user);
-        }
-        if (mediaType === "audio") {
-          await syncRemoteMediaUser(user);
-        }
+        if (mediaType !== "audio" && mediaType !== "video") return;
+        await subscribeRemoteUser(user, mediaType);
       });
       client.on("user-unpublished", (_user, mediaType) => {
         if (mediaType === "video") {
@@ -205,6 +232,7 @@ export default function PartnerVideoCallPage() {
         }
       });
       client.on("user-left", () => {
+        setRemoteUserJoined(client.remoteUsers.length > 0);
         remoteVideoTrackRef.current = null;
         remoteAudioTrackRef.current = null;
         setRemoteVideoReady(false);
@@ -233,21 +261,13 @@ export default function PartnerVideoCallPage() {
       localVideoTrackRef.current = localVideoTrack;
       await client.publish([localAudioTrack, localVideoTrack]);
       if (localVideoContainerRef.current) localVideoTrack.play(localVideoContainerRef.current);
-      await Promise.all(
-        client.remoteUsers.map(async (remoteUser) => {
-          if (remoteUser.hasVideo) {
-            await client.subscribe(remoteUser, "video");
-            if (remoteVideoContainerRef.current) remoteUser.videoTrack?.play(remoteVideoContainerRef.current);
-            remoteVideoTrackRef.current = remoteUser.videoTrack ?? null;
-            setRemoteVideoReady(Boolean(remoteUser.videoTrack));
-          }
-          if (remoteUser.hasAudio) {
-            await client.subscribe(remoteUser, "audio");
-            remoteUser.audioTrack?.play();
-            remoteAudioTrackRef.current = remoteUser.audioTrack ?? null;
-          }
-        }),
-      );
+      await sweepRemoteUsers();
+      window.setTimeout(() => {
+        void sweepRemoteUsers();
+      }, 500);
+      window.setTimeout(() => {
+        void sweepRemoteUsers();
+      }, 1500);
       setJoined(true);
     } catch (joinError) {
       const message = joinError instanceof Error ? joinError.message : "Unable to connect video call.";
@@ -364,7 +384,9 @@ export default function PartnerVideoCallPage() {
                   {maskedPhone.slice(-2)}
                 </span>
                 <p className="mt-3 text-xl font-semibold">{maskedPhone}</p>
-                <p className="mt-1 text-sm text-white/80">Waiting for video...</p>
+                <p className="mt-1 text-sm text-white/80">
+                  {remoteUserJoined ? "Connected. Waiting for video..." : "Waiting for video..."}
+                </p>
               </div>
             ) : null}
 

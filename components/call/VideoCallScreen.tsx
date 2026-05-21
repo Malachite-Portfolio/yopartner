@@ -58,7 +58,7 @@ export function VideoCallScreen({ companion }: { companion: CompanionRouteProfil
   }, []);
 
   return (
-    <section className="relative h-[100dvh] min-h-[100dvh] overflow-hidden bg-[#020617] text-white">
+    <section className="full-mobile-screen relative overflow-hidden bg-[#020617] text-white">
       <div className="absolute inset-0">
         {companion.image ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -92,7 +92,9 @@ export function VideoCallScreen({ companion }: { companion: CompanionRouteProfil
               {companion.name.slice(0, 1).toUpperCase()}
             </span>
             <p className="mt-3 text-xl font-semibold">{elapsedSeconds === 0 ? "Calling..." : "Connected"}</p>
-            <p className="mt-1 text-sm text-white/80">Waiting for video...</p>
+            <p className="mt-1 text-sm text-white/80">
+              {elapsedSeconds > 0 ? "Connected. Waiting for video..." : "Waiting for video..."}
+            </p>
           </div>
 
           <div className="absolute right-0 top-5 h-32 w-[120px] overflow-hidden rounded-[20px] border-2 border-white/85 bg-slate-900 shadow-2xl shadow-black/40 sm:w-[138px]">

@@ -13,6 +13,7 @@
   --line: #dceae5;
   --footer-bg: #102a2a;
   --shadow-color: 15, 118, 110;
+  --app-safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 @theme inline {
@@ -87,6 +88,16 @@ textarea {
 
 .yp-btn-pop:hover {
   transform: translateY(-1px) scale(1.01);
+}
+
+.full-mobile-screen {
+  min-height: 100svh;
+  height: 100svh;
+  max-height: 100svh;
+}
+
+.mobile-bottom-safe {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 72px);
 }
 
 @media (prefers-reduced-motion: no-preference) {
