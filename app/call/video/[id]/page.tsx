@@ -81,6 +81,13 @@ export default function VideoCallPage() {
   const [audioPlaybackError, setAudioPlaybackError] = useState("");
   const [remoteUserCount, setRemoteUserCount] = useState(0);
   const [localAudioPublished, setLocalAudioPublished] = useState(false);
+  const [localMicCreated, setLocalMicCreated] = useState(false);
+  const [debugChannelName, setDebugChannelName] = useState("");
+  const [debugTokenFetched, setDebugTokenFetched] = useState(false);
+  const [debugAgoraUid, setDebugAgoraUid] = useState<string | number | null>(null);
+  const [debugRemoteUserUids, setDebugRemoteUserUids] = useState<string[]>([]);
+  const [debugAudioPublishEvents, setDebugAudioPublishEvents] = useState(0);
+  const [debugRemoteAudioSubscribed, setDebugRemoteAudioSubscribed] = useState(false);
   const [setSinkIdSupported, setSetSinkIdSupported] = useState<boolean | null>(null);
   const [joined, setJoined] = useState(false);
   const [needsPermissionAction, setNeedsPermissionAction] = useState(false);
@@ -98,6 +105,7 @@ export default function VideoCallPage() {
   const localVideoContainerRef = useRef<HTMLDivElement | null>(null);
   const remoteVideoContainerRef = useRef<HTMLDivElement | null>(null);
   const remoteAudioElementRef = useRef<HTMLAudioElement | null>(null);
+  const isPending = session?.status === "PENDING";
   const isCallLive = Boolean(session?.liveStartedAt);
   const elapsedSeconds = isCallLive ? getElapsedSeconds(session, clockNow) : 0;
 
@@ -108,6 +116,11 @@ export default function VideoCallPage() {
       setSession((current) => (current && current.id === response.data!.id ? response.data : current));
     }
   }, [session]);
+
+  const syncRemoteUsersDebug = useCallback((client: IAgoraRTCClient) => {
+    setRemoteUserCount(client.remoteUsers.length);
+    setDebugRemoteUserUids(client.remoteUsers.map((user) => String(user.uid ?? "unknown")));
+  }, []);
 
   const cleanupAgora = useCallback(async () => {
     try {
@@ -149,8 +162,15 @@ export default function VideoCallPage() {
     setAudioPlaybackAttempted(false);
     setAudioPlaybackError("");
     setRemoteUserCount(0);
+    setDebugRemoteUserUids([]);
+    setDebugAudioPublishEvents(0);
+    setDebugRemoteAudioSubscribed(false);
     setSetSinkIdSupported(null);
     setSpeakerEnabled(false);
+    setDebugChannelName("");
+    setDebugTokenFetched(false);
+    setDebugAgoraUid(null);
+    setLocalMicCreated(false);
     setNeedsPermissionAction(false);
   }, []);
 
@@ -449,6 +469,7 @@ export default function VideoCallPage() {
             // Safe to ignore duplicate subscriptions from delayed remote-user sweeps.
           }
           setRemoteAudioPublished(true);
+          setDebugRemoteAudioSubscribed(true);
           setRemoteAudioTrackExists(Boolean(user.audioTrack));
           if (user.audioTrack) {
             remoteAudioTrackRef.current = user.audioTrack;
@@ -460,22 +481,26 @@ export default function VideoCallPage() {
 
       const sweepRemoteUsers = async () => {
         if (client.remoteUsers.length > 0) setRemoteUserJoined(true);
+        syncRemoteUsersDebug(client);
         await Promise.all(client.remoteUsers.map((remoteUser) => subscribeRemoteUser(remoteUser)));
       };
 
       client.on("user-joined", (user) => {
         setRemoteUserJoined(true);
-        setRemoteUserCount(client.remoteUsers.length);
+        syncRemoteUsersDebug(client);
         void subscribeRemoteUser(user);
       });
       client.on("user-published", async (user, mediaType) => {
-        setRemoteUserCount(client.remoteUsers.length);
+        syncRemoteUsersDebug(client);
         if (mediaType !== "audio" && mediaType !== "video") return;
+        if (mediaType === "audio") {
+          setDebugAudioPublishEvents((count) => count + 1);
+        }
         await subscribeRemoteUser(user, mediaType);
       });
 
       client.on("user-unpublished", (_user, mediaType) => {
-        setRemoteUserCount(client.remoteUsers.length);
+        syncRemoteUsersDebug(client);
         if (mediaType === "video") {
           setRemoteVideoReady(false);
           remoteVideoTrackRef.current = null;
@@ -490,7 +515,7 @@ export default function VideoCallPage() {
       });
 
       client.on("user-left", () => {
-        setRemoteUserCount(client.remoteUsers.length);
+        syncRemoteUsersDebug(client);
         setRemoteUserJoined(client.remoteUsers.length > 0);
         setRemoteVideoReady(false);
         setRemoteAudioPublished(false);
@@ -516,6 +541,9 @@ export default function VideoCallPage() {
       }
       const channelName = normalizeChannelName(session.id, tokenResponse.data?.channelName ?? session.channelName);
       const uid = tokenResponse.data?.uid ?? buildAgoraUid(session.id, session.userId ?? "user");
+      setDebugChannelName(channelName);
+      setDebugTokenFetched(true);
+      setDebugAgoraUid(uid);
 
       await client.join(appId, channelName, tokenResponse.data.token, uid);
 
@@ -523,6 +551,7 @@ export default function VideoCallPage() {
       const [localAudioTrack, localVideoTrack] = await AgoraRTC.default.createMicrophoneAndCameraTracks();
       localAudioTrackRef.current = localAudioTrack;
       localVideoTrackRef.current = localVideoTrack;
+      setLocalMicCreated(true);
       setLocalAudioReady(true);
       setLocalVideoReady(true);
       await client.publish([localAudioTrack, localVideoTrack]);
@@ -532,7 +561,7 @@ export default function VideoCallPage() {
         localVideoTrack.play(localVideoContainerRef.current);
       }
       await sweepRemoteUsers();
-      setRemoteUserCount(client.remoteUsers.length);
+      syncRemoteUsersDebug(client);
       window.setTimeout(() => {
         void sweepRemoteUsers();
       }, 500);
@@ -552,7 +581,7 @@ export default function VideoCallPage() {
     } finally {
       setJoining(false);
     }
-  }, [cleanupAgora, companion, joined, joining, notifyMediaReady, playRemoteAudio, session]);
+  }, [cleanupAgora, companion, joined, joining, notifyMediaReady, playRemoteAudio, session, syncRemoteUsersDebug]);
 
   useEffect(() => {
     if ((session?.status !== "LIVE" && session?.status !== "ACCEPTED") || joined || joining) return;
@@ -662,28 +691,6 @@ export default function VideoCallPage() {
     );
   }
 
-  if (session.status === "PENDING") {
-    return (
-      <main className="flex h-[100dvh] min-h-[100dvh] items-center justify-center bg-[#0b1224] p-4 text-white">
-        {exitConfirmModal}
-        <div className="w-full max-w-md rounded-2xl border border-white/20 bg-white/10 p-6 text-center">
-          <p className="text-base font-semibold">Calling partner...</p>
-          <p className="mt-2 text-sm text-cyan-100">Waiting for partner to accept your video request.</p>
-          <button
-            type="button"
-            disabled={isCancelling}
-            onClick={() => {
-              void handleCancel();
-            }}
-            className="mt-4 rounded-xl border border-white/30 px-4 py-2 text-sm font-semibold text-white disabled:opacity-70"
-          >
-            {isCancelling ? "Cancelling..." : "Cancel call"}
-          </button>
-        </div>
-      </main>
-    );
-  }
-
   if (isTerminalStatus(session.status)) {
     return (
       <main className="flex h-[100dvh] min-h-[100dvh] items-center justify-center bg-[#0b1224] p-4 text-white">
@@ -702,7 +709,7 @@ export default function VideoCallPage() {
     );
   }
 
-  if (session.status !== "LIVE" && session.status !== "ACCEPTED") {
+  if (!isPending && session.status !== "LIVE" && session.status !== "ACCEPTED") {
     return (
       <main className="flex h-[100dvh] min-h-[100dvh] items-center justify-center bg-[#0b1224] p-4 text-white">
         {exitConfirmModal}
@@ -786,16 +793,16 @@ export default function VideoCallPage() {
               </span>
               <p className="mt-3 text-xl font-semibold">{companion.name}</p>
               <p className="mt-1 text-sm text-white/80">
-                {remoteVideoReady
-                  ? "Connected"
-                  : remoteAudioPublished
-                    ? audioPlaybackReady
-                      ? "Audio connected. Waiting for video..."
-                      : "Tap speaker or screen to enable audio"
-                    : remoteUserJoined
-                      ? "Connected. Waiting for video..."
-                      : isCallLive
-                        ? "Waiting for video..."
+                {isPending
+                  ? "Ringing..."
+                  : remoteVideoReady
+                    ? "Connected"
+                    : remoteAudioPublished
+                      ? audioPlaybackReady
+                        ? "Audio connected. Waiting for video..."
+                        : "Tap speaker or screen to enable audio"
+                      : remoteUserJoined
+                        ? "Connected. Waiting for media..."
                         : "Connecting..."}
               </p>
             </div>
@@ -821,7 +828,7 @@ export default function VideoCallPage() {
           <div className="flex w-full max-w-[540px] items-center justify-center gap-2.5 rounded-full border border-white/15 bg-black/45 px-3 py-2.5 shadow-2xl backdrop-blur">
           <button
             type="button"
-            disabled={!localVideoReady}
+            disabled={!localVideoReady || isPending}
             onClick={() => {
               void toggleCamera();
             }}
@@ -833,7 +840,7 @@ export default function VideoCallPage() {
           </button>
           <button
             type="button"
-            disabled={!localAudioReady}
+            disabled={!localAudioReady || isPending}
             onClick={() => {
               void toggleMute();
             }}
@@ -845,12 +852,13 @@ export default function VideoCallPage() {
           </button>
           <button
             type="button"
+            disabled={isPending}
             onClick={() => {
               handleSpeakerToggle();
             }}
             className={`inline-flex h-12 items-center justify-center gap-2 rounded-full border px-3 text-xs font-semibold ${
               speakerEnabled ? "border-cyan-300/60 bg-cyan-400/20 text-cyan-100" : "border-white/25 bg-white/10 text-white"
-            }`}
+            } disabled:cursor-not-allowed disabled:opacity-60`}
           >
             <Volume2 size={16} />
             <span>{speakerEnabled ? "On" : "Off"}</span>
@@ -866,10 +874,11 @@ export default function VideoCallPage() {
           </button>
           <button
             type="button"
+            disabled={isPending}
             onClick={() => {
               void handleFlipCamera();
             }}
-            className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/25 bg-white/10 text-white"
+            className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/25 bg-white/10 text-white disabled:cursor-not-allowed disabled:opacity-60"
             aria-label="Switch camera"
             title={isFrontCamera ? "Front camera selected" : "Rear camera selected"}
           >
@@ -879,9 +888,20 @@ export default function VideoCallPage() {
         </div>
         {debugCallEnabled ? (
           <div className="mt-2 rounded-xl border border-white/20 bg-black/35 p-3 text-xs text-white/85">
+            <p>sessionId: {session.id}</p>
+            <p>channelName: {debugChannelName || "-"}</p>
+            <p>callType: video</p>
+            <p>userType: user</p>
+            <p>session status: {session.status}</p>
+            <p>token fetched: {String(debugTokenFetched)}</p>
             <p>joined: {String(joined)}</p>
+            <p>agora uid: {debugAgoraUid ?? "-"}</p>
+            <p>local mic created: {String(localMicCreated)}</p>
             <p>local mic published: {String(localAudioPublished)}</p>
             <p>remote user count: {remoteUserCount}</p>
+            <p>remote user uids: {debugRemoteUserUids.length > 0 ? debugRemoteUserUids.join(", ") : "-"}</p>
+            <p>audio publish event received: {String(debugAudioPublishEvents)}</p>
+            <p>remote audio subscribed: {String(debugRemoteAudioSubscribed)}</p>
             <p>remote audio ready: {String(remoteAudioPublished)}</p>
             <p>remote audio track exists: {String(remoteAudioTrackExists)}</p>
             <p>audio playback attempted: {String(audioPlaybackAttempted)}</p>

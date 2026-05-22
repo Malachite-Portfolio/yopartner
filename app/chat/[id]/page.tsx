@@ -251,7 +251,19 @@ export default function ChatPage() {
       setMessageError("Microphone permission is required for audio calls.");
       return;
     }
-    router.push(`/call/audio/${session.id}?companionId=${encodeURIComponent(companion.id)}`);
+    const created = await createSession({
+      companionId: companion.id,
+      serviceType: "audio",
+    });
+    if (created.error?.status === 401) {
+      router.push(`/login?returnUrl=${encodeURIComponent(`/call/audio/${companion.id}`)}`);
+      return;
+    }
+    if (!created.data?.id) {
+      setMessageError(created.error?.message || "Unable to start audio call right now.");
+      return;
+    }
+    router.push(`/call/audio/${created.data.id}?companionId=${encodeURIComponent(companion.id)}`);
   };
 
   const handleOpenVideo = async () => {
@@ -262,7 +274,19 @@ export default function ChatPage() {
       setMessageError("Camera and microphone permission are required for video calls.");
       return;
     }
-    router.push(`/call/video/${session.id}?companionId=${encodeURIComponent(companion.id)}`);
+    const created = await createSession({
+      companionId: companion.id,
+      serviceType: "video",
+    });
+    if (created.error?.status === 401) {
+      router.push(`/login?returnUrl=${encodeURIComponent(`/call/video/${companion.id}`)}`);
+      return;
+    }
+    if (!created.data?.id) {
+      setMessageError(created.error?.message || "Unable to start video call right now.");
+      return;
+    }
+    router.push(`/call/video/${created.data.id}?companionId=${encodeURIComponent(companion.id)}`);
   };
 
   const handleSendMessage = async () => {
