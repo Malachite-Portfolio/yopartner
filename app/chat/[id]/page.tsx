@@ -21,7 +21,7 @@ import {
   type CompanionRouteProfile,
 } from "@/lib/companionRoutes";
 import { requestAudioPermission, requestVideoPermission } from "@/lib/agora";
-import { isActiveSessionStatus } from "@/lib/sessionStatus";
+import { isActiveSessionStatus, isTerminalSessionStatus } from "@/lib/sessionStatus";
 
 function getUserToken() {
   if (typeof window === "undefined") return null;
@@ -60,6 +60,7 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<SessionMessageRecord[]>([]);
   const [messageError, setMessageError] = useState("");
   const [isEndingSession, setIsEndingSession] = useState(false);
+  const [clockNow, setClockNow] = useState(() => Date.now());
 
   const currentPath = useMemo(() => {
     const query = searchParams.toString();
@@ -183,6 +184,21 @@ export default function ChatPage() {
     };
   }, [refreshMessages, session?.id, session?.status]);
 
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setClockNow(Date.now());
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!isTerminalSessionStatus(session?.status)) return;
+    const timer = window.setTimeout(() => {
+      router.push("/connect-now");
+    }, 900);
+    return () => window.clearTimeout(timer);
+  }, [router, session?.status]);
+
   const handleCancelPending = async () => {
     if (!session?.id || isCancelling) return;
     setIsCancelling(true);
@@ -193,18 +209,6 @@ export default function ChatPage() {
       return;
     }
     setErrorMessage(response.error?.message || "Unable to cancel this request right now.");
-  };
-
-  const handleEndLiveSession = async () => {
-    if (!session?.id || session.status !== "LIVE" || isEndingSession) return;
-    setIsEndingSession(true);
-    const response = await endSession(session.id);
-    setIsEndingSession(false);
-    if (!response.data) {
-      setMessageError(response.error?.message || "Unable to end chat session.");
-      return;
-    }
-    setSession(response.data);
   };
 
   const handleConfirmEndSession = useCallback(async () => {
@@ -376,6 +380,7 @@ export default function ChatPage() {
                   ? "This chat session is no longer active."
                 : "This chat session is not active right now."}
           </p>
+          <p className="mt-2 text-xs text-slate-500">Session ended. Redirecting to Connect Now...</p>
           <button
             type="button"
             onClick={() => router.push("/connect-now")}
@@ -389,6 +394,10 @@ export default function ChatPage() {
   }
 
   const screenMessages = toScreenMessages(messages);
+  const baseTime = session.liveStartedAt || session.startedAt || session.acceptedAt;
+  const baseMs = baseTime ? new Date(baseTime).getTime() : Number.NaN;
+  const elapsedSeconds = Number.isNaN(baseMs) ? 0 : Math.max(0, Math.floor((clockNow - baseMs) / 1000));
+  const timerLabel = `${String(Math.floor(elapsedSeconds / 60)).padStart(2, "0")}:${String(elapsedSeconds % 60).padStart(2, "0")}`;
 
   return (
     <main className="h-[100dvh] min-h-[100dvh] overflow-hidden bg-[#eef3f8]">
@@ -414,10 +423,11 @@ export default function ChatPage() {
         }}
         composerDisabled={false}
         onEndSession={() => {
-          void handleEndLiveSession();
+          exitGuard.requestExit();
         }}
         endingSession={isEndingSession}
         onBackRequest={exitGuard.requestExit}
+        sessionTimerLabel={timerLabel}
       />
     </main>
   );

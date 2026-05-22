@@ -7,7 +7,7 @@ import type { IAgoraRTCClient, IMicrophoneAudioTrack, IRemoteAudioTrack } from "
 import { EndSessionConfirmModal } from "@/components/session/EndSessionConfirmModal";
 import { PartnerGuard } from "@/components/partner/PartnerGuard";
 import { useSessionExitGuard } from "@/hooks/useSessionExitGuard";
-import { endSession, getSessionAgoraToken, getSessionById, type SessionRecord, type SessionStatus } from "@/lib/api/sessions";
+import { endSession, getSessionAgoraToken, getSessionById, markSessionMediaReady, type SessionRecord, type SessionStatus } from "@/lib/api/sessions";
 import { buildAgoraUid, createAgoraClient, normalizeChannelName, requestAudioPermission } from "@/lib/agora";
 import { isActiveSessionStatus } from "@/lib/sessionStatus";
 
@@ -19,7 +19,7 @@ function isTerminalStatus(status?: SessionStatus) {
 }
 
 function getElapsedSeconds(session: SessionRecord | null, nowMs = Date.now()) {
-  const baseTime = session?.startedAt ?? session?.acceptedAt;
+  const baseTime = session?.liveStartedAt;
   if (!baseTime) return 0;
   const timestamp = new Date(baseTime).getTime();
   if (Number.isNaN(timestamp)) return 0;
@@ -59,7 +59,16 @@ export default function PartnerAudioCallPage() {
   const localAudioTrackRef = useRef<IMicrophoneAudioTrack | null>(null);
   const remoteAudioTrackRef = useRef<IRemoteAudioTrack | null>(null);
   const remoteAudioElementRef = useRef<HTMLAudioElement | null>(null);
-  const elapsed = session?.status === "LIVE" ? getElapsedSeconds(session, clockNow) : 0;
+  const isCallLive = Boolean(session?.liveStartedAt);
+  const elapsed = isCallLive ? getElapsedSeconds(session, clockNow) : 0;
+
+  const notifyMediaReady = useCallback(async () => {
+    if (!session?.id) return;
+    const response = await markSessionMediaReady(session.id);
+    if (response.data) {
+      setSession((current) => (current && current.id === response.data!.id ? response.data : current));
+    }
+  }, [session]);
 
   const cleanupAgora = useCallback(async () => {
     try {
@@ -126,12 +135,20 @@ export default function PartnerAudioCallPage() {
   }, [cleanupAgora, session?.id]);
 
   useEffect(() => {
-    if (session?.status !== "LIVE") return;
+    if (session?.status !== "LIVE" && session?.status !== "ACCEPTED") return;
     const timer = window.setInterval(() => {
       setClockNow(Date.now());
     }, 1000);
     return () => window.clearInterval(timer);
   }, [session?.status]);
+
+  useEffect(() => {
+    if (!isTerminalStatus(session?.status)) return;
+    const timer = window.setTimeout(() => {
+      router.push("/partner/dashboard");
+    }, 900);
+    return () => window.clearTimeout(timer);
+  }, [router, session?.status]);
 
   useEffect(() => {
     if (!isTerminalStatus(session?.status)) return;
@@ -222,6 +239,7 @@ export default function PartnerAudioCallPage() {
         await client.subscribe(user as Parameters<typeof client.subscribe>[0], "audio");
         remoteAudioTrackRef.current = user.audioTrack ?? null;
         setRemoteAudioReady(Boolean(user.audioTrack));
+        await notifyMediaReady();
         if (user.audioTrack) {
           await replayRemoteAudio();
         }
@@ -268,12 +286,14 @@ export default function PartnerAudioCallPage() {
       localAudioTrackRef.current = localTrack;
       setLocalAudioReady(true);
       await client.publish([localTrack]);
+      await notifyMediaReady();
       await Promise.all(
         client.remoteUsers.map(async (remoteUser) => {
           if (!remoteUser.hasAudio) return;
           await client.subscribe(remoteUser, "audio");
           remoteAudioTrackRef.current = remoteUser.audioTrack ?? null;
           setRemoteAudioReady(Boolean(remoteUser.audioTrack));
+          await notifyMediaReady();
           if (remoteUser.audioTrack) {
             await replayRemoteAudio();
           }
@@ -292,10 +312,10 @@ export default function PartnerAudioCallPage() {
     } finally {
       setJoining(false);
     }
-  }, [cleanupAgora, joined, joining, replayRemoteAudio, session]);
+  }, [cleanupAgora, joined, joining, notifyMediaReady, replayRemoteAudio, session]);
 
   useEffect(() => {
-    if (session?.status !== "LIVE" || joined || joining) return;
+    if ((session?.status !== "LIVE" && session?.status !== "ACCEPTED") || joined || joining) return;
     const timer = window.setTimeout(() => {
       void joinAgoraAudio();
     }, 0);
@@ -356,6 +376,7 @@ export default function PartnerAudioCallPage() {
         <main className="flex h-[100dvh] min-h-[100dvh] items-center justify-center bg-gradient-to-b from-[#f3fbf9] via-[#e8f6f3] to-[#d9efea] p-4 text-[#0f172a]">
           <div className="w-full max-w-md rounded-2xl border border-[#cde8e2] bg-white/80 p-6 text-center">
             <p className="text-base font-semibold">This call has ended.</p>
+            <p className="mt-2 text-xs text-slate-600">Session ended. Redirecting to Dashboard...</p>
             <button
               type="button"
               onClick={() => router.push("/partner/dashboard")}
@@ -369,7 +390,7 @@ export default function PartnerAudioCallPage() {
     );
   }
 
-  if (session && session.status !== "LIVE") {
+  if (session && session.status !== "LIVE" && session.status !== "ACCEPTED") {
     return (
       <PartnerGuard requireOnboarding>
         <main className="flex h-[100dvh] min-h-[100dvh] items-center justify-center bg-gradient-to-b from-[#f3fbf9] via-[#e8f6f3] to-[#d9efea] p-4 text-[#0f172a]">
@@ -435,7 +456,7 @@ export default function PartnerAudioCallPage() {
           <div className="pt-4 text-center">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#0f766e]">Audio Call</p>
             <h1 className="mt-2 text-[28px] font-semibold leading-tight text-[#0f172a]">{maskedPhone}</h1>
-            <p className="mt-1 text-base text-[#334155]">{remoteAudioReady ? "Connected" : "Waiting for audio..."}</p>
+            <p className="mt-1 text-base text-[#334155]">{remoteAudioReady ? "Connected" : isCallLive ? "Waiting for audio..." : "Connecting..."}</p>
             <p className="mt-2 text-3xl font-semibold tabular-nums text-[#0f172a]">{formatTimer(elapsed)}</p>
           </div>
 

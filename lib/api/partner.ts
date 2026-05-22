@@ -31,6 +31,11 @@ export type PartnerDashboardPayload = {
   pendingRequests?: PartnerIncomingRequest[];
   activeSessions?: PartnerActiveSession[];
   companion?: Record<string, unknown> | null;
+  availability?: {
+    isOnline?: boolean;
+    isBusy?: boolean;
+    effectiveStatus?: "ONLINE" | "BUSY" | "OFFLINE";
+  } | null;
 };
 
 export type PartnerAvailabilityPayload = {

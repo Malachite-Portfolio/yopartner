@@ -122,6 +122,7 @@ export default function PartnerDashboardPage() {
   const [stats, setStats] = useState<DashboardStats>(defaultStats);
   const [pendingRequests, setPendingRequests] = useState<PartnerIncomingRequest[]>([]);
   const [activeSessions, setActiveSessions] = useState<PartnerActiveSession[]>([]);
+  const [effectiveStatus, setEffectiveStatus] = useState<"ONLINE" | "BUSY" | "OFFLINE">("OFFLINE");
   const [loading, setLoading] = useState(true);
   const [statusMessage, setStatusMessage] = useState("");
   const [availabilityError, setAvailabilityError] = useState("");
@@ -154,7 +155,10 @@ export default function PartnerDashboardPage() {
       };
       const root = asRecord(dashboardResponse.data);
       const companion = asRecord(root.companion);
-      const companionOnline = Boolean(companion.isOnline);
+      const availability = asRecord(root.availability);
+      const companionOnline = Boolean(availability.isOnline ?? companion.isOnline);
+      const nextStatus = String(availability.effectiveStatus ?? (companionOnline ? "ONLINE" : "OFFLINE")).toUpperCase();
+      setEffectiveStatus(nextStatus === "BUSY" ? "BUSY" : nextStatus === "ONLINE" ? "ONLINE" : "OFFLINE");
       const statsRaw = asRecord(root.stats);
       setStats({
         peopleSupportedToday: asNumber(statsRaw.peopleSupportedToday, 0),
@@ -183,6 +187,7 @@ export default function PartnerDashboardPage() {
       setActiveSessions([]);
       setStatusMessage("Your profile is being reviewed by our safety team.");
       setOnline(getPartnerOnlineStatus());
+      setEffectiveStatus(getPartnerOnlineStatus() ? "ONLINE" : "OFFLINE");
     }
 
     if (!isPartnerApproved(nextApproval)) {
@@ -212,14 +217,14 @@ export default function PartnerDashboardPage() {
   }, [loadDashboard]);
 
   useEffect(() => {
-    if (!isApproved || !online) return;
+    if (!isApproved) return;
     const timer = window.setInterval(() => {
       void loadDashboard();
     }, 5000);
     return () => {
       window.clearInterval(timer);
     };
-  }, [isApproved, online, loadDashboard]);
+  }, [isApproved, loadDashboard]);
 
   useEffect(() => {
     if (!isApproved && online) {
@@ -343,10 +348,14 @@ export default function PartnerDashboardPage() {
               {isApproved ? (
                 <span
                   className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                    online ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-700"
+                    effectiveStatus === "ONLINE"
+                      ? "bg-emerald-50 text-emerald-700"
+                      : effectiveStatus === "BUSY"
+                        ? "bg-amber-50 text-amber-700"
+                        : "bg-slate-100 text-slate-700"
                   }`}
                 >
-                  {online ? "Online" : "Offline"}
+                  {effectiveStatus === "ONLINE" ? "Online" : effectiveStatus === "BUSY" ? "Busy" : "Offline"}
                 </span>
               ) : null}
             </p>

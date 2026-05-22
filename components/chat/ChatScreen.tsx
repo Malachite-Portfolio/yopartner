@@ -2,6 +2,7 @@
 
 import { ArrowLeft, CheckCheck, CirclePlus, EllipsisVertical, Phone, SendHorizontal, Smile, Video } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import type { CompanionRouteProfile } from "@/lib/companionRoutes";
 
 export type ChatScreenMessage = {
@@ -28,7 +29,10 @@ type ChatScreenProps = {
   backLabel?: string;
   onBackRequest?: () => void;
   showCallActions?: boolean;
+  sessionTimerLabel?: string;
 };
+
+const COMMON_EMOJIS = ["😀", "😊", "❤️", "🙏", "👍", "😄", "😢"];
 
 function getInitials(name: string) {
   return name
@@ -56,8 +60,23 @@ export function ChatScreen({
   backLabel = "Go back",
   onBackRequest,
   showCallActions = true,
+  sessionTimerLabel,
 }: ChatScreenProps) {
   const router = useRouter();
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const [attachMessage, setAttachMessage] = useState("");
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!showMenu) return;
+    const onPointerDown = (event: MouseEvent) => {
+      if (menuRef.current?.contains(event.target as Node)) return;
+      setShowMenu(false);
+    };
+    window.addEventListener("mousedown", onPointerDown);
+    return () => window.removeEventListener("mousedown", onPointerDown);
+  }, [showMenu]);
 
   const handleBack = () => {
     if (onBackRequest) {
@@ -91,11 +110,14 @@ export function ChatScreen({
 
           <div className="min-w-0">
             <p className="truncate text-[17px] font-semibold leading-none">{companion.name}</p>
-            <p className="mt-1 text-[12px] text-[#0f766e]">{composerDisabled ? "Session ended" : "Private session"}</p>
+            <p className="mt-1 text-[12px] text-[#0f766e]">
+              {composerDisabled ? "Session ended" : "Private session"}
+              {sessionTimerLabel ? ` • ${sessionTimerLabel}` : ""}
+            </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="relative flex items-center gap-1" ref={menuRef}>
           {showCallActions ? (
             <button
               type="button"
@@ -119,14 +141,29 @@ export function ChatScreen({
           {onEndSession ? (
             <button
               type="button"
-              onClick={onEndSession}
+              onClick={() => setShowMenu((current) => !current)}
               disabled={endingSession}
               aria-label="End chat"
               className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[#64748b] transition hover:bg-[#f1f5f9] disabled:opacity-60"
-              title={endingSession ? "Ending..." : "End chat"}
+              title={endingSession ? "Ending..." : "Menu"}
             >
               <EllipsisVertical size={16} />
             </button>
+          ) : null}
+          {showMenu && onEndSession ? (
+            <div className="absolute right-0 top-11 z-30 min-w-[140px] rounded-xl border border-[#dceae5] bg-white p-1.5 shadow-lg">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowMenu(false);
+                  onEndSession();
+                }}
+                disabled={endingSession}
+                className="w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-rose-700 hover:bg-rose-50 disabled:opacity-60"
+              >
+                {endingSession ? "Ending..." : "End session"}
+              </button>
+            </div>
           ) : null}
         </div>
       </header>
@@ -179,6 +216,9 @@ export function ChatScreen({
       </div>
 
       <div className="absolute inset-x-0 bottom-0 border-t border-[#d9ece7] bg-white/95 px-[14px] pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2.5 backdrop-blur">
+        {attachMessage ? (
+          <p className="mb-2 rounded-xl bg-[#f1f5f9] px-3 py-2 text-[12px] text-[#64748b]">{attachMessage}</p>
+        ) : null}
         {composerDisabled && disabledMessage ? (
           <p className="mb-2 rounded-xl bg-[#f1f5f9] px-3 py-2 text-[12px] text-[#64748b]">
             {disabledMessage || "Session ended"}
@@ -188,6 +228,10 @@ export function ChatScreen({
           <button
             type="button"
             aria-label="Add"
+            onClick={() => {
+              setAttachMessage("Attachments coming soon.");
+              setShowEmojiPicker(false);
+            }}
             className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#0f172a] text-white transition hover:bg-[#1e293b]"
           >
             <CirclePlus size={18} />
@@ -208,6 +252,9 @@ export function ChatScreen({
           <button
             type="button"
             aria-label="Emoji"
+            onClick={() => {
+              setShowEmojiPicker((current) => !current);
+            }}
             className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[#64748b] transition hover:bg-[#e2e8f0]"
           >
             <Smile size={18} />
@@ -222,6 +269,22 @@ export function ChatScreen({
             <SendHorizontal size={16} />
           </button>
         </div>
+        {showEmojiPicker && !composerDisabled ? (
+          <div className="mt-2 flex flex-wrap gap-2 rounded-2xl border border-[#dceae5] bg-white p-2 shadow-sm">
+            {COMMON_EMOJIS.map((emoji) => (
+              <button
+                key={emoji}
+                type="button"
+                onClick={() => {
+                  onInputChange(`${input}${emoji}`);
+                }}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-lg hover:bg-[#f1f5f9]"
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
     </section>
   );

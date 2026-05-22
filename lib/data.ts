@@ -94,6 +94,8 @@ export type ConnectCompanion = {
   reviewsCount: number;
   experience: string;
   online: boolean;
+  isBusy?: boolean;
+  effectiveStatus?: "ONLINE" | "BUSY" | "OFFLINE";
   image?: string;
   galleryImages: string[];
   chatPrice: number;

@@ -15,6 +15,8 @@ export type CompanionItem = {
   experience: string;
   image?: string;
   online: boolean;
+  isBusy?: boolean;
+  effectiveStatus?: "ONLINE" | "BUSY" | "OFFLINE";
   languages: string[];
   chatPrice: number;
   voicePrice: number;
@@ -34,6 +36,8 @@ type RawCompanionItem = {
   image?: string | null;
   online?: boolean | null;
   isOnline?: boolean | null;
+  isBusy?: boolean | null;
+  effectiveStatus?: "ONLINE" | "BUSY" | "OFFLINE" | string | null;
   chatPrice?: number | string | null;
   voicePrice?: number | string | null;
   audioPrice?: number | string | null;
@@ -91,6 +95,11 @@ function toCompanionItem(item: RawCompanionItem): CompanionItem {
     experience: toSafeText(item.experience, "Verified companion"),
     image: item.image || undefined,
     online: Boolean(item.isOnline ?? item.online),
+    isBusy: Boolean(item.isBusy),
+    effectiveStatus:
+      item.effectiveStatus === "BUSY" || item.effectiveStatus === "OFFLINE" || item.effectiveStatus === "ONLINE"
+        ? item.effectiveStatus
+        : undefined,
     languages: normalizeStringArray(item.languages),
     chatPrice: toNumber(item.chatPrice, 0),
     voicePrice: toNumber(item.audioPrice ?? item.voicePrice, 0),
@@ -103,7 +112,7 @@ function toCompanionItem(item: RawCompanionItem): CompanionItem {
 export async function listCompanions(filters?: CompanionFilters) {
   const query = new URLSearchParams();
   if (filters?.search) query.set("search", filters.search);
-  if (filters?.availability) query.set("availability", filters.availability);
+  if (filters?.availability === "online") query.set("online", "true");
   if (filters?.category) query.set("category", filters.category);
   const suffix = query.toString() ? `?${query.toString()}` : "";
   const result = await apiRequest<{ companions: RawCompanionItem[] }>(`/api/companions${suffix}`);

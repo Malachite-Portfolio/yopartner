@@ -45,19 +45,22 @@ function SupportAction({
   price,
   icon,
   onClick,
+  disabled = false,
 }: {
   href: string;
   label: string;
   price?: number;
   icon: ReactNode;
   onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  disabled?: boolean;
 }) {
   if (onClick) {
     return (
       <button
         type="button"
+        disabled={disabled}
         onClick={onClick}
-        className="flex min-h-[52px] items-center justify-between gap-2 rounded-2xl border border-[#dceae5] bg-white px-3 text-left text-sm font-semibold leading-tight text-slate-800 hover:border-[#0f766e]/40 hover:bg-[#eef8f5]"
+        className="flex min-h-[52px] items-center justify-between gap-2 rounded-2xl border border-[#dceae5] bg-white px-3 text-left text-sm font-semibold leading-tight text-slate-800 hover:border-[#0f766e]/40 hover:bg-[#eef8f5] disabled:cursor-not-allowed disabled:opacity-60"
       >
         <span className="inline-flex min-w-0 items-center gap-2">
           {icon}
@@ -73,7 +76,9 @@ function SupportAction({
   return (
     <Link
       href={href}
-      className="flex min-h-[52px] items-center justify-between gap-2 rounded-2xl border border-[#dceae5] bg-white px-3 text-left text-sm font-semibold leading-tight text-slate-800 hover:border-[#0f766e]/40 hover:bg-[#eef8f5]"
+      className={`flex min-h-[52px] items-center justify-between gap-2 rounded-2xl border border-[#dceae5] bg-white px-3 text-left text-sm font-semibold leading-tight text-slate-800 hover:border-[#0f766e]/40 hover:bg-[#eef8f5] ${
+        disabled ? "pointer-events-none opacity-60" : ""
+      }`}
       onClick={(event) => event.stopPropagation()}
       onKeyDown={(event) => event.stopPropagation()}
     >
@@ -102,6 +107,9 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
   const visitPrice = safeNumber(companion.visitPrice);
   const hasVideo = typeof videoPrice === "number";
   const hasHomeVisit = typeof visitPrice === "number" && visitPrice > 0;
+  const status = companion.effectiveStatus ?? (companion.isBusy ? "BUSY" : companion.online ? "ONLINE" : "OFFLINE");
+  const isBusy = status === "BUSY";
+  const isOffline = status === "OFFLINE";
   const profileUrl = `/connect-now/${companion.id}`;
 
   const createSessionAndRoute = async (
@@ -109,6 +117,10 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
     serviceType: "chat" | "audio" | "video",
   ) => {
     event.stopPropagation();
+    if (isBusy) {
+      setActionError("Partner is currently busy. Please try again shortly.");
+      return;
+    }
     setActionError("");
     const returnUrl =
       serviceType === "chat"
@@ -201,11 +213,19 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
             <h3 className="text-lg font-semibold leading-tight text-slate-950">{name}</h3>
             <span
               className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                companion.online ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"
+                status === "ONLINE"
+                  ? "bg-emerald-50 text-emerald-700"
+                  : status === "BUSY"
+                    ? "bg-amber-50 text-amber-700"
+                    : "bg-slate-100 text-slate-600"
               }`}
             >
-              <span className={`h-2 w-2 rounded-full ${companion.online ? "bg-emerald-500" : "bg-slate-400"}`} />
-              {companion.online ? "Available" : "Away"}
+              <span
+                className={`h-2 w-2 rounded-full ${
+                  status === "ONLINE" ? "bg-emerald-500" : status === "BUSY" ? "bg-amber-500" : "bg-slate-400"
+                }`}
+              />
+              {status === "ONLINE" ? "Online" : status === "BUSY" ? "Busy" : "Offline"}
             </span>
           </div>
 
@@ -247,14 +267,15 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
       <div className="mt-auto grid grid-cols-2 gap-2 pt-4">
         <button
           type="button"
+          disabled={isBusy}
           onClick={(event) => {
             void createSessionAndRoute(event, "chat");
           }}
-          className="flex min-h-[52px] items-center justify-between gap-2 rounded-2xl border border-[#dceae5] bg-white px-3 text-left text-sm font-semibold leading-tight text-slate-800 hover:border-[#0f766e]/40 hover:bg-[#eef8f5]"
+          className="flex min-h-[52px] items-center justify-between gap-2 rounded-2xl border border-[#dceae5] bg-white px-3 text-left text-sm font-semibold leading-tight text-slate-800 hover:border-[#0f766e]/40 hover:bg-[#eef8f5] disabled:cursor-not-allowed disabled:opacity-60"
         >
           <span className="inline-flex min-w-0 items-center gap-2">
             <MessageCircle size={15} />
-            <span className="truncate">Start chat</span>
+            <span className="truncate">{isBusy ? "Busy" : "Start chat"}</span>
           </span>
           {typeof chatPrice === "number" ? (
             <span className="shrink-0 text-xs font-semibold text-[#0f766e]">{formatINRPrice(chatPrice, "/min")}</span>
@@ -262,9 +283,10 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
         </button>
         <SupportAction
           href={`/call/audio/${companion.id}`}
-          label="Audio call"
+          label={isBusy ? "Busy" : "Audio call"}
           price={voicePrice}
           icon={<Phone size={15} />}
+          disabled={isBusy}
           onClick={(event) => {
             void createSessionAndRoute(event, "audio");
           }}
@@ -272,9 +294,10 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
         {hasVideo ? (
           <SupportAction
             href={`/call/video/${companion.id}`}
-            label="Video call"
+            label={isBusy ? "Busy" : "Video call"}
             price={videoPrice}
             icon={<Video size={15} />}
+            disabled={isBusy}
             onClick={(event) => {
               void createSessionAndRoute(event, "video");
             }}
@@ -292,6 +315,8 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
           </Link>
         ) : null}
       </div>
+      {isBusy ? <p className="mt-2 text-xs font-medium text-amber-700">Currently busy in another session.</p> : null}
+      {!isBusy && isOffline ? <p className="mt-2 text-xs font-medium text-slate-600">Currently offline.</p> : null}
       {actionError ? <p className="mt-2 text-xs font-medium text-rose-600">{actionError}</p> : null}
     </article>
   );

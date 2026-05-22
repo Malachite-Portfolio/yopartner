@@ -47,8 +47,10 @@ export default function ConnectNowPage() {
 
   useEffect(() => {
     if (!IS_PRODUCTION_READY_MODE) return;
-    void (async () => {
+    let cancelled = false;
+    const fetchCompanions = async () => {
       const response = await listCompanions();
+      if (cancelled) return;
       if (response.error) {
         if (isClientDemoEnabled()) {
           setCompanions(demoHosts);
@@ -73,7 +75,15 @@ export default function ConnectNowPage() {
       setIsPreviewMode(false);
       setApiError("");
       setIsLoadingCompanions(false);
-    })();
+    };
+    void fetchCompanions();
+    const timer = window.setInterval(() => {
+      void fetchCompanions();
+    }, 12000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
   }, []);
 
   const filteredCompanions = useMemo(() => {

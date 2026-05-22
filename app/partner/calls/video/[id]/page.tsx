@@ -14,7 +14,7 @@ import type {
 import { EndSessionConfirmModal } from "@/components/session/EndSessionConfirmModal";
 import { PartnerGuard } from "@/components/partner/PartnerGuard";
 import { useSessionExitGuard } from "@/hooks/useSessionExitGuard";
-import { endSession, getSessionAgoraToken, getSessionById, type SessionRecord, type SessionStatus } from "@/lib/api/sessions";
+import { endSession, getSessionAgoraToken, getSessionById, markSessionMediaReady, type SessionRecord, type SessionStatus } from "@/lib/api/sessions";
 import { buildAgoraUid, createAgoraClient, normalizeChannelName, requestVideoPermission } from "@/lib/agora";
 import { isActiveSessionStatus } from "@/lib/sessionStatus";
 
@@ -26,7 +26,7 @@ function isTerminalStatus(status?: SessionStatus) {
 }
 
 function getElapsedSeconds(session: SessionRecord | null, nowMs = Date.now()) {
-  const baseTime = session?.startedAt ?? session?.acceptedAt;
+  const baseTime = session?.liveStartedAt;
   if (!baseTime) return 0;
   const timestamp = new Date(baseTime).getTime();
   if (Number.isNaN(timestamp)) return 0;
@@ -74,7 +74,16 @@ export default function PartnerVideoCallPage() {
   const localVideoContainerRef = useRef<HTMLDivElement | null>(null);
   const remoteVideoContainerRef = useRef<HTMLDivElement | null>(null);
   const remoteAudioElementRef = useRef<HTMLAudioElement | null>(null);
-  const elapsed = session?.status === "LIVE" ? getElapsedSeconds(session, clockNow) : 0;
+  const isCallLive = Boolean(session?.liveStartedAt);
+  const elapsed = isCallLive ? getElapsedSeconds(session, clockNow) : 0;
+
+  const notifyMediaReady = useCallback(async () => {
+    if (!session?.id) return;
+    const response = await markSessionMediaReady(session.id);
+    if (response.data) {
+      setSession((current) => (current && current.id === response.data!.id ? response.data : current));
+    }
+  }, [session]);
 
   const cleanupAgora = useCallback(async () => {
     try {
@@ -148,12 +157,20 @@ export default function PartnerVideoCallPage() {
   }, [cleanupAgora, session?.id]);
 
   useEffect(() => {
-    if (session?.status !== "LIVE") return;
+    if (session?.status !== "LIVE" && session?.status !== "ACCEPTED") return;
     const timer = window.setInterval(() => {
       setClockNow(Date.now());
     }, 1000);
     return () => window.clearInterval(timer);
   }, [session?.status]);
+
+  useEffect(() => {
+    if (!isTerminalStatus(session?.status)) return;
+    const timer = window.setTimeout(() => {
+      router.push("/partner/dashboard");
+    }, 900);
+    return () => window.clearTimeout(timer);
+  }, [router, session?.status]);
 
   useEffect(() => {
     if (!isTerminalStatus(session?.status)) return;
@@ -328,6 +345,7 @@ export default function PartnerVideoCallPage() {
           }
           if (user.audioTrack) {
             remoteAudioTrackRef.current = user.audioTrack;
+            await notifyMediaReady();
             await playRemoteAudio();
           }
         }
@@ -385,6 +403,7 @@ export default function PartnerVideoCallPage() {
       setLocalAudioReady(true);
       setLocalVideoReady(true);
       await client.publish([localAudioTrack, localVideoTrack]);
+      await notifyMediaReady();
       if (localVideoContainerRef.current) localVideoTrack.play(localVideoContainerRef.current);
       await sweepRemoteUsers();
       window.setTimeout(() => {
@@ -406,10 +425,10 @@ export default function PartnerVideoCallPage() {
     } finally {
       setJoining(false);
     }
-  }, [cleanupAgora, joined, joining, playRemoteAudio, session]);
+  }, [cleanupAgora, joined, joining, notifyMediaReady, playRemoteAudio, session]);
 
   useEffect(() => {
-    if (session?.status !== "LIVE" || joined || joining) return;
+    if ((session?.status !== "LIVE" && session?.status !== "ACCEPTED") || joined || joining) return;
     const timer = window.setTimeout(() => {
       void joinAgoraVideo();
     }, 0);
@@ -465,6 +484,7 @@ export default function PartnerVideoCallPage() {
         <main className="flex h-[100dvh] min-h-[100dvh] items-center justify-center bg-[#020617] p-4 text-white">
           <div className="w-full max-w-md rounded-2xl border border-white/20 bg-white/10 p-6 text-center">
             <p className="text-base font-semibold">This call has ended.</p>
+            <p className="mt-2 text-xs text-slate-300">Session ended. Redirecting to Dashboard...</p>
             <button
               type="button"
               onClick={() => router.push("/partner/dashboard")}
@@ -478,7 +498,7 @@ export default function PartnerVideoCallPage() {
     );
   }
 
-  if (session && session.status !== "LIVE") {
+  if (session && session.status !== "LIVE" && session.status !== "ACCEPTED") {
     return (
       <PartnerGuard requireOnboarding>
         <main className="flex h-[100dvh] min-h-[100dvh] items-center justify-center bg-[#020617] p-4 text-white">
@@ -569,7 +589,7 @@ export default function PartnerVideoCallPage() {
                 </span>
                 <p className="mt-3 text-xl font-semibold">{maskedPhone}</p>
                 <p className="mt-1 text-sm text-white/80">
-                  {remoteUserJoined ? "Connected. Waiting for video..." : "Waiting for video..."}
+                  {remoteUserJoined ? "Connected. Waiting for video..." : isCallLive ? "Waiting for video..." : "Connecting..."}
                 </p>
               </div>
             ) : null}

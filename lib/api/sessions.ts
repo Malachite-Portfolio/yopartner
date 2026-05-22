@@ -27,6 +27,9 @@ export type SessionRecord = {
   createdAt?: string;
   acceptedAt?: string | null;
   startedAt?: string | null;
+  liveStartedAt?: string | null;
+  userMediaReadyAt?: string | null;
+  partnerMediaReadyAt?: string | null;
   endedAt?: string | null;
   endedByUserId?: string | null;
   lastHeartbeatAt?: string | null;
@@ -131,4 +134,13 @@ export async function getSessionAgoraToken(sessionId: string) {
   }>(`/api/sessions/${sessionId}/agora-token`);
   if (result.error) return { data: null, error: result.error };
   return { data: result.data ?? null, error: null };
+}
+
+export async function markSessionMediaReady(sessionId: string) {
+  const result = await apiRequest<{ session: SessionRecord }>(`/api/sessions/${sessionId}/mark-live`, {
+    method: "POST",
+    body: JSON.stringify({ mediaReady: true }),
+  });
+  if (result.error) return { data: null, error: result.error };
+  return { data: result.data?.session ?? null, error: null };
 }

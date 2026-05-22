@@ -12,6 +12,7 @@ import {
   endSession,
   getSessionAgoraToken,
   getSessionById,
+  markSessionMediaReady,
   type SessionRecord,
   type SessionStatus,
 } from "@/lib/api/sessions";
@@ -31,7 +32,7 @@ function isTerminalStatus(status?: SessionStatus) {
 }
 
 function getElapsedSeconds(session: SessionRecord | null, nowMs = Date.now()) {
-  const baseTime = session?.startedAt ?? session?.acceptedAt;
+  const baseTime = session?.liveStartedAt;
   if (!baseTime) return 0;
   const timestamp = new Date(baseTime).getTime();
   if (Number.isNaN(timestamp)) return 0;
@@ -69,7 +70,16 @@ export default function AudioCallPage() {
   const localAudioTrackRef = useRef<IMicrophoneAudioTrack | null>(null);
   const remoteAudioTrackRef = useRef<IRemoteAudioTrack | null>(null);
   const remoteAudioElementRef = useRef<HTMLAudioElement | null>(null);
-  const elapsedSeconds = session?.status === "LIVE" ? getElapsedSeconds(session, clockNow) : 0;
+  const isCallLive = Boolean(session?.liveStartedAt);
+  const elapsedSeconds = isCallLive ? getElapsedSeconds(session, clockNow) : 0;
+
+  const notifyMediaReady = useCallback(async () => {
+    if (!session?.id) return;
+    const response = await markSessionMediaReady(session.id);
+    if (response.data) {
+      setSession((current) => (current && current.id === response.data!.id ? response.data : current));
+    }
+  }, [session]);
 
   const cleanupAgora = useCallback(async () => {
     try {
@@ -192,12 +202,20 @@ export default function AudioCallPage() {
   }, [cleanupAgora, session?.id]);
 
   useEffect(() => {
-    if (session?.status !== "LIVE") return;
+    if (session?.status !== "LIVE" && session?.status !== "ACCEPTED") return;
     const timer = window.setInterval(() => {
       setClockNow(Date.now());
     }, 1000);
     return () => window.clearInterval(timer);
   }, [session?.status]);
+
+  useEffect(() => {
+    if (!isTerminalStatus(session?.status)) return;
+    const timer = window.setTimeout(() => {
+      router.push("/connect-now");
+    }, 900);
+    return () => window.clearTimeout(timer);
+  }, [router, session?.status]);
 
   useEffect(() => {
     if (!isTerminalStatus(session?.status)) return;
@@ -289,6 +307,7 @@ export default function AudioCallPage() {
         await client.subscribe(user as Parameters<typeof client.subscribe>[0], "audio");
         remoteAudioTrackRef.current = user.audioTrack ?? null;
         setRemoteAudioReady(Boolean(user.audioTrack));
+        await notifyMediaReady();
         if (user.audioTrack) {
           await replayRemoteAudio();
         }
@@ -339,12 +358,14 @@ export default function AudioCallPage() {
       localAudioTrackRef.current = localAudioTrack;
       setLocalAudioReady(true);
       await client.publish([localAudioTrack]);
+      await notifyMediaReady();
       await Promise.all(
         client.remoteUsers.map(async (remoteUser) => {
           if (!remoteUser.hasAudio) return;
           await client.subscribe(remoteUser, "audio");
           remoteAudioTrackRef.current = remoteUser.audioTrack ?? null;
           setRemoteAudioReady(Boolean(remoteUser.audioTrack));
+          await notifyMediaReady();
           if (remoteUser.audioTrack) {
             await replayRemoteAudio();
           }
@@ -363,10 +384,10 @@ export default function AudioCallPage() {
     } finally {
       setJoining(false);
     }
-  }, [cleanupAgora, companion, joined, joining, replayRemoteAudio, session]);
+  }, [cleanupAgora, companion, joined, joining, notifyMediaReady, replayRemoteAudio, session]);
 
   useEffect(() => {
-    if (session?.status !== "LIVE" || joined || joining) return;
+    if ((session?.status !== "LIVE" && session?.status !== "ACCEPTED") || joined || joining) return;
     const timer = window.setTimeout(() => {
       void joinAgoraAudio();
     }, 0);
@@ -491,6 +512,7 @@ export default function AudioCallPage() {
       <main className="flex h-[100dvh] min-h-[100dvh] items-center justify-center bg-[#0f1d4d] p-4 text-white">
         <div className="w-full max-w-md rounded-2xl border border-white/20 bg-white/10 p-6 text-center">
           <p className="text-base font-semibold">This call has ended.</p>
+          <p className="mt-2 text-xs text-cyan-100">Session ended. Redirecting to Connect Now...</p>
           <button
             type="button"
             onClick={() => router.push("/connect-now")}
@@ -503,7 +525,7 @@ export default function AudioCallPage() {
     );
   }
 
-  if (session.status !== "LIVE") {
+  if (session.status !== "LIVE" && session.status !== "ACCEPTED") {
     return (
       <main className="flex h-[100dvh] min-h-[100dvh] items-center justify-center bg-[#0f1d4d] p-4 text-white">
         {exitConfirmModal}
@@ -568,7 +590,7 @@ export default function AudioCallPage() {
           <p className="text-xs uppercase tracking-[0.18em] text-[#0f766e]">Audio Call</p>
           <h1 className="mt-2 text-[28px] font-semibold leading-tight text-[#0f172a]">{companion.name}</h1>
           <p className="mt-2 text-base text-[#334155]">
-            {remoteAudioReady ? "Connected" : "Waiting for audio..."}
+            {remoteAudioReady ? "Connected" : isCallLive ? "Waiting for audio..." : "Connecting..."}
           </p>
           <p className="mt-1 text-[30px] font-semibold tabular-nums text-[#0f172a]">
             {String(Math.floor(elapsedSeconds / 60)).padStart(2, "0")}:{String(elapsedSeconds % 60).padStart(2, "0")}

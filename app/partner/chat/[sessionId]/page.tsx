@@ -16,7 +16,7 @@ import {
 } from "@/lib/api/sessions";
 import { requestAudioPermission, requestVideoPermission } from "@/lib/agora";
 import type { CompanionRouteProfile } from "@/lib/companionRoutes";
-import { isActiveSessionStatus } from "@/lib/sessionStatus";
+import { isActiveSessionStatus, isTerminalSessionStatus } from "@/lib/sessionStatus";
 
 function maskPhone(value: string) {
   const digits = value.replace(/\D/g, "");
@@ -46,6 +46,7 @@ export default function PartnerChatSessionPage() {
   const [messages, setMessages] = useState<SessionMessageRecord[]>([]);
   const [input, setInput] = useState("");
   const [isEndingSession, setIsEndingSession] = useState(false);
+  const [clockNow, setClockNow] = useState(() => Date.now());
 
   useEffect(() => {
     if (!sessionId) return;
@@ -83,6 +84,21 @@ export default function PartnerChatSessionPage() {
     }, 2000);
     return () => window.clearInterval(timer);
   }, [session?.status, sessionId]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setClockNow(Date.now());
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!isTerminalSessionStatus(session?.status)) return;
+    const timer = window.setTimeout(() => {
+      router.push("/partner/dashboard");
+    }, 900);
+    return () => window.clearTimeout(timer);
+  }, [router, session?.status]);
 
   const memberName = useMemo(() => {
     const raw = String(session?.user?.phoneMasked ?? session?.user?.phoneNumber ?? session?.user?.name ?? "");
@@ -127,19 +143,6 @@ export default function PartnerChatSessionPage() {
     }
     const createdMessage = response.data;
     setMessages((current) => [...current.filter((item) => item.id !== optimistic.id), createdMessage]);
-    setError("");
-  };
-
-  const handleEndChat = async () => {
-    if (!session || session.status !== "LIVE" || isEndingSession) return;
-    setIsEndingSession(true);
-    const response = await endSession(session.id);
-    setIsEndingSession(false);
-    if (!response.data) {
-      setError(response.error?.message || "Unable to end this chat.");
-      return;
-    }
-    setSession(response.data);
     setError("");
   };
 
@@ -200,6 +203,10 @@ export default function PartnerChatSessionPage() {
     }
     router.push(`/partner/calls/video/${sessionId}`);
   };
+  const baseTime = session?.liveStartedAt || session?.startedAt || session?.acceptedAt;
+  const baseMs = baseTime ? new Date(baseTime).getTime() : Number.NaN;
+  const elapsedSeconds = Number.isNaN(baseMs) ? 0 : Math.max(0, Math.floor((clockNow - baseMs) / 1000));
+  const timerLabel = `${String(Math.floor(elapsedSeconds / 60)).padStart(2, "0")}:${String(elapsedSeconds % 60).padStart(2, "0")}`;
 
   return (
     <PartnerGuard requireOnboarding>
@@ -240,13 +247,14 @@ export default function PartnerChatSessionPage() {
               composerDisabled={session.status !== "LIVE"}
               disabledMessage="Session ended"
               onEndSession={() => {
-                void handleEndChat();
+                exitGuard.requestExit();
               }}
               endingSession={isEndingSession}
               backHref="/partner/dashboard"
               backLabel="Back to Dashboard"
               onBackRequest={exitGuard.requestExit}
               showCallActions={false}
+              sessionTimerLabel={timerLabel}
             />
           </>
         )}
