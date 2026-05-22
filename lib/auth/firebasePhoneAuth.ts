@@ -11,9 +11,9 @@ import {
 } from "firebase/auth";
 import { firebaseAuth, isFirebaseClientConfigured } from "@/lib/firebase/client";
 
-export const USER_FIREBASE_UID_KEY = "yopartner_firebase_uid";
-export const USER_FIREBASE_PHONE_KEY = "yopartner_firebase_phone";
-export const USER_FIREBASE_TOKEN_KEY = "yopartner_firebase_id_token";
+export const USER_FIREBASE_UID_KEY = "yopartner_user_firebase_uid";
+export const USER_FIREBASE_PHONE_KEY = "yopartner_user_phone";
+export const USER_FIREBASE_TOKEN_KEY = "yopartner_user_firebase_id_token";
 
 export const PARTNER_FIREBASE_UID_KEY = "yopartner_partner_firebase_uid";
 export const PARTNER_FIREBASE_PHONE_KEY = "yopartner_partner_firebase_phone";

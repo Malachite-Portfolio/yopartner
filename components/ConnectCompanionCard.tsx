@@ -4,11 +4,11 @@ import { BadgeCheck, HeartHandshake, MessageCircle, Phone, ShieldCheck, Star, Vi
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
-import { USER_FIREBASE_TOKEN_KEY } from "@/lib/auth/firebasePhoneAuth";
 import { createSession } from "@/lib/api/sessions";
 import type { ConnectCompanion } from "@/lib/data";
 import { requestAudioPermission, requestVideoPermission } from "@/lib/agora";
 import { formatINRPrice } from "@/lib/priceFormat";
+import { getUserAuthTokenWithRestore } from "@/lib/auth/userAuth";
 
 type ConnectCompanionCardProps = {
   companion: ConnectCompanion;
@@ -128,10 +128,7 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
         : serviceType === "audio"
           ? `/call/audio/${companion.id}`
           : `/call/video/${companion.id}`;
-    const token =
-      typeof window !== "undefined"
-        ? window.localStorage.getItem(USER_FIREBASE_TOKEN_KEY)?.trim() || ""
-        : "";
+    const token = await getUserAuthTokenWithRestore();
 
     if (!token) {
       router.push(`/login?returnUrl=${encodeURIComponent(returnUrl)}`);

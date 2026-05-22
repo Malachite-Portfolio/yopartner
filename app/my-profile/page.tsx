@@ -14,8 +14,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { USER_FIREBASE_PHONE_KEY, USER_FIREBASE_UID_KEY } from "@/lib/auth/firebasePhoneAuth";
-import { getDemoLoggedIn, getDemoPhone, subscribeDemoAuthUpdates } from "@/lib/demoAuth";
+import { getUserAuthState, restoreUserAuthSessionFromFirebase, subscribeUserAuthState } from "@/lib/auth/userAuth";
 
 type ProfileTab = "overview" | "sessions" | "preferences";
 type PreferenceState = {
@@ -68,7 +67,7 @@ export default function MyProfilePage() {
   const [activeTab, setActiveTab] = useState<ProfileTab>("overview");
   const [authReady, setAuthReady] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
-  const [phone, setPhone] = useState("+919958719363");
+  const [phone, setPhone] = useState("+91**********");
   const [preferences, setPreferences] = useState<PreferenceState>(() => {
     if (typeof window === "undefined") {
       return { sms: true, email: true, push: true };
@@ -88,21 +87,21 @@ export default function MyProfilePage() {
   });
 
   useEffect(() => {
+    let active = true;
     const sync = () => {
-      const hasFirebaseSession =
-        typeof window !== "undefined" && Boolean(window.localStorage.getItem(USER_FIREBASE_UID_KEY));
-      setLoggedIn(getDemoLoggedIn() || hasFirebaseSession);
-      if (typeof window !== "undefined") {
-        const firebasePhone = window.localStorage.getItem(USER_FIREBASE_PHONE_KEY);
-        setPhone(firebasePhone || getDemoPhone());
-      } else {
-        setPhone(getDemoPhone());
-      }
+      if (!active) return;
+      const state = getUserAuthState();
+      setLoggedIn(state.loggedIn);
+      setPhone(state.phone || "+91**********");
       setAuthReady(true);
     };
 
-    sync();
-    return subscribeDemoAuthUpdates(sync);
+    const unsubscribe = subscribeUserAuthState(sync);
+    void restoreUserAuthSessionFromFirebase(false).then(sync);
+    return () => {
+      active = false;
+      unsubscribe();
+    };
   }, []);
 
   useEffect(() => {

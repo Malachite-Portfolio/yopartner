@@ -2,13 +2,11 @@ import {
   PARTNER_FIREBASE_PHONE_KEY,
   PARTNER_FIREBASE_TOKEN_KEY,
   PARTNER_FIREBASE_UID_KEY,
-  USER_FIREBASE_PHONE_KEY,
-  USER_FIREBASE_TOKEN_KEY,
-  USER_FIREBASE_UID_KEY,
   getCurrentFirebaseUser,
   subscribeFirebaseAuthState,
 } from "@/lib/auth/firebasePhoneAuth";
 import { PARTNER_LOGGED_IN_KEY, PARTNER_PHONE_KEY } from "@/lib/partnerAuth";
+import { clearUserAuthSession, getUserAuthState, saveUserAuthSession } from "@/lib/auth/userAuth";
 
 export type ApiClientError = {
   message: string;
@@ -33,7 +31,6 @@ const PARTNER_SESSION_EXPIRED_MESSAGE =
   "Your login session could not be verified. Please login again as a partner.";
 const PARTNER_SESSION_EXPIRED_REASON = "session-expired";
 
-const USER_AUTH_STORAGE_KEYS = [USER_FIREBASE_UID_KEY, USER_FIREBASE_PHONE_KEY, USER_FIREBASE_TOKEN_KEY];
 const PARTNER_AUTH_STORAGE_KEYS = [
   PARTNER_LOGGED_IN_KEY,
   PARTNER_PHONE_KEY,
@@ -75,27 +72,32 @@ function resolveScope(path = ""): AuthScope {
 function getScopeTokenKey(scope: AuthScope) {
   if (scope === "partner") return PARTNER_FIREBASE_TOKEN_KEY;
   if (scope === "admin") return ADMIN_AUTH_TOKEN_KEY;
-  return USER_FIREBASE_TOKEN_KEY;
+  return "";
 }
 
 function getStoredTokenForScope(scope: AuthScope) {
+  if (scope === "user") return getUserAuthState().token;
   if (!canUseStorage()) return null;
   return normalizeToken(window.localStorage.getItem(getScopeTokenKey(scope)));
 }
 
 function setStoredTokenForScope(scope: AuthScope, token: string) {
+  if (scope === "user") {
+    saveUserAuthSession({ token });
+    return;
+  }
   if (!canUseStorage()) return;
   window.localStorage.setItem(getScopeTokenKey(scope), token);
 }
 
 function clearScopeAuth(scope: AuthScope) {
+  if (scope === "user") {
+    clearUserAuthSession();
+    return;
+  }
   if (!canUseStorage()) return;
   const keys =
-    scope === "partner"
-      ? PARTNER_AUTH_STORAGE_KEYS
-      : scope === "admin"
-        ? ADMIN_AUTH_STORAGE_KEYS
-        : USER_AUTH_STORAGE_KEYS;
+    scope === "partner" ? PARTNER_AUTH_STORAGE_KEYS : ADMIN_AUTH_STORAGE_KEYS;
   keys.forEach((key) => window.localStorage.removeItem(key));
   if (scope === "admin") {
     window.localStorage.setItem(ADMIN_LOGIN_KEY, "false");
@@ -160,7 +162,15 @@ async function tryRefreshFirebaseScopeToken(scope: AuthScope, forceRefresh: bool
     const refreshedToken = await user.getIdToken(forceRefresh);
     const normalized = normalizeToken(refreshedToken);
     if (!normalized) return null;
-    setStoredTokenForScope(scope, normalized);
+    if (scope === "user") {
+      saveUserAuthSession({
+        token: normalized,
+        uid: user.uid,
+        phone: user.phoneNumber ?? undefined,
+      });
+    } else {
+      setStoredTokenForScope(scope, normalized);
+    }
     return normalized;
   } catch {
     return null;
@@ -236,6 +246,11 @@ export async function apiRequest<T>(input: string, init?: RequestInit): Promise<
           error: toApiError(retry.response.status, retry.payload),
         };
       }
+      handleUnauthorized(scope, 401);
+      return {
+        data: null,
+        error: toApiError(401, first.payload),
+      };
     }
 
     handleUnauthorized(scope, first.response.status);

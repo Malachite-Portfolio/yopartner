@@ -2,10 +2,12 @@
 
 import { CalendarDays, Funnel, RefreshCw, Search, ShieldCheck } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { getMyBookings } from "@/lib/api/bookings";
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { getDemoBookings, subscribeBookingUpdates, type BookingStatus, type DemoBooking } from "@/lib/bookings";
 import { formatINR } from "@/lib/wallet";
+import { getUserAuthTokenWithRestore } from "@/lib/auth/userAuth";
 
 const filterOptions: Array<"All" | BookingStatus> = ["All", "Confirmed", "Pending", "Completed"];
 
@@ -16,15 +18,35 @@ function getStatusClass(status: BookingStatus) {
 }
 
 export default function BookingsPage() {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [bookings, setBookings] = useState<DemoBooking[]>([]);
   const [apiError, setApiError] = useState("");
   const [statusFilter, setStatusFilter] = useState<"All" | BookingStatus>("All");
   const [filterOpen, setFilterOpen] = useState(false);
+  const [authReady, setAuthReady] = useState(!IS_PRODUCTION_READY_MODE);
+
+  useEffect(() => {
+    if (!IS_PRODUCTION_READY_MODE) return;
+    let active = true;
+    void (async () => {
+      const token = await getUserAuthTokenWithRestore();
+      if (!active) return;
+      if (!token) {
+        router.replace("/login?returnUrl=%2Fbookings");
+        return;
+      }
+      setAuthReady(true);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [router]);
 
   useEffect(() => {
     if (IS_PRODUCTION_READY_MODE) {
+      if (!authReady) return () => undefined;
       void (async () => {
         const response = await getMyBookings();
         if (response.error) {
@@ -56,7 +78,7 @@ export default function BookingsPage() {
     const sync = () => setBookings(getDemoBookings());
     sync();
     return subscribeBookingUpdates(sync);
-  }, []);
+  }, [authReady]);
 
   const handleRefresh = () => {
     setIsRefreshing(true);
@@ -109,6 +131,10 @@ export default function BookingsPage() {
     const completed = bookings.filter((booking) => booking.status === "Completed").length;
     return { total, confirmed, pending, completed };
   }, [bookings]);
+
+  if (IS_PRODUCTION_READY_MODE && !authReady) {
+    return <section className="min-h-[60vh] bg-[#fffdf8]" />;
+  }
 
   return (
     <section className="min-h-screen bg-[#fffdf8]">

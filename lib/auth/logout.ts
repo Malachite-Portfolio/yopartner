@@ -7,12 +7,10 @@ import {
   PARTNER_FIREBASE_PHONE_KEY,
   PARTNER_FIREBASE_TOKEN_KEY,
   PARTNER_FIREBASE_UID_KEY,
-  USER_FIREBASE_PHONE_KEY,
-  USER_FIREBASE_TOKEN_KEY,
-  USER_FIREBASE_UID_KEY,
   logoutFirebaseUser,
   setAuthMode,
 } from "@/lib/auth/firebasePhoneAuth";
+import { clearUserAuthSession } from "@/lib/auth/userAuth";
 import {
   PARTNER_LOGGED_IN_KEY,
   PARTNER_PHONE_KEY,
@@ -35,7 +33,7 @@ export async function logoutUserAuthSession() {
   if (IS_DEMO_MODE) {
     setAuthMode("demo");
   }
-  removeKeys([USER_FIREBASE_UID_KEY, USER_FIREBASE_PHONE_KEY, USER_FIREBASE_TOKEN_KEY]);
+  clearUserAuthSession();
 }
 
 export async function logoutPartnerAuthSession() {

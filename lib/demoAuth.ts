@@ -1,12 +1,10 @@
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
+import { USER_AUTH_CHANGED_EVENT, USER_PHONE_KEY, USER_UID_KEY, getUserAuthState } from "@/lib/auth/userAuth";
 
 export const DEMO_LOGGED_IN_KEY = "yopartner_demo_logged_in";
 export const PROMO_HIDDEN_KEY = "yopartner_promo_hidden";
 export const DEMO_PHONE_KEY = "yopartner_demo_phone";
 export const DEMO_AUTH_UPDATED_EVENT = "yopartner-demo-auth-updated";
-
-const USER_FIREBASE_UID_KEY = "yopartner_firebase_uid";
-const USER_FIREBASE_PHONE_KEY = "yopartner_firebase_phone";
 
 function canUseStorage() {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
@@ -20,7 +18,7 @@ function notifyAuthUpdate() {
 export function getDemoLoggedIn() {
   if (!canUseStorage()) return false;
   if (IS_PRODUCTION_READY_MODE) {
-    return Boolean(window.localStorage.getItem(USER_FIREBASE_UID_KEY));
+    return getUserAuthState().loggedIn;
   }
   return window.localStorage.getItem(DEMO_LOGGED_IN_KEY) === "true";
 }
@@ -49,7 +47,7 @@ export function setPromoHidden(value: boolean) {
 export function getDemoPhone() {
   if (!canUseStorage()) return "+919958719363";
   if (IS_PRODUCTION_READY_MODE) {
-    return window.localStorage.getItem(USER_FIREBASE_PHONE_KEY) || "+91**********";
+    return window.localStorage.getItem(USER_PHONE_KEY) || "+91**********";
   }
   return window.localStorage.getItem(DEMO_PHONE_KEY) || "+919958719363";
 }
@@ -71,8 +69,8 @@ export function subscribeDemoAuthUpdates(onUpdate: () => void) {
         event.key !== DEMO_LOGGED_IN_KEY &&
         event.key !== PROMO_HIDDEN_KEY &&
         event.key !== DEMO_PHONE_KEY &&
-        event.key !== USER_FIREBASE_UID_KEY &&
-        event.key !== USER_FIREBASE_PHONE_KEY
+        event.key !== USER_UID_KEY &&
+        event.key !== USER_PHONE_KEY
       ) {
         return;
       }
@@ -82,9 +80,11 @@ export function subscribeDemoAuthUpdates(onUpdate: () => void) {
 
   window.addEventListener("storage", handleStorage);
   window.addEventListener(DEMO_AUTH_UPDATED_EVENT, handleStorage);
+  window.addEventListener(USER_AUTH_CHANGED_EVENT, handleStorage);
 
   return () => {
     window.removeEventListener("storage", handleStorage);
     window.removeEventListener(DEMO_AUTH_UPDATED_EVENT, handleStorage);
+    window.removeEventListener(USER_AUTH_CHANGED_EVENT, handleStorage);
   };
 }

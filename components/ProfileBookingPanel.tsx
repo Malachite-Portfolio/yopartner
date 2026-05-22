@@ -7,12 +7,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createBooking } from "@/lib/api/bookings";
 import { createSession } from "@/lib/api/sessions";
-import { USER_FIREBASE_TOKEN_KEY } from "@/lib/auth/firebasePhoneAuth";
 import { getWallet } from "@/lib/api/wallet";
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import type { ConnectCompanion } from "@/lib/data";
 import { requestAudioPermission, requestVideoPermission } from "@/lib/agora";
 import { formatINR, getWalletBalance, subscribeWalletUpdates } from "@/lib/wallet";
+import { getUserAuthTokenWithRestore } from "@/lib/auth/userAuth";
 
 type ProfileBookingPanelProps = {
   companion: ConnectCompanion;
@@ -130,10 +130,7 @@ export function ProfileBookingPanel({
 
     if (IS_PRODUCTION_READY_MODE) {
       void (async () => {
-        const token =
-          typeof window !== "undefined"
-            ? window.localStorage.getItem(USER_FIREBASE_TOKEN_KEY)?.trim() || ""
-            : "";
+        const token = await getUserAuthTokenWithRestore();
         const currentPath =
           selectedType === "chat"
             ? `/chat/${companion.id}`

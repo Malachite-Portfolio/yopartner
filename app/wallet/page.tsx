@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -29,6 +30,7 @@ import {
 } from "@/lib/api/wallet";
 import { demoWallet, isClientDemoEnabled } from "@/lib/clientDemoData";
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
+import { getUserAuthTokenWithRestore } from "@/lib/auth/userAuth";
 
 type WalletTab = "overview" | "transactions" | "recharge";
 
@@ -140,6 +142,7 @@ function TransactionList({ transactions }: { transactions: WalletTransaction[] }
 }
 
 export default function WalletPage() {
+  const router = useRouter();
   const [showBalance, setShowBalance] = useState(true);
   const [activeTab, setActiveTab] = useState<WalletTab>("overview");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -149,6 +152,7 @@ export default function WalletPage() {
   const [rechargeError, setRechargeError] = useState("");
   const [apiError, setApiError] = useState("");
   const [isDemoWalletPreview, setIsDemoWalletPreview] = useState(false);
+  const [authReady, setAuthReady] = useState(!IS_PRODUCTION_READY_MODE);
 
   const [balance, setBalance] = useState(0);
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
@@ -168,7 +172,25 @@ export default function WalletPage() {
     })) as WalletTransaction[];
 
   useEffect(() => {
+    if (!IS_PRODUCTION_READY_MODE) return;
+    let active = true;
+    void (async () => {
+      const token = await getUserAuthTokenWithRestore();
+      if (!active) return;
+      if (!token) {
+        router.replace("/login?returnUrl=%2Fwallet");
+        return;
+      }
+      setAuthReady(true);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [router]);
+
+  useEffect(() => {
     if (IS_PRODUCTION_READY_MODE) {
+      if (!authReady) return () => undefined;
       void (async () => {
         const [walletResponse, transactionResponse] = await Promise.all([
           getWallet(),
@@ -218,7 +240,7 @@ export default function WalletPage() {
 
     sync();
     return subscribeWalletUpdates(sync);
-  }, []);
+  }, [authReady]);
 
   const selectedPlan = useMemo(
     () => rechargePlans.find((plan) => plan.id === selectedPlanId) ?? null,
@@ -295,6 +317,10 @@ export default function WalletPage() {
   };
 
   const recentTransactions = transactions.slice(0, 5);
+
+  if (IS_PRODUCTION_READY_MODE && !authReady) {
+    return <section className="min-h-[60vh] bg-[#fffdf8]" />;
+  }
 
   return (
     <div className="min-h-screen bg-[#fffdf8]">

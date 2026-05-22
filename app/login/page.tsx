@@ -2,7 +2,7 @@
 
 import { ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   getFirebaseErrorDetails,
   isFirebaseOtpEnabled,
@@ -14,6 +14,7 @@ import {
 } from "@/lib/auth/firebasePhoneAuth";
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { setDemoPhone } from "@/lib/demoAuth";
+import { restoreUserAuthSessionFromFirebase } from "@/lib/auth/userAuth";
 
 const POST_LOGIN_REDIRECT_KEY = "yopartner_post_login_redirect";
 
@@ -30,6 +31,22 @@ export default function LoginPage() {
     typeof window !== "undefined" &&
     process.env.NODE_ENV !== "production" &&
     (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      const restored = await restoreUserAuthSessionFromFirebase(false);
+      if (!active || !restored.loggedIn) return;
+      const returnUrl =
+        typeof window !== "undefined"
+          ? new URLSearchParams(window.location.search).get("returnUrl")
+          : null;
+      router.replace(returnUrl && returnUrl.startsWith("/") ? returnUrl : "/connect-now");
+    })();
+    return () => {
+      active = false;
+    };
+  }, [router]);
 
   const handleContinue = async () => {
     const digits = phone.replace(/\D/g, "");

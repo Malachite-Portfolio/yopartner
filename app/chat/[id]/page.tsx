@@ -15,19 +15,13 @@ import {
   type SessionRecord,
   type SessionMessageRecord,
 } from "@/lib/api/sessions";
-import { USER_FIREBASE_TOKEN_KEY } from "@/lib/auth/firebasePhoneAuth";
 import {
   resolveCompanionRouteProfile,
   type CompanionRouteProfile,
 } from "@/lib/companionRoutes";
 import { requestAudioPermission, requestVideoPermission } from "@/lib/agora";
 import { isActiveSessionStatus, isTerminalSessionStatus } from "@/lib/sessionStatus";
-
-function getUserToken() {
-  if (typeof window === "undefined") return null;
-  const token = window.localStorage.getItem(USER_FIREBASE_TOKEN_KEY);
-  return token && token.trim().length > 0 ? token.trim() : null;
-}
+import { getUserAuthTokenWithRestore } from "@/lib/auth/userAuth";
 
 function toLoginUrl(returnUrl: string) {
   return `/login?returnUrl=${encodeURIComponent(returnUrl)}`;
@@ -85,7 +79,8 @@ export default function ChatPage() {
       setIsLoading(true);
       setErrorMessage("");
 
-      if (!getUserToken()) {
+      const token = await getUserAuthTokenWithRestore();
+      if (!token) {
         router.replace(toLoginUrl(currentPath));
         return;
       }

@@ -16,13 +16,13 @@ import {
   type SessionRecord,
   type SessionStatus,
 } from "@/lib/api/sessions";
-import { USER_FIREBASE_TOKEN_KEY } from "@/lib/auth/firebasePhoneAuth";
 import {
   resolveCompanionRouteProfile,
   type CompanionRouteProfile,
 } from "@/lib/companionRoutes";
 import { buildAgoraUid, createAgoraClient, normalizeChannelName, requestAudioPermission } from "@/lib/agora";
 import { isActiveSessionStatus } from "@/lib/sessionStatus";
+import { getUserAuthTokenWithRestore } from "@/lib/auth/userAuth";
 
 const AGORA_APP_ID = process.env.NEXT_PUBLIC_AGORA_APP_ID?.trim() ?? "";
 const TERMINAL_SESSION_STATUSES: SessionStatus[] = ["DECLINED", "CANCELLED", "ENDED", "EXPIRED", "COMPLETED", "FAILED", "FLAGGED"];
@@ -37,12 +37,6 @@ function getElapsedSeconds(session: SessionRecord | null, nowMs = Date.now()) {
   const timestamp = new Date(baseTime).getTime();
   if (Number.isNaN(timestamp)) return 0;
   return Math.max(0, Math.floor((nowMs - timestamp) / 1000));
-}
-
-function getUserToken() {
-  if (typeof window === "undefined") return null;
-  const token = window.localStorage.getItem(USER_FIREBASE_TOKEN_KEY);
-  return token && token.trim().length > 0 ? token.trim() : null;
 }
 
 export default function AudioCallPage() {
@@ -123,7 +117,7 @@ export default function AudioCallPage() {
       setLoading(true);
       setError("");
 
-      const token = getUserToken();
+      const token = await getUserAuthTokenWithRestore();
       if (!token) {
         router.replace(`/login?returnUrl=${encodeURIComponent(currentPath)}`);
         return;

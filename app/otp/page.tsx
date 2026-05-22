@@ -4,9 +4,6 @@ import { ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import {
-  USER_FIREBASE_PHONE_KEY,
-  USER_FIREBASE_TOKEN_KEY,
-  USER_FIREBASE_UID_KEY,
   clearPendingConfirmationResult,
   getAuthMode,
   getPendingConfirmationResult,
@@ -18,6 +15,7 @@ import {
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { getDemoPhone, setDemoLoggedIn } from "@/lib/demoAuth";
 import { maskIndianPhoneNumber } from "@/lib/phoneMask";
+import { getUserAuthState, saveUserAuthSession } from "@/lib/auth/userAuth";
 
 const OTP_LENGTH = 6;
 const POST_LOGIN_REDIRECT_KEY = "yopartner_post_login_redirect";
@@ -52,8 +50,7 @@ export default function OtpPage() {
 
   const phone = useMemo(() => {
     if (typeof window === "undefined") return "";
-    const firebasePhone = window.localStorage.getItem(USER_FIREBASE_PHONE_KEY);
-    return firebasePhone || getDemoPhone();
+    return getUserAuthState().phone || getDemoPhone();
   }, []);
   const isComplete = otp.every((digit) => digit.length === 1);
 
@@ -103,13 +100,13 @@ export default function OtpPage() {
         const idToken = await user.getIdToken(true);
 
         setDemoLoggedIn(true);
-        if (typeof window !== "undefined") {
-          const normalizedPhone = phone.replace(/\D/g, "").slice(-10);
-          const phoneValue = normalizedPhone.length === 10 ? `+91${normalizedPhone}` : phone;
-          window.localStorage.setItem(USER_FIREBASE_UID_KEY, user.uid);
-          window.localStorage.setItem(USER_FIREBASE_PHONE_KEY, phoneValue);
-          window.localStorage.setItem(USER_FIREBASE_TOKEN_KEY, idToken);
-        }
+        const normalizedPhone = phone.replace(/\D/g, "").slice(-10);
+        const phoneValue = normalizedPhone.length === 10 ? `+91${normalizedPhone}` : phone;
+        saveUserAuthSession({
+          uid: user.uid,
+          phone: phoneValue || user.phoneNumber,
+          token: idToken,
+        });
 
         clearPendingConfirmationResult();
         setAuthMode("firebase");

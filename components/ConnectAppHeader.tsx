@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { ProfileMenu } from "@/components/ProfileMenu";
 import { WalletPill } from "@/components/WalletPill";
 import { logoutUserAuthSession } from "@/lib/auth/logout";
-import { getDemoLoggedIn, subscribeDemoAuthUpdates } from "@/lib/demoAuth";
+import { getUserAuthState, restoreUserAuthSessionFromFirebase, subscribeUserAuthState } from "@/lib/auth/userAuth";
 
 const navItems = [
   { label: "Talk Now", href: "/connect-now" },
@@ -25,10 +25,22 @@ function isActive(pathname: string, href: string) {
 export function ConnectAppHeader() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const [loggedIn, setLoggedIn] = useState(() => (typeof window !== "undefined" ? getDemoLoggedIn() : false));
+  const [loggedIn, setLoggedIn] = useState(() => (typeof window !== "undefined" ? getUserAuthState().loggedIn : false));
+  const [authReady, setAuthReady] = useState(false);
 
   useEffect(() => {
-    return subscribeDemoAuthUpdates(() => setLoggedIn(getDemoLoggedIn()));
+    let active = true;
+    const sync = () => {
+      if (!active) return;
+      setLoggedIn(getUserAuthState().loggedIn);
+      setAuthReady(true);
+    };
+    const unsubscribe = subscribeUserAuthState(sync);
+    void restoreUserAuthSessionFromFirebase(false).then(sync);
+    return () => {
+      active = false;
+      unsubscribe();
+    };
   }, []);
 
   return (
@@ -52,7 +64,9 @@ export function ConnectAppHeader() {
         </nav>
 
         <div className="hidden items-center gap-3 xl:flex">
-          {loggedIn ? (
+          {!authReady ? (
+            <div className="h-10 w-[170px] rounded-full border border-[#dceae5] bg-white/70" />
+          ) : loggedIn ? (
             <>
               <WalletPill
                 className="inline-flex h-10 items-center gap-1.5 rounded-full border border-[#dceae5] bg-white px-3 text-[14px] font-semibold text-slate-700 transition hover:border-[#0f766e]/35 hover:bg-[#eef8f5]"
@@ -75,7 +89,9 @@ export function ConnectAppHeader() {
         </div>
 
         <div className="flex items-center gap-2 xl:hidden">
-          {loggedIn ? (
+          {!authReady ? (
+            <div className="h-9 w-[98px] rounded-full border border-slate-200 bg-white/70" />
+          ) : loggedIn ? (
             <WalletPill
               className="inline-flex h-9 max-w-[120px] min-w-0 items-center gap-1 overflow-hidden rounded-full border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700"
               iconSize={14}
@@ -119,7 +135,9 @@ export function ConnectAppHeader() {
           </nav>
 
           <div className="mt-4 grid grid-cols-2 gap-2">
-            {loggedIn ? (
+            {!authReady ? (
+              <div className="col-span-2 h-10 rounded-xl border border-slate-200 bg-slate-50" />
+            ) : loggedIn ? (
               <>
                 <Link
                   href="/my-profile"
