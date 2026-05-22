@@ -43,6 +43,17 @@ export type PartnerAvailabilityPayload = {
   companion?: Record<string, unknown> | null;
 };
 
+export type PartnerProfileMediaItem = {
+  imageUrl: string;
+  storagePath: string;
+};
+
+export type PartnerProfileMediaPayload = {
+  profileImageUrl: string | null;
+  profileImageStoragePath: string | null;
+  galleryImages: PartnerProfileMediaItem[];
+};
+
 export async function submitPartnerApplication(payload: Record<string, unknown>) {
   return apiRequest<{ success: boolean; message?: string }>("/api/partner/applications", {
     method: "POST",
@@ -51,9 +62,11 @@ export async function submitPartnerApplication(payload: Record<string, unknown>)
 }
 
 export async function getPartnerProfile() {
-  const result = await apiRequest<{ profile: Record<string, unknown> }>("/api/partner/profile");
+  const result = await apiRequest<{ profile?: Record<string, unknown>; companion?: Record<string, unknown> }>(
+    "/api/partner/profile",
+  );
   if (result.error) return { data: null, error: result.error };
-  return { data: result.data?.profile ?? null, error: null };
+  return { data: result.data?.companion ?? result.data?.profile ?? null, error: null };
 }
 
 export async function updatePartnerProfile(payload: Record<string, unknown>) {
@@ -131,4 +144,77 @@ export async function updatePartnerAvailability(isOnline: boolean) {
   });
   if (result.error) return { data: null, error: result.error };
   return result;
+}
+
+function normalizePartnerProfileMedia(data: PartnerProfileMediaPayload | null | undefined): PartnerProfileMediaPayload {
+  return {
+    profileImageUrl: data?.profileImageUrl ?? null,
+    profileImageStoragePath: data?.profileImageStoragePath ?? null,
+    galleryImages: Array.isArray(data?.galleryImages)
+      ? data!.galleryImages.filter(
+          (item): item is PartnerProfileMediaItem =>
+            Boolean(item && typeof item.imageUrl === "string" && typeof item.storagePath === "string"),
+        )
+      : [],
+  };
+}
+
+export async function getPartnerProfileMedia() {
+  const result = await apiRequest<PartnerProfileMediaPayload>("/api/partner/profile/media");
+  if (result.error) return { data: null, error: result.error };
+  return { data: normalizePartnerProfileMedia(result.data), error: null };
+}
+
+export async function updatePartnerProfileImage(payload: { imageUrl: string; storagePath: string }) {
+  const result = await apiRequest<{
+    profileImageUrl: string | null;
+    profileImageStoragePath: string | null;
+  }>("/api/partner/profile/media/profile-image", {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+  if (result.error) return { data: null, error: result.error };
+  return {
+    data: {
+      profileImageUrl: result.data?.profileImageUrl ?? null,
+      profileImageStoragePath: result.data?.profileImageStoragePath ?? null,
+    },
+    error: null,
+  };
+}
+
+export async function addPartnerGalleryImage(payload: { imageUrl: string; storagePath: string }) {
+  const result = await apiRequest<{ galleryImages: PartnerProfileMediaItem[] }>("/api/partner/profile/media/gallery", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  if (result.error) return { data: null, error: result.error };
+  return {
+    data: {
+      galleryImages: normalizePartnerProfileMedia({
+        profileImageUrl: null,
+        profileImageStoragePath: null,
+        galleryImages: result.data?.galleryImages ?? [],
+      }).galleryImages,
+    },
+    error: null,
+  };
+}
+
+export async function deletePartnerGalleryImage(payload: { imageUrl?: string; storagePath?: string }) {
+  const result = await apiRequest<{ galleryImages: PartnerProfileMediaItem[] }>("/api/partner/profile/media/gallery", {
+    method: "DELETE",
+    body: JSON.stringify(payload),
+  });
+  if (result.error) return { data: null, error: result.error };
+  return {
+    data: {
+      galleryImages: normalizePartnerProfileMedia({
+        profileImageUrl: null,
+        profileImageStoragePath: null,
+        galleryImages: result.data?.galleryImages ?? [],
+      }).galleryImages,
+    },
+    error: null,
+  };
 }

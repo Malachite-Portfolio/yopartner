@@ -19,6 +19,8 @@ type ConnectProfilePageProps = {
 function toProfileCompanion(item: CompanionItem): ConnectCompanion {
   const fallbackImage =
     "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=320&q=80";
+  const primaryImage = item.image || fallbackImage;
+  const galleryImages = item.galleryImages.length > 0 ? item.galleryImages : [primaryImage];
 
   return {
     id: item.id,
@@ -39,8 +41,8 @@ function toProfileCompanion(item: CompanionItem): ConnectCompanion {
     reviewsCount: 1,
     experience: item.experience || "Verified companion",
     online: item.online,
-    image: item.image || fallbackImage,
-    galleryImages: [item.image || fallbackImage],
+    image: primaryImage,
+    galleryImages,
     chatPrice: item.chatPrice,
     voicePrice: item.voicePrice,
     videoPrice: item.videoPrice,

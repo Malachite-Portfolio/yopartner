@@ -18,6 +18,7 @@ export type CompanionItem = {
   isBusy?: boolean;
   effectiveStatus?: "ONLINE" | "BUSY" | "OFFLINE";
   languages: string[];
+  galleryImages: string[];
   chatPrice: number;
   voicePrice: number;
   videoPrice?: number;
@@ -45,6 +46,7 @@ type RawCompanionItem = {
   homeVisitPrice?: number | string | null;
   visitPrice?: number | string | null;
   languages?: unknown;
+  galleryImages?: unknown;
   servicesOffered?: string[] | null;
 };
 
@@ -101,6 +103,7 @@ function toCompanionItem(item: RawCompanionItem): CompanionItem {
         ? item.effectiveStatus
         : undefined,
     languages: normalizeStringArray(item.languages),
+    galleryImages: normalizeStringArray(item.galleryImages),
     chatPrice: toNumber(item.chatPrice, 0),
     voicePrice: toNumber(item.audioPrice ?? item.voicePrice, 0),
     videoPrice,
