@@ -1,4 +1,5 @@
 import { apiRequest } from "@/lib/api/client";
+import { PARTNER_FIREBASE_TOKEN_KEY } from "@/lib/auth/firebasePhoneAuth";
 
 export type PartnerRequestType = "CHAT" | "AUDIO" | "VIDEO";
 
@@ -41,6 +42,14 @@ export type PartnerDashboardPayload = {
 export type PartnerAvailabilityPayload = {
   isOnline: boolean;
   companion?: Record<string, unknown> | null;
+};
+
+export type PartnerPresencePayload = {
+  isOnline?: boolean;
+  rawIsOnline?: boolean;
+  presenceFresh?: boolean;
+  effectiveStatus?: "ONLINE" | "BUSY" | "OFFLINE";
+  updatedAt?: string;
 };
 
 export type PartnerProfileMediaItem = {
@@ -151,6 +160,68 @@ export async function updatePartnerAvailability(isOnline: boolean) {
   });
   if (result.error) return { data: null, error: result.error };
   return result;
+}
+
+export async function markPartnerPresenceOnline() {
+  const result = await apiRequest<PartnerPresencePayload>("/api/partner/presence/online", {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+  if (result.error) return { data: null, error: result.error };
+  return result;
+}
+
+export async function heartbeatPartnerPresence() {
+  const result = await apiRequest<PartnerPresencePayload>("/api/partner/presence/heartbeat", {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+  if (result.error) return { data: null, error: result.error };
+  return result;
+}
+
+export async function markPartnerPresenceOffline() {
+  const result = await apiRequest<PartnerPresencePayload>("/api/partner/presence/offline", {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+  if (result.error) return { data: null, error: result.error };
+  return result;
+}
+
+function resolveApiUrl(input: string) {
+  if (!input.startsWith("/")) return input;
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
+  if (!baseUrl) return input;
+  return `${baseUrl.replace(/\/+$/, "")}${input}`;
+}
+
+export function sendPartnerOfflineBeacon() {
+  if (typeof window === "undefined") return;
+  const token = window.localStorage.getItem(PARTNER_FIREBASE_TOKEN_KEY)?.trim();
+  if (!token) return;
+
+  const payload = JSON.stringify({ token });
+  const beaconUrl = resolveApiUrl("/api/partner/presence/offline-beacon");
+  const blob = new Blob([payload], { type: "application/json" });
+
+  let beaconSent = false;
+  try {
+    if (typeof navigator !== "undefined" && typeof navigator.sendBeacon === "function") {
+      beaconSent = navigator.sendBeacon(beaconUrl, blob);
+    }
+  } catch {
+    beaconSent = false;
+  }
+
+  if (!beaconSent) {
+    void fetch(beaconUrl, {
+      method: "POST",
+      body: payload,
+      headers: { "Content-Type": "application/json" },
+      keepalive: true,
+    }).catch(() => undefined);
+  }
 }
 
 function normalizePartnerProfileMedia(data: PartnerProfileMediaPayload | null | undefined): PartnerProfileMediaPayload {

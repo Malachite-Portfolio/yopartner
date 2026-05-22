@@ -4,6 +4,7 @@ import { Bell, ChevronDown, Menu } from "lucide-react";
 import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { logoutPartnerAuthSession } from "@/lib/auth/logout";
+import { markPartnerPresenceOffline, sendPartnerOfflineBeacon } from "@/lib/api/partner";
 import { getPartnerProfile } from "@/lib/partnerAuth";
 import { defaultPartnerProfile, type PartnerProfile } from "@/lib/partnerData";
 
@@ -34,6 +35,8 @@ export function PartnerTopbar({ onMenuOpen }: PartnerTopbarProps) {
   const nameLabel = profile.fullName || "Companion";
 
   const handleLogout = async () => {
+    sendPartnerOfflineBeacon();
+    await markPartnerPresenceOffline();
     await logoutPartnerAuthSession();
     router.replace("/partner/login");
   };

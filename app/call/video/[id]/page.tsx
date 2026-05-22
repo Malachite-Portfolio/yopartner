@@ -76,6 +76,7 @@ export default function VideoCallPage() {
   const [cameraSwitchMessage, setCameraSwitchMessage] = useState("");
   const [audioAssistMessage, setAudioAssistMessage] = useState("");
   const [speakerEnabled, setSpeakerEnabled] = useState(false);
+  const [lastSpeakerToggleError, setLastSpeakerToggleError] = useState("");
   const [audioPlaybackAttempted, setAudioPlaybackAttempted] = useState(false);
   const [audioPlaybackError, setAudioPlaybackError] = useState("");
   const [remoteUserCount, setRemoteUserCount] = useState(0);
@@ -566,8 +567,13 @@ export default function VideoCallPage() {
   const handleSpeakerToggle = useCallback(() => {
     const nextSpeakerState = !speakerEnabled;
     setSpeakerEnabled(nextSpeakerState);
+    setLastSpeakerToggleError("");
     if (nextSpeakerState || !audioPlaybackReady) {
-      void playRemoteAudio("gesture");
+      void playRemoteAudio("gesture").then((played) => {
+        if (!played) {
+          setLastSpeakerToggleError("Speaker switching depends on your browser. Use phone audio output/volume controls.");
+        }
+      });
       return;
     }
     setAudioAssistMessage("Speaker off on this device.");
@@ -754,17 +760,6 @@ export default function VideoCallPage() {
             {audioAssistMessage}
           </p>
         ) : null}
-        {remoteUserJoined || remoteAudioPublished ? (
-          <button
-            type="button"
-            onClick={() => {
-              void handleSpeakerToggle();
-            }}
-            className="mb-3 self-center rounded-full border border-white/30 bg-black/35 px-3 py-1 text-xs text-white"
-          >
-            {speakerEnabled ? "Speaker On" : "Speaker Off"}
-          </button>
-        ) : null}
         <div className="flex items-center justify-between">
           <button
             type="button"
@@ -851,7 +846,7 @@ export default function VideoCallPage() {
           <button
             type="button"
             onClick={() => {
-              void handleSpeakerToggle();
+              handleSpeakerToggle();
             }}
             className={`inline-flex h-12 items-center justify-center gap-2 rounded-full border px-3 text-xs font-semibold ${
               speakerEnabled ? "border-cyan-300/60 bg-cyan-400/20 text-cyan-100" : "border-white/25 bg-white/10 text-white"
@@ -892,6 +887,7 @@ export default function VideoCallPage() {
             <p>audio playback attempted: {String(audioPlaybackAttempted)}</p>
             <p>audio playback error: {audioPlaybackError || "-"}</p>
             <p>speakerEnabled: {String(speakerEnabled)}</p>
+            <p>last speaker toggle error: {lastSpeakerToggleError || "-"}</p>
             <p>setSinkId supported: {setSinkIdSupported == null ? "unknown" : String(setSinkIdSupported)}</p>
           </div>
         ) : null}

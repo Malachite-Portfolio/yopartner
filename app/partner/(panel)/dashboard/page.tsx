@@ -7,8 +7,11 @@ import { requestAudioPermission, requestVideoPermission } from "@/lib/agora";
 import {
   acceptPartnerRequest,
   declinePartnerRequest,
+  heartbeatPartnerPresence,
   getPartnerDashboard,
-  updatePartnerAvailability,
+  markPartnerPresenceOffline,
+  markPartnerPresenceOnline,
+  sendPartnerOfflineBeacon,
   type PartnerActiveSession,
   type PartnerIncomingRequest,
 } from "@/lib/api/partner";
@@ -227,6 +230,39 @@ export default function PartnerDashboardPage() {
   }, [isApproved, loadDashboard]);
 
   useEffect(() => {
+    if (!isApproved || !online) return;
+
+    void markPartnerPresenceOnline();
+    const heartbeatTimer = window.setInterval(() => {
+      void heartbeatPartnerPresence();
+    }, 25000);
+
+    const sendOffline = () => {
+      sendPartnerOfflineBeacon();
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        sendOffline();
+      } else if (document.visibilityState === "visible" && online) {
+        void markPartnerPresenceOnline();
+      }
+    };
+
+    window.addEventListener("beforeunload", sendOffline);
+    window.addEventListener("pagehide", sendOffline);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      window.clearInterval(heartbeatTimer);
+      window.removeEventListener("beforeunload", sendOffline);
+      window.removeEventListener("pagehide", sendOffline);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      sendOffline();
+    };
+  }, [isApproved, online]);
+
+  useEffect(() => {
     if (!isApproved && online) {
       setPartnerOnlineStatus(false);
     }
@@ -237,7 +273,7 @@ export default function PartnerDashboardPage() {
     const nextOnline = !online;
     setAvailabilityError("");
     setAvailabilityActionPending(true);
-    const response = await updatePartnerAvailability(nextOnline);
+    const response = nextOnline ? await markPartnerPresenceOnline() : await markPartnerPresenceOffline();
     setAvailabilityActionPending(false);
     if (response.error) {
       setAvailabilityError("Could not update availability. Please try again.");

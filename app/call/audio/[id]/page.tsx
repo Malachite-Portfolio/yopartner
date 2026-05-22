@@ -63,6 +63,7 @@ export default function AudioCallPage() {
   const [remoteAudioTrackExists, setRemoteAudioTrackExists] = useState(false);
   const [audioPlaybackReady, setAudioPlaybackReady] = useState(false);
   const [speakerEnabled, setSpeakerEnabled] = useState(false);
+  const [lastSpeakerToggleError, setLastSpeakerToggleError] = useState("");
   const [audioPlaybackAttempted, setAudioPlaybackAttempted] = useState(false);
   const [audioPlaybackError, setAudioPlaybackError] = useState("");
   const [remoteUserCount, setRemoteUserCount] = useState(0);
@@ -499,8 +500,13 @@ export default function AudioCallPage() {
   const handleSpeakerToggle = () => {
     const nextSpeakerState = !speakerEnabled;
     setSpeakerEnabled(nextSpeakerState);
+    setLastSpeakerToggleError("");
     if (nextSpeakerState || !audioPlaybackReady) {
-      void replayRemoteAudio("gesture");
+      void replayRemoteAudio("gesture").then((played) => {
+        if (!played) {
+          setLastSpeakerToggleError("Speaker switching depends on your browser. Use phone audio output/volume controls.");
+        }
+      });
       return;
     }
     setSpeakerMessage("Speaker off on this device.");
@@ -714,6 +720,7 @@ export default function AudioCallPage() {
             <p>audio playback attempted: {String(audioPlaybackAttempted)}</p>
             <p>audio playback error: {audioPlaybackError || "-"}</p>
             <p>speakerEnabled: {String(speakerEnabled)}</p>
+            <p>last speaker toggle error: {lastSpeakerToggleError || "-"}</p>
             <p>setSinkId supported: {setSinkIdSupported == null ? "unknown" : String(setSinkIdSupported)}</p>
           </div>
         ) : null}
