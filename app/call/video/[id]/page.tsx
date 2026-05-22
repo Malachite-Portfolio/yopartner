@@ -79,6 +79,8 @@ export default function VideoCallPage() {
   const [joining, setJoining] = useState(false);
   const [remoteVideoReady, setRemoteVideoReady] = useState(false);
   const [remoteUserJoined, setRemoteUserJoined] = useState(false);
+  const [remoteAudioPublished, setRemoteAudioPublished] = useState(false);
+  const [audioPlaybackReady, setAudioPlaybackReady] = useState(false);
   const clientRef = useRef<IAgoraRTCClient | null>(null);
   const localAudioTrackRef = useRef<IMicrophoneAudioTrack | null>(null);
   const localVideoTrackRef = useRef<ICameraVideoTrack | null>(null);
@@ -131,6 +133,8 @@ export default function VideoCallPage() {
     setLocalVideoReady(false);
     setRemoteVideoReady(false);
     setRemoteUserJoined(false);
+    setRemoteAudioPublished(false);
+    setAudioPlaybackReady(false);
     setNeedsPermissionAction(false);
   }, []);
 
@@ -255,6 +259,7 @@ export default function VideoCallPage() {
     const remoteAudioTrack = remoteAudioTrackRef.current;
     if (!remoteAudioTrack) {
       setAudioAssistMessage("Remote audio is not available yet.");
+      setAudioPlaybackReady(false);
       return false;
     }
 
@@ -282,9 +287,11 @@ export default function VideoCallPage() {
       } else {
         remoteAudioTrack.play();
       }
+      setAudioPlaybackReady(true);
       return true;
     } catch {
       setAudioAssistMessage("Speaker control depends on your browser. Use phone volume/output controls if needed.");
+      setAudioPlaybackReady(false);
       return false;
     }
   }, []);
@@ -414,6 +421,7 @@ export default function VideoCallPage() {
           } catch {
             // Safe to ignore duplicate subscriptions from delayed remote-user sweeps.
           }
+          setRemoteAudioPublished(true);
           if (user.audioTrack) {
             remoteAudioTrackRef.current = user.audioTrack;
             await notifyMediaReady();
@@ -442,6 +450,8 @@ export default function VideoCallPage() {
           remoteVideoTrackRef.current = null;
         }
         if (mediaType === "audio") {
+          setRemoteAudioPublished(false);
+          setAudioPlaybackReady(false);
           remoteAudioTrackRef.current = null;
         }
       });
@@ -449,6 +459,8 @@ export default function VideoCallPage() {
       client.on("user-left", () => {
         setRemoteUserJoined(client.remoteUsers.length > 0);
         setRemoteVideoReady(false);
+        setRemoteAudioPublished(false);
+        setAudioPlaybackReady(false);
         remoteVideoTrackRef.current = null;
         remoteAudioTrackRef.current = null;
       });
@@ -688,7 +700,7 @@ export default function VideoCallPage() {
             {audioAssistMessage}
           </p>
         ) : null}
-        {remoteUserJoined ? (
+        {remoteUserJoined || remoteAudioPublished ? (
           <button
             type="button"
             onClick={() => {
@@ -696,7 +708,7 @@ export default function VideoCallPage() {
             }}
             className="mb-3 self-center rounded-full border border-white/30 bg-black/35 px-3 py-1 text-xs text-white"
           >
-            Enable sound
+            {audioPlaybackReady ? "Speaker" : "Enable sound"}
           </button>
         ) : null}
         <div className="flex items-center justify-between">
@@ -725,7 +737,15 @@ export default function VideoCallPage() {
               </span>
               <p className="mt-3 text-xl font-semibold">{companion.name}</p>
               <p className="mt-1 text-sm text-white/80">
-                {remoteUserJoined ? "Connected. Waiting for video..." : isCallLive ? "Waiting for video..." : "Connecting..."}
+                {remoteVideoReady
+                  ? "Connected"
+                  : remoteAudioPublished
+                    ? "Audio connected. Waiting for video..."
+                    : remoteUserJoined
+                      ? "Connected. Waiting for video..."
+                      : isCallLive
+                        ? "Waiting for video..."
+                        : "Connecting..."}
               </p>
             </div>
           ) : null}

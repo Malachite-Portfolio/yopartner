@@ -1,16 +1,18 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   addPartnerGalleryImage,
   deletePartnerGalleryImage,
+  getPartnerApplications,
+  getPartnerProfile as getPartnerProfileApi,
   getPartnerProfileMedia,
   type PartnerProfileMediaItem,
   updatePartnerProfileImage,
 } from "@/lib/api/partner";
 import { getPartnerApprovalLabel, getLocalPartnerApprovalState, isPartnerApproved } from "@/lib/partnerApproval";
-import { getPartnerProfile } from "@/lib/partnerAuth";
+import { getPartnerProfile as getLocalPartnerProfile } from "@/lib/partnerAuth";
 import { defaultPartnerProfile, type PartnerProfile } from "@/lib/partnerData";
 import {
   MAX_PARTNER_GALLERY_IMAGES,
@@ -21,18 +23,143 @@ import {
 type PartnerProfileMediaState = {
   profileImageUrl: string | null;
   profileImageStoragePath: string | null;
+  resolvedProfileImageUrl: string | null;
   galleryImages: PartnerProfileMediaItem[];
+};
+
+type DisplayProfileDetails = {
+  fullName: string;
+  age: string;
+  gender: string;
+  religion: string;
+  bornCity: string;
+  nationality: string;
+  school: string;
+  college: string;
+  qualification: string;
+  languagesKnown: string[];
+  communicationStyle: string[];
+  hobbies: string[];
+  profileTagline: string;
+  aboutYourself: string;
+  servicesOffered: string[];
+  chatRate: string;
+  audioRate: string;
+  videoRate: string;
+  categories: string[];
 };
 
 const EMPTY_MEDIA_STATE: PartnerProfileMediaState = {
   profileImageUrl: null,
   profileImageStoragePath: null,
+  resolvedProfileImageUrl: null,
   galleryImages: [],
 };
+
+function toStringValue(value: unknown) {
+  if (typeof value !== "string") return "";
+  return value.trim();
+}
+
+function toStringArray(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function toRate(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  if (typeof value === "string" && value.trim()) return value.trim();
+  return "";
+}
+
+function normalizeServiceLabel(service: string) {
+  const normalized = service.trim().toUpperCase();
+  if (normalized === "CHAT") return "Chat";
+  if (normalized === "AUDIO") return "Audio Call";
+  if (normalized === "VIDEO") return "Video Call";
+  if (normalized === "HOME_VISIT") return "Home Visit";
+  return service.trim();
+}
+
+function fromLocalProfile(localProfile: PartnerProfile): DisplayProfileDetails {
+  return {
+    fullName: localProfile.fullName,
+    age: localProfile.age,
+    gender: localProfile.gender,
+    religion: localProfile.religion,
+    bornCity: localProfile.bornCity,
+    nationality: localProfile.nationality,
+    school: localProfile.school,
+    college: localProfile.college,
+    qualification: localProfile.qualification,
+    languagesKnown: localProfile.languagesKnown,
+    communicationStyle: localProfile.communicationStyle,
+    hobbies: localProfile.hobbies,
+    profileTagline: localProfile.profileTagline,
+    aboutYourself: localProfile.aboutYourself,
+    servicesOffered: localProfile.servicesOffered,
+    chatRate: localProfile.chatPricePerMinute,
+    audioRate: localProfile.audioPricePerMinute,
+    videoRate: localProfile.videoPricePerMinute,
+    categories: localProfile.categories,
+  };
+}
+
+function mergeDisplayProfile(
+  base: DisplayProfileDetails,
+  payload: { companion?: Record<string, unknown> | null; application?: Record<string, unknown> | null } | null,
+) {
+  const companion = payload?.companion ?? null;
+  const application = payload?.application ?? null;
+  const companionLanguages = toStringArray(companion?.languages);
+  const companionServices = toStringArray(companion?.servicesOffered).map(normalizeServiceLabel);
+  const applicationServices = toStringArray(application?.servicesOffered).map(normalizeServiceLabel);
+  const companionCategory = toStringValue(companion?.category);
+
+  return {
+    fullName: toStringValue(application?.fullName) || toStringValue(companion?.displayName) || base.fullName,
+    age:
+      typeof application?.age === "number" && Number.isFinite(application.age)
+        ? String(application.age)
+        : toStringValue(application?.age) || base.age,
+    gender: toStringValue(application?.gender) || base.gender,
+    religion: toStringValue(application?.religion) || base.religion,
+    bornCity: toStringValue(application?.bornCity) || base.bornCity,
+    nationality: toStringValue(application?.nationality) || base.nationality,
+    school: toStringValue(application?.school) || base.school,
+    college: toStringValue(application?.college) || base.college,
+    qualification: toStringValue(application?.qualification) || base.qualification,
+    languagesKnown: toStringArray(application?.languagesKnown).length
+      ? toStringArray(application?.languagesKnown)
+      : companionLanguages.length
+        ? companionLanguages
+        : base.languagesKnown,
+    communicationStyle: toStringArray(application?.communicationStyle).length
+      ? toStringArray(application?.communicationStyle)
+      : base.communicationStyle,
+    hobbies: toStringArray(application?.hobbies).length ? toStringArray(application?.hobbies) : base.hobbies,
+    profileTagline: toStringValue(application?.profileTagline) || toStringValue(companion?.tagline) || base.profileTagline,
+    aboutYourself: toStringValue(application?.aboutYourself) || base.aboutYourself,
+    servicesOffered: applicationServices.length ? applicationServices : companionServices.length ? companionServices : base.servicesOffered,
+    chatRate: toRate(application?.chatPrice) || toRate(companion?.chatPrice) || base.chatRate,
+    audioRate: toRate(application?.audioPrice) || toRate(companion?.audioPrice) || base.audioRate,
+    videoRate: toRate(application?.videoPrice) || toRate(companion?.videoPrice) || base.videoRate,
+    categories: toStringArray(application?.categories).length
+      ? toStringArray(application?.categories)
+      : companionCategory
+        ? [companionCategory]
+        : base.categories,
+  };
+}
 
 export default function PartnerProfilePage() {
   const profileImageInputRef = useRef<HTMLInputElement | null>(null);
   const galleryImageInputRef = useRef<HTMLInputElement | null>(null);
+  const [localProfile] = useState<PartnerProfile>(() => getLocalPartnerProfile<PartnerProfile>(defaultPartnerProfile));
+  const [details, setDetails] = useState<DisplayProfileDetails>(() => fromLocalProfile(localProfile));
   const [media, setMedia] = useState<PartnerProfileMediaState>(EMPTY_MEDIA_STATE);
   const [loadingMedia, setLoadingMedia] = useState(true);
   const [uploadingProfileImage, setUploadingProfileImage] = useState(false);
@@ -41,39 +168,68 @@ export default function PartnerProfilePage() {
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
-  const profile = getPartnerProfile<PartnerProfile>(defaultPartnerProfile);
   const approvalState = getLocalPartnerApprovalState();
   const isApproved = isPartnerApproved(approvalState);
   const labels = getPartnerApprovalLabel(approvalState);
-
-  const rows = [
-    ["Name", profile.fullName],
-    ["Age", profile.age],
-    ["Gender", profile.gender],
-    ["Religion", profile.religion],
-    ["Born City", profile.bornCity],
-    ["Nationality", profile.nationality],
-    ["School", profile.school],
-    ["College", profile.college],
-    ["Qualification", profile.qualification],
-    ["Languages Known", profile.languagesKnown.join(", ")],
-    ["Communication Style", profile.communicationStyle.join(", ")],
-    ["Hobbies", profile.hobbies.join(", ")],
-    ["Profile Tagline", profile.profileTagline],
-    ["About Yourself", profile.aboutYourself],
-    ["Services Offered", profile.servicesOffered.join(", ")],
-    [
-      "Pricing",
-      `Chat ${profile.chatPricePerMinute || "0"}/min | Audio ${profile.audioPricePerMinute || "0"}/min | Video ${profile.videoPricePerMinute || "0"}/min`,
-    ],
-    ["Categories", profile.categories.join(", ")],
-  ] as const;
 
   const canAddGalleryImage = media.galleryImages.length < MAX_PARTNER_GALLERY_IMAGES;
   const galleryCountLabel = useMemo(
     () => `${media.galleryImages.length}/${MAX_PARTNER_GALLERY_IMAGES}`,
     [media.galleryImages.length],
   );
+  const previewImageUrl = media.profileImageUrl ?? media.resolvedProfileImageUrl ?? null;
+
+  const rows = useMemo(
+    () =>
+      [
+        ["Name", details.fullName],
+        ["Age", details.age],
+        ["Gender", details.gender],
+        ["Religion", details.religion],
+        ["Born City", details.bornCity],
+        ["Nationality", details.nationality],
+        ["School", details.school],
+        ["College", details.college],
+        ["Qualification", details.qualification],
+        ["Languages Known", details.languagesKnown.join(", ")],
+        ["Communication Style", details.communicationStyle.join(", ")],
+        ["Hobbies", details.hobbies.join(", ")],
+        ["Profile Tagline", details.profileTagline],
+        ["About Yourself", details.aboutYourself],
+        ["Services Offered", details.servicesOffered.join(", ")],
+        [
+          "Pricing",
+          `Chat ${details.chatRate || "0"}/min | Audio ${details.audioRate || "0"}/min | Video ${details.videoRate || "0"}/min`,
+        ],
+        ["Categories", details.categories.join(", ")],
+      ] as const,
+    [details],
+  );
+
+  useEffect(() => {
+    const hydrateProfile = async () => {
+      const [profileResponse, applicationsResponse] = await Promise.all([getPartnerProfileApi(), getPartnerApplications()]);
+      const payloadFromProfile = profileResponse.data;
+      const applicationPayload = (applicationsResponse.data as Record<string, unknown> | null)?.application as
+        | Record<string, unknown>
+        | null
+        | undefined;
+      const companionPayload =
+        (payloadFromProfile?.companion as Record<string, unknown> | null | undefined) ??
+        (applicationPayload?.companion as Record<string, unknown> | null | undefined) ??
+        null;
+      const merged = mergeDisplayProfile(fromLocalProfile(localProfile), {
+        companion: companionPayload,
+        application:
+          (payloadFromProfile?.application as Record<string, unknown> | null | undefined) ??
+          applicationPayload ??
+          null,
+      });
+      setDetails(merged);
+    };
+
+    void hydrateProfile();
+  }, [localProfile]);
 
   useEffect(() => {
     const loadMedia = async () => {
@@ -85,7 +241,7 @@ export default function PartnerProfilePage() {
         setLoadingMedia(false);
         return;
       }
-      setMedia(response.data ?? EMPTY_MEDIA_STATE);
+      setMedia((response.data as PartnerProfileMediaState | null) ?? EMPTY_MEDIA_STATE);
       setLoadingMedia(false);
     };
 
@@ -255,9 +411,9 @@ export default function PartnerProfilePage() {
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
             <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Profile Picture</p>
             <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 bg-white">
-              {media.profileImageUrl ? (
+              {previewImageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={media.profileImageUrl} alt="Profile" className="h-44 w-full object-cover" />
+                <img src={previewImageUrl} alt="Profile" className="h-44 w-full object-cover" />
               ) : (
                 <div className="flex h-44 items-center justify-center text-xs font-medium text-slate-500">
                   No profile image yet
@@ -279,7 +435,7 @@ export default function PartnerProfilePage() {
               onClick={() => profileImageInputRef.current?.click()}
               className="mt-3 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {uploadingProfileImage ? "Uploading..." : media.profileImageUrl ? "Change profile photo" : "Upload profile photo"}
+              {uploadingProfileImage ? "Uploading..." : previewImageUrl ? "Change profile photo" : "Upload profile photo"}
             </button>
             <p className="mt-2 text-[11px] text-slate-500">JPG, PNG, WEBP | max 5 MB</p>
           </div>

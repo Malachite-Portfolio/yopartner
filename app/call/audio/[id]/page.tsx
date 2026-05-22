@@ -58,6 +58,8 @@ export default function AudioCallPage() {
   const [needsPermissionAction, setNeedsPermissionAction] = useState(false);
   const [joining, setJoining] = useState(false);
   const [remoteAudioReady, setRemoteAudioReady] = useState(false);
+  const [remoteAudioPublished, setRemoteAudioPublished] = useState(false);
+  const [audioPlaybackReady, setAudioPlaybackReady] = useState(false);
   const [speakerHintVisible, setSpeakerHintVisible] = useState(false);
   const [speakerMessage, setSpeakerMessage] = useState("");
   const clientRef = useRef<IAgoraRTCClient | null>(null);
@@ -101,6 +103,8 @@ export default function AudioCallPage() {
     setJoined(false);
     setLocalAudioReady(false);
     setRemoteAudioReady(false);
+    setRemoteAudioPublished(false);
+    setAudioPlaybackReady(false);
     setNeedsPermissionAction(false);
   }, []);
 
@@ -231,6 +235,7 @@ export default function AudioCallPage() {
     if (!remoteTrack) {
       setSpeakerHintVisible(true);
       setSpeakerMessage("Remote audio is not available yet.");
+      setAudioPlaybackReady(false);
       return false;
     }
 
@@ -258,11 +263,13 @@ export default function AudioCallPage() {
       } else {
         remoteTrack.play();
       }
+      setAudioPlaybackReady(true);
       setSpeakerHintVisible(false);
       return true;
     } catch {
       setSpeakerHintVisible(true);
       setSpeakerMessage("Speaker control depends on your browser. Use phone volume/output controls if needed.");
+      setAudioPlaybackReady(false);
       return false;
     }
   }, []);
@@ -298,6 +305,7 @@ export default function AudioCallPage() {
         audioTrack?: IRemoteAudioTrack | null;
       }) => {
         if (!user.hasAudio) return;
+        setRemoteAudioPublished(true);
         await client.subscribe(user as Parameters<typeof client.subscribe>[0], "audio");
         remoteAudioTrackRef.current = user.audioTrack ?? null;
         setRemoteAudioReady(Boolean(user.audioTrack));
@@ -318,14 +326,18 @@ export default function AudioCallPage() {
 
       client.on("user-unpublished", (_user, mediaType) => {
         if (mediaType === "audio") {
+          setRemoteAudioPublished(false);
           setRemoteAudioReady(false);
+          setAudioPlaybackReady(false);
           remoteAudioTrackRef.current = null;
           setSpeakerHintVisible(true);
         }
       });
 
       client.on("user-left", () => {
+        setRemoteAudioPublished(false);
         setRemoteAudioReady(false);
+        setAudioPlaybackReady(false);
         remoteAudioTrackRef.current = null;
       });
 
@@ -358,6 +370,7 @@ export default function AudioCallPage() {
           if (!remoteUser.hasAudio) return;
           await client.subscribe(remoteUser, "audio");
           remoteAudioTrackRef.current = remoteUser.audioTrack ?? null;
+          setRemoteAudioPublished(true);
           setRemoteAudioReady(Boolean(remoteUser.audioTrack));
           await notifyMediaReady();
           if (remoteUser.audioTrack) {
@@ -584,7 +597,13 @@ export default function AudioCallPage() {
           <p className="text-xs uppercase tracking-[0.18em] text-[#0f766e]">Audio Call</p>
           <h1 className="mt-2 text-[28px] font-semibold leading-tight text-[#0f172a]">{companion.name}</h1>
           <p className="mt-2 text-base text-[#334155]">
-            {remoteAudioReady ? "Connected" : isCallLive ? "Waiting for audio..." : "Connecting..."}
+            {remoteAudioPublished
+              ? audioPlaybackReady
+                ? "Connected"
+                : "Audio ready. Tap Enable sound."
+              : isCallLive
+                ? "Waiting for audio..."
+                : "Connecting..."}
           </p>
           <p className="mt-1 text-[30px] font-semibold tabular-nums text-[#0f172a]">
             {String(Math.floor(elapsedSeconds / 60)).padStart(2, "0")}:{String(elapsedSeconds % 60).padStart(2, "0")}
@@ -603,10 +622,10 @@ export default function AudioCallPage() {
             </span>
           )}
         </div>
-        {session.status === "LIVE" && !remoteAudioReady ? (
+        {session.status === "LIVE" && !remoteAudioPublished ? (
           <p className="mt-2 text-center text-xs text-[#334155]">Waiting for audio...</p>
         ) : null}
-        {speakerHintVisible ? (
+        {(remoteAudioPublished && !audioPlaybackReady) || speakerHintVisible ? (
           <button
             type="button"
             onClick={handleEnableSpeaker}

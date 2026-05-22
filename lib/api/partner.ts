@@ -51,7 +51,14 @@ export type PartnerProfileMediaItem = {
 export type PartnerProfileMediaPayload = {
   profileImageUrl: string | null;
   profileImageStoragePath: string | null;
+  resolvedProfileImageUrl?: string | null;
   galleryImages: PartnerProfileMediaItem[];
+};
+
+export type PartnerProfilePayload = {
+  companion?: Record<string, unknown> | null;
+  profile?: Record<string, unknown> | null;
+  application?: Record<string, unknown> | null;
 };
 
 export async function submitPartnerApplication(payload: Record<string, unknown>) {
@@ -62,11 +69,11 @@ export async function submitPartnerApplication(payload: Record<string, unknown>)
 }
 
 export async function getPartnerProfile() {
-  const result = await apiRequest<{ profile?: Record<string, unknown>; companion?: Record<string, unknown> }>(
+  const result = await apiRequest<PartnerProfilePayload>(
     "/api/partner/profile",
   );
   if (result.error) return { data: null, error: result.error };
-  return { data: result.data?.companion ?? result.data?.profile ?? null, error: null };
+  return { data: result.data ?? null, error: null };
 }
 
 export async function updatePartnerProfile(payload: Record<string, unknown>) {
@@ -150,6 +157,7 @@ function normalizePartnerProfileMedia(data: PartnerProfileMediaPayload | null | 
   return {
     profileImageUrl: data?.profileImageUrl ?? null,
     profileImageStoragePath: data?.profileImageStoragePath ?? null,
+    resolvedProfileImageUrl: data?.resolvedProfileImageUrl ?? null,
     galleryImages: Array.isArray(data?.galleryImages)
       ? data!.galleryImages.filter(
           (item): item is PartnerProfileMediaItem =>
