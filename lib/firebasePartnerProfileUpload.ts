@@ -1,4 +1,5 @@
 import { deleteObject, getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import { getCurrentFirebaseUser, subscribeFirebaseAuthState } from "@/lib/auth/firebasePhoneAuth";
 import { firebaseStorage } from "@/lib/firebase/client";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -9,7 +10,6 @@ type PartnerProfileUploadKind = "profile" | "gallery";
 
 type UploadPartnerProfileMediaParams = {
   file: File;
-  uid: string;
   kind: PartnerProfileUploadKind;
 };
 
@@ -44,15 +44,53 @@ function validateImage(file: File) {
   }
 }
 
+async function waitForFirebaseUser(timeoutMs = 2500) {
+  const existing = getCurrentFirebaseUser();
+  if (existing) return existing;
+  if (typeof window === "undefined") return null;
+
+  return new Promise<ReturnType<typeof getCurrentFirebaseUser>>((resolve) => {
+    let settled = false;
+    const finish = (value: ReturnType<typeof getCurrentFirebaseUser>) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timer);
+      unsubscribe();
+      resolve(value);
+    };
+
+    const unsubscribe = subscribeFirebaseAuthState((user) => {
+      finish(user);
+    });
+
+    const timer = window.setTimeout(() => {
+      finish(getCurrentFirebaseUser());
+    }, timeoutMs);
+  });
+}
+
+function toUploadError(error: unknown) {
+  const code = typeof error === "object" && error && "code" in error ? String((error as { code?: unknown }).code ?? "") : "";
+  if (code === "storage/unauthorized") {
+    return new Error("Upload blocked by Firebase Storage rules. Please try again after permission update.");
+  }
+  if (error instanceof Error && typeof error.message === "string" && error.message.trim()) {
+    return error;
+  }
+  return new Error("Unable to upload image right now.");
+}
+
 export async function uploadPartnerProfileMedia(
   params: UploadPartnerProfileMediaParams,
 ): Promise<PartnerProfileUploadResult> {
-  const { file, uid, kind } = params;
+  const { file, kind } = params;
   if (!firebaseStorage) {
     throw new Error("Image upload is not configured.");
   }
-  if (!uid || uid.trim().length === 0) {
-    throw new Error("Your partner login session could not be verified. Please login again.");
+  const authUser = (await waitForFirebaseUser()) ?? getCurrentFirebaseUser();
+  const uid = authUser?.uid?.trim();
+  if (!uid) {
+    throw new Error("Please login again to upload photos.");
   }
 
   validateImage(file);
@@ -62,8 +100,13 @@ export async function uploadPartnerProfileMedia(
   const storagePath = `YoPartner/partner-profile/${uid}/${kind}/${timestamp}-${cleanName}`;
   const mediaRef = ref(firebaseStorage, storagePath);
 
-  await uploadBytes(mediaRef, file, { contentType: file.type });
-  const downloadUrl = await getDownloadURL(mediaRef);
+  let downloadUrl = "";
+  try {
+    await uploadBytes(mediaRef, file, { contentType: file.type });
+    downloadUrl = await getDownloadURL(mediaRef);
+  } catch (error) {
+    throw toUploadError(error);
+  }
 
   return {
     fileName: cleanName,

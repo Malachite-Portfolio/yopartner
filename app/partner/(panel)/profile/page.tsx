@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { PARTNER_FIREBASE_UID_KEY, getCurrentFirebaseUser } from "@/lib/auth/firebasePhoneAuth";
 import {
   addPartnerGalleryImage,
   deletePartnerGalleryImage,
@@ -30,13 +29,6 @@ const EMPTY_MEDIA_STATE: PartnerProfileMediaState = {
   profileImageStoragePath: null,
   galleryImages: [],
 };
-
-function resolvePartnerUid() {
-  if (typeof window === "undefined") return "";
-  const storedUid = window.localStorage.getItem(PARTNER_FIREBASE_UID_KEY)?.trim();
-  if (storedUid) return storedUid;
-  return getCurrentFirebaseUser()?.uid ?? "";
-}
 
 export default function PartnerProfilePage() {
   const profileImageInputRef = useRef<HTMLInputElement | null>(null);
@@ -105,16 +97,10 @@ export default function PartnerProfilePage() {
     setSuccessMessage("");
     setErrorMessage("");
     setUploadingProfileImage(true);
-    const uid = resolvePartnerUid();
-    if (!uid) {
-      setUploadingProfileImage(false);
-      setErrorMessage("Your partner login session could not be verified. Please login again.");
-      return;
-    }
 
     const previousStoragePath = media.profileImageStoragePath;
     try {
-      const uploadResult = await uploadPartnerProfileMedia({ file, uid, kind: "profile" });
+      const uploadResult = await uploadPartnerProfileMedia({ file, kind: "profile" });
       const saveResponse = await updatePartnerProfileImage({
         imageUrl: uploadResult.downloadUrl,
         storagePath: uploadResult.storagePath,
@@ -155,15 +141,9 @@ export default function PartnerProfilePage() {
     setSuccessMessage("");
     setErrorMessage("");
     setUploadingGalleryImage(true);
-    const uid = resolvePartnerUid();
-    if (!uid) {
-      setUploadingGalleryImage(false);
-      setErrorMessage("Your partner login session could not be verified. Please login again.");
-      return;
-    }
 
     try {
-      const uploadResult = await uploadPartnerProfileMedia({ file, uid, kind: "gallery" });
+      const uploadResult = await uploadPartnerProfileMedia({ file, kind: "gallery" });
       const saveResponse = await addPartnerGalleryImage({
         imageUrl: uploadResult.downloadUrl,
         storagePath: uploadResult.storagePath,
