@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Camera, CameraOff, Mic, PhoneOff, RefreshCcw } from "lucide-react";
+import { ArrowLeft, Camera, CameraOff, Mic, PhoneOff, RefreshCcw, Volume2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import type {
@@ -60,6 +60,7 @@ export default function VideoCallPage() {
   const searchParams = useSearchParams();
   const routeId = typeof params?.id === "string" ? params.id : "";
   const preferredCompanionId = searchParams.get("companionId") ?? "";
+  const debugCallEnabled = searchParams.get("debugCall") === "1";
   const currentPath = `/call/video/${routeId}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
   const [session, setSession] = useState<SessionRecord | null>(null);
   const [companion, setCompanion] = useState<CompanionRouteProfile | null>(null);
@@ -74,12 +75,19 @@ export default function VideoCallPage() {
   const [isFrontCamera, setIsFrontCamera] = useState(true);
   const [cameraSwitchMessage, setCameraSwitchMessage] = useState("");
   const [audioAssistMessage, setAudioAssistMessage] = useState("");
+  const [speakerEnabled, setSpeakerEnabled] = useState(false);
+  const [audioPlaybackAttempted, setAudioPlaybackAttempted] = useState(false);
+  const [audioPlaybackError, setAudioPlaybackError] = useState("");
+  const [remoteUserCount, setRemoteUserCount] = useState(0);
+  const [localAudioPublished, setLocalAudioPublished] = useState(false);
+  const [setSinkIdSupported, setSetSinkIdSupported] = useState<boolean | null>(null);
   const [joined, setJoined] = useState(false);
   const [needsPermissionAction, setNeedsPermissionAction] = useState(false);
   const [joining, setJoining] = useState(false);
   const [remoteVideoReady, setRemoteVideoReady] = useState(false);
   const [remoteUserJoined, setRemoteUserJoined] = useState(false);
   const [remoteAudioPublished, setRemoteAudioPublished] = useState(false);
+  const [remoteAudioTrackExists, setRemoteAudioTrackExists] = useState(false);
   const [audioPlaybackReady, setAudioPlaybackReady] = useState(false);
   const clientRef = useRef<IAgoraRTCClient | null>(null);
   const localAudioTrackRef = useRef<IMicrophoneAudioTrack | null>(null);
@@ -131,10 +139,17 @@ export default function VideoCallPage() {
     setJoined(false);
     setLocalAudioReady(false);
     setLocalVideoReady(false);
+    setLocalAudioPublished(false);
     setRemoteVideoReady(false);
     setRemoteUserJoined(false);
     setRemoteAudioPublished(false);
+    setRemoteAudioTrackExists(false);
     setAudioPlaybackReady(false);
+    setAudioPlaybackAttempted(false);
+    setAudioPlaybackError("");
+    setRemoteUserCount(0);
+    setSetSinkIdSupported(null);
+    setSpeakerEnabled(false);
     setNeedsPermissionAction(false);
   }, []);
 
@@ -255,17 +270,22 @@ export default function VideoCallPage() {
     };
   }, [cleanupAgora, session?.status]);
 
-  const playRemoteAudio = useCallback(async () => {
+  const playRemoteAudio = useCallback(async (reason: "auto" | "gesture") => {
     const remoteAudioTrack = remoteAudioTrackRef.current;
     if (!remoteAudioTrack) {
       setAudioAssistMessage("Remote audio is not available yet.");
       setAudioPlaybackReady(false);
+      setAudioPlaybackError("Remote audio track missing.");
       return false;
     }
+    setAudioPlaybackAttempted(true);
+    setAudioPlaybackError("");
 
     try {
       const audioElement = remoteAudioElementRef.current;
       if (audioElement) {
+        const supportsSetSinkId = typeof (audioElement as HTMLAudioElement & { setSinkId?: unknown }).setSinkId === "function";
+        setSetSinkIdSupported(supportsSetSinkId);
         const mediaTrack = remoteAudioTrack.getMediaStreamTrack?.();
         if (mediaTrack) {
           audioElement.srcObject = new MediaStream([mediaTrack]);
@@ -277,7 +297,11 @@ export default function VideoCallPage() {
         if (typeof sinkElement.setSinkId === "function") {
           try {
             await sinkElement.setSinkId("default");
-            setAudioAssistMessage("");
+            if (!speakerEnabled && reason === "gesture") {
+              setAudioAssistMessage("Speaker control depends on your browser. Use phone volume/output controls if needed.");
+            } else {
+              setAudioAssistMessage("");
+            }
           } catch {
             setAudioAssistMessage("Speaker control depends on your browser. Use phone volume/output controls if needed.");
           }
@@ -288,13 +312,15 @@ export default function VideoCallPage() {
         remoteAudioTrack.play();
       }
       setAudioPlaybackReady(true);
+      setAudioPlaybackError("");
       return true;
     } catch {
       setAudioAssistMessage("Speaker control depends on your browser. Use phone volume/output controls if needed.");
       setAudioPlaybackReady(false);
+      setAudioPlaybackError("Playback blocked until user interaction.");
       return false;
     }
-  }, []);
+  }, [speakerEnabled]);
 
   const toggleMute = useCallback(async () => {
     const audioTrack = localAudioTrackRef.current;
@@ -422,10 +448,11 @@ export default function VideoCallPage() {
             // Safe to ignore duplicate subscriptions from delayed remote-user sweeps.
           }
           setRemoteAudioPublished(true);
+          setRemoteAudioTrackExists(Boolean(user.audioTrack));
           if (user.audioTrack) {
             remoteAudioTrackRef.current = user.audioTrack;
             await notifyMediaReady();
-            await playRemoteAudio();
+            await playRemoteAudio("auto");
           }
         }
       };
@@ -437,30 +464,38 @@ export default function VideoCallPage() {
 
       client.on("user-joined", (user) => {
         setRemoteUserJoined(true);
+        setRemoteUserCount(client.remoteUsers.length);
         void subscribeRemoteUser(user);
       });
       client.on("user-published", async (user, mediaType) => {
+        setRemoteUserCount(client.remoteUsers.length);
         if (mediaType !== "audio" && mediaType !== "video") return;
         await subscribeRemoteUser(user, mediaType);
       });
 
       client.on("user-unpublished", (_user, mediaType) => {
+        setRemoteUserCount(client.remoteUsers.length);
         if (mediaType === "video") {
           setRemoteVideoReady(false);
           remoteVideoTrackRef.current = null;
         }
         if (mediaType === "audio") {
           setRemoteAudioPublished(false);
+          setRemoteAudioTrackExists(false);
           setAudioPlaybackReady(false);
+          setAudioPlaybackError("Remote user unpublished audio.");
           remoteAudioTrackRef.current = null;
         }
       });
 
       client.on("user-left", () => {
+        setRemoteUserCount(client.remoteUsers.length);
         setRemoteUserJoined(client.remoteUsers.length > 0);
         setRemoteVideoReady(false);
         setRemoteAudioPublished(false);
+        setRemoteAudioTrackExists(false);
         setAudioPlaybackReady(false);
+        setAudioPlaybackError("Remote user left the call.");
         remoteVideoTrackRef.current = null;
         remoteAudioTrackRef.current = null;
       });
@@ -490,11 +525,13 @@ export default function VideoCallPage() {
       setLocalAudioReady(true);
       setLocalVideoReady(true);
       await client.publish([localAudioTrack, localVideoTrack]);
+      setLocalAudioPublished(true);
       await notifyMediaReady();
       if (localVideoContainerRef.current) {
         localVideoTrack.play(localVideoContainerRef.current);
       }
       await sweepRemoteUsers();
+      setRemoteUserCount(client.remoteUsers.length);
       window.setTimeout(() => {
         void sweepRemoteUsers();
       }, 500);
@@ -525,6 +562,16 @@ export default function VideoCallPage() {
       window.clearTimeout(timer);
     };
   }, [joinAgoraVideo, joined, joining, session?.status]);
+
+  const handleSpeakerToggle = useCallback(() => {
+    const nextSpeakerState = !speakerEnabled;
+    setSpeakerEnabled(nextSpeakerState);
+    if (nextSpeakerState || !audioPlaybackReady) {
+      void playRemoteAudio("gesture");
+      return;
+    }
+    setAudioAssistMessage("Speaker off on this device.");
+  }, [audioPlaybackReady, playRemoteAudio, speakerEnabled]);
 
   const handleCancel = async () => {
     if (!session?.id || isCancelling) return;
@@ -668,7 +715,14 @@ export default function VideoCallPage() {
   }
 
   return (
-    <section className="relative h-[100dvh] min-h-[100dvh] overflow-hidden bg-[#020617] text-white">
+    <section
+      className="relative h-[100dvh] min-h-[100dvh] overflow-hidden bg-[#020617] text-white"
+      onClick={() => {
+        if (remoteAudioPublished && !audioPlaybackReady) {
+          void playRemoteAudio("gesture");
+        }
+      }}
+    >
       {exitConfirmModal}
       <div ref={remoteVideoContainerRef} className="absolute inset-0 [&_video]:h-full [&_video]:w-full [&_video]:object-cover" />
       <div className="absolute inset-0 bg-gradient-to-b from-black/65 via-black/10 to-black/75" />
@@ -704,11 +758,11 @@ export default function VideoCallPage() {
           <button
             type="button"
             onClick={() => {
-              void playRemoteAudio();
+              void handleSpeakerToggle();
             }}
             className="mb-3 self-center rounded-full border border-white/30 bg-black/35 px-3 py-1 text-xs text-white"
           >
-            {audioPlaybackReady ? "Speaker" : "Enable sound"}
+            {speakerEnabled ? "Speaker On" : "Speaker Off"}
           </button>
         ) : null}
         <div className="flex items-center justify-between">
@@ -740,7 +794,9 @@ export default function VideoCallPage() {
                 {remoteVideoReady
                   ? "Connected"
                   : remoteAudioPublished
-                    ? "Audio connected. Waiting for video..."
+                    ? audioPlaybackReady
+                      ? "Audio connected. Waiting for video..."
+                      : "Tap speaker or screen to enable audio"
                     : remoteUserJoined
                       ? "Connected. Waiting for video..."
                       : isCallLive
@@ -795,6 +851,18 @@ export default function VideoCallPage() {
           <button
             type="button"
             onClick={() => {
+              void handleSpeakerToggle();
+            }}
+            className={`inline-flex h-12 items-center justify-center gap-2 rounded-full border px-3 text-xs font-semibold ${
+              speakerEnabled ? "border-cyan-300/60 bg-cyan-400/20 text-cyan-100" : "border-white/25 bg-white/10 text-white"
+            }`}
+          >
+            <Volume2 size={16} />
+            <span>{speakerEnabled ? "On" : "Off"}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
               void handleCancel();
             }}
             className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-[#dc2626] text-white shadow-lg shadow-red-950/35"
@@ -814,8 +882,34 @@ export default function VideoCallPage() {
           </button>
           </div>
         </div>
+        {debugCallEnabled ? (
+          <div className="mt-2 rounded-xl border border-white/20 bg-black/35 p-3 text-xs text-white/85">
+            <p>joined: {String(joined)}</p>
+            <p>local mic published: {String(localAudioPublished)}</p>
+            <p>remote user count: {remoteUserCount}</p>
+            <p>remote audio ready: {String(remoteAudioPublished)}</p>
+            <p>remote audio track exists: {String(remoteAudioTrackExists)}</p>
+            <p>audio playback attempted: {String(audioPlaybackAttempted)}</p>
+            <p>audio playback error: {audioPlaybackError || "-"}</p>
+            <p>speakerEnabled: {String(speakerEnabled)}</p>
+            <p>setSinkId supported: {setSinkIdSupported == null ? "unknown" : String(setSinkIdSupported)}</p>
+          </div>
+        ) : null}
       </div>
-      <audio ref={remoteAudioElementRef} className="hidden" autoPlay playsInline />
+      <audio
+        ref={remoteAudioElementRef}
+        className="hidden"
+        autoPlay
+        playsInline
+        onPlay={() => {
+          setAudioPlaybackReady(true);
+          setAudioPlaybackError("");
+        }}
+        onError={() => {
+          setAudioPlaybackReady(false);
+          setAudioPlaybackError("Audio element playback failed.");
+        }}
+      />
     </section>
   );
 }

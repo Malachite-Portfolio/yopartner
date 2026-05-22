@@ -45,6 +45,7 @@ export default function AudioCallPage() {
   const searchParams = useSearchParams();
   const routeId = typeof params?.id === "string" ? params.id : "";
   const preferredCompanionId = searchParams.get("companionId") ?? "";
+  const debugCallEnabled = searchParams.get("debugCall") === "1";
   const currentPath = `/call/audio/${routeId}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
   const [session, setSession] = useState<SessionRecord | null>(null);
   const [companion, setCompanion] = useState<CompanionRouteProfile | null>(null);
@@ -59,8 +60,14 @@ export default function AudioCallPage() {
   const [joining, setJoining] = useState(false);
   const [remoteAudioReady, setRemoteAudioReady] = useState(false);
   const [remoteAudioPublished, setRemoteAudioPublished] = useState(false);
+  const [remoteAudioTrackExists, setRemoteAudioTrackExists] = useState(false);
   const [audioPlaybackReady, setAudioPlaybackReady] = useState(false);
-  const [speakerHintVisible, setSpeakerHintVisible] = useState(false);
+  const [speakerEnabled, setSpeakerEnabled] = useState(false);
+  const [audioPlaybackAttempted, setAudioPlaybackAttempted] = useState(false);
+  const [audioPlaybackError, setAudioPlaybackError] = useState("");
+  const [remoteUserCount, setRemoteUserCount] = useState(0);
+  const [localAudioPublished, setLocalAudioPublished] = useState(false);
+  const [setSinkIdSupported, setSetSinkIdSupported] = useState<boolean | null>(null);
   const [speakerMessage, setSpeakerMessage] = useState("");
   const clientRef = useRef<IAgoraRTCClient | null>(null);
   const localAudioTrackRef = useRef<IMicrophoneAudioTrack | null>(null);
@@ -102,9 +109,15 @@ export default function AudioCallPage() {
     }
     setJoined(false);
     setLocalAudioReady(false);
+    setLocalAudioPublished(false);
     setRemoteAudioReady(false);
     setRemoteAudioPublished(false);
+    setRemoteAudioTrackExists(false);
     setAudioPlaybackReady(false);
+    setAudioPlaybackAttempted(false);
+    setAudioPlaybackError("");
+    setRemoteUserCount(0);
+    setSetSinkIdSupported(null);
     setNeedsPermissionAction(false);
   }, []);
 
@@ -230,18 +243,22 @@ export default function AudioCallPage() {
     void localAudioTrackRef.current.setEnabled(!isMuted);
   }, [isMuted]);
 
-  const replayRemoteAudio = useCallback(async () => {
+  const replayRemoteAudio = useCallback(async (reason: "auto" | "gesture") => {
     const remoteTrack = remoteAudioTrackRef.current;
     if (!remoteTrack) {
-      setSpeakerHintVisible(true);
       setSpeakerMessage("Remote audio is not available yet.");
       setAudioPlaybackReady(false);
+      setAudioPlaybackError("Remote audio track missing.");
       return false;
     }
+    setAudioPlaybackAttempted(true);
+    setAudioPlaybackError("");
 
     try {
       const audioElement = remoteAudioElementRef.current;
       if (audioElement) {
+        const supportsSetSinkId = typeof (audioElement as HTMLAudioElement & { setSinkId?: unknown }).setSinkId === "function";
+        setSetSinkIdSupported(supportsSetSinkId);
         const mediaTrack = remoteTrack.getMediaStreamTrack?.();
         if (mediaTrack) {
           audioElement.srcObject = new MediaStream([mediaTrack]);
@@ -253,7 +270,11 @@ export default function AudioCallPage() {
         if (typeof sinkElement.setSinkId === "function") {
           try {
             await sinkElement.setSinkId("default");
-            setSpeakerMessage("");
+            if (!speakerEnabled && reason === "gesture") {
+              setSpeakerMessage("Speaker control depends on your browser. Use phone volume/output controls if needed.");
+            } else {
+              setSpeakerMessage("");
+            }
           } catch {
             setSpeakerMessage("Speaker control depends on your browser. Use phone volume/output controls if needed.");
           }
@@ -264,15 +285,15 @@ export default function AudioCallPage() {
         remoteTrack.play();
       }
       setAudioPlaybackReady(true);
-      setSpeakerHintVisible(false);
+      setAudioPlaybackError("");
       return true;
     } catch {
-      setSpeakerHintVisible(true);
+      setAudioPlaybackError("Playback blocked until user interaction.");
       setSpeakerMessage("Speaker control depends on your browser. Use phone volume/output controls if needed.");
       setAudioPlaybackReady(false);
       return false;
     }
-  }, []);
+  }, [speakerEnabled]);
 
   const toggleMute = useCallback(async () => {
     const track = localAudioTrackRef.current;
@@ -304,39 +325,46 @@ export default function AudioCallPage() {
         hasAudio?: boolean;
         audioTrack?: IRemoteAudioTrack | null;
       }) => {
-        if (!user.hasAudio) return;
+        if (!user.hasAudio && !user.audioTrack) return;
         setRemoteAudioPublished(true);
         await client.subscribe(user as Parameters<typeof client.subscribe>[0], "audio");
         remoteAudioTrackRef.current = user.audioTrack ?? null;
+        setRemoteAudioTrackExists(Boolean(user.audioTrack));
         setRemoteAudioReady(Boolean(user.audioTrack));
         await notifyMediaReady();
         if (user.audioTrack) {
-          await replayRemoteAudio();
+          await replayRemoteAudio("auto");
         }
       };
 
       client.on("user-joined", (user) => {
+        setRemoteUserCount(client.remoteUsers.length);
         void syncRemoteAudioUser(user);
       });
       client.on("user-published", async (user, mediaType) => {
+        setRemoteUserCount(client.remoteUsers.length);
         if (mediaType === "audio") {
           await syncRemoteAudioUser(user);
         }
       });
 
       client.on("user-unpublished", (_user, mediaType) => {
+        setRemoteUserCount(client.remoteUsers.length);
         if (mediaType === "audio") {
           setRemoteAudioPublished(false);
           setRemoteAudioReady(false);
+          setRemoteAudioTrackExists(false);
           setAudioPlaybackReady(false);
           remoteAudioTrackRef.current = null;
-          setSpeakerHintVisible(true);
+          setAudioPlaybackError("Remote user unpublished audio.");
         }
       });
 
       client.on("user-left", () => {
+        setRemoteUserCount(client.remoteUsers.length);
         setRemoteAudioPublished(false);
         setRemoteAudioReady(false);
+        setRemoteAudioTrackExists(false);
         setAudioPlaybackReady(false);
         remoteAudioTrackRef.current = null;
       });
@@ -364,17 +392,20 @@ export default function AudioCallPage() {
       localAudioTrackRef.current = localAudioTrack;
       setLocalAudioReady(true);
       await client.publish([localAudioTrack]);
+      setLocalAudioPublished(true);
       await notifyMediaReady();
+      setRemoteUserCount(client.remoteUsers.length);
       await Promise.all(
         client.remoteUsers.map(async (remoteUser) => {
-          if (!remoteUser.hasAudio) return;
+          if (!remoteUser.hasAudio && !remoteUser.audioTrack) return;
           await client.subscribe(remoteUser, "audio");
           remoteAudioTrackRef.current = remoteUser.audioTrack ?? null;
+          setRemoteAudioTrackExists(Boolean(remoteUser.audioTrack));
           setRemoteAudioPublished(true);
           setRemoteAudioReady(Boolean(remoteUser.audioTrack));
           await notifyMediaReady();
           if (remoteUser.audioTrack) {
-            await replayRemoteAudio();
+            await replayRemoteAudio("auto");
           }
         }),
       );
@@ -465,8 +496,14 @@ export default function AudioCallPage() {
     />
   );
 
-  const handleEnableSpeaker = () => {
-    void replayRemoteAudio();
+  const handleSpeakerToggle = () => {
+    const nextSpeakerState = !speakerEnabled;
+    setSpeakerEnabled(nextSpeakerState);
+    if (nextSpeakerState || !audioPlaybackReady) {
+      void replayRemoteAudio("gesture");
+      return;
+    }
+    setSpeakerMessage("Speaker off on this device.");
   };
 
   if (loading) {
@@ -551,7 +588,14 @@ export default function AudioCallPage() {
   }
 
   return (
-    <section className="relative h-[100dvh] min-h-[100dvh] overflow-hidden bg-gradient-to-b from-[#f3fbf9] via-[#e8f6f3] to-[#d9efea] px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] text-[#0f172a] sm:px-6">
+    <section
+      className="relative h-[100dvh] min-h-[100dvh] overflow-hidden bg-gradient-to-b from-[#f3fbf9] via-[#e8f6f3] to-[#d9efea] px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] text-[#0f172a] sm:px-6"
+      onClick={() => {
+        if (remoteAudioPublished && !audioPlaybackReady) {
+          void replayRemoteAudio("gesture");
+        }
+      }}
+    >
       {exitConfirmModal}
       <div className="mx-auto flex h-full w-full max-w-xl flex-col">
         <div className="flex items-center justify-between">
@@ -599,11 +643,9 @@ export default function AudioCallPage() {
           <p className="mt-2 text-base text-[#334155]">
             {remoteAudioPublished
               ? audioPlaybackReady
-                ? "Connected"
-                : "Audio ready. Tap Enable sound."
-              : isCallLive
-                ? "Waiting for audio..."
-                : "Connecting..."}
+                ? "Audio connected"
+                : "Tap speaker or screen to enable audio"
+              : "Connecting audio..."}
           </p>
           <p className="mt-1 text-[30px] font-semibold tabular-nums text-[#0f172a]">
             {String(Math.floor(elapsedSeconds / 60)).padStart(2, "0")}:{String(elapsedSeconds % 60).padStart(2, "0")}
@@ -622,17 +664,8 @@ export default function AudioCallPage() {
             </span>
           )}
         </div>
-        {session.status === "LIVE" && !remoteAudioPublished ? (
-          <p className="mt-2 text-center text-xs text-[#334155]">Waiting for audio...</p>
-        ) : null}
-        {(remoteAudioPublished && !audioPlaybackReady) || speakerHintVisible ? (
-          <button
-            type="button"
-            onClick={handleEnableSpeaker}
-            className="mx-auto mt-2 rounded-full border border-[#b7dfd7] bg-white px-3 py-1 text-xs text-[#0f766e]"
-          >
-            Enable sound
-          </button>
+        {remoteAudioPublished && !audioPlaybackReady ? (
+          <p className="mt-2 text-center text-xs text-[#334155]">Tap speaker or screen to enable audio</p>
         ) : null}
         <div className="pb-2 pt-4">
           <div className="rounded-[28px] border border-[#cde8e2] bg-white/80 p-4 shadow-[0_20px_45px_rgba(15,23,42,0.12)] backdrop-blur">
@@ -651,10 +684,13 @@ export default function AudioCallPage() {
             </button>
             <button
               type="button"
-              onClick={handleEnableSpeaker}
-              className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-[#cfe7e2] bg-white text-[#334155]"
+              onClick={handleSpeakerToggle}
+              className={`inline-flex h-14 items-center justify-center gap-2 rounded-full border px-4 text-sm font-semibold ${
+                speakerEnabled ? "border-[#0d9488] bg-[#d6f3ed] text-[#0f766e]" : "border-[#cfe7e2] bg-white text-[#334155]"
+              }`}
             >
               <Volume2 size={20} />
+              <span>{speakerEnabled ? "Speaker On" : "Speaker Off"}</span>
             </button>
             <button
               type="button"
@@ -668,8 +704,34 @@ export default function AudioCallPage() {
             </div>
           </div>
         </div>
+        {debugCallEnabled ? (
+          <div className="mt-2 rounded-xl border border-slate-300 bg-white/80 p-3 text-xs text-slate-700">
+            <p>joined: {String(joined)}</p>
+            <p>local mic published: {String(localAudioPublished)}</p>
+            <p>remote user count: {remoteUserCount}</p>
+            <p>remote audio ready: {String(remoteAudioReady)}</p>
+            <p>remote audio track exists: {String(remoteAudioTrackExists)}</p>
+            <p>audio playback attempted: {String(audioPlaybackAttempted)}</p>
+            <p>audio playback error: {audioPlaybackError || "-"}</p>
+            <p>speakerEnabled: {String(speakerEnabled)}</p>
+            <p>setSinkId supported: {setSinkIdSupported == null ? "unknown" : String(setSinkIdSupported)}</p>
+          </div>
+        ) : null}
       </div>
-      <audio ref={remoteAudioElementRef} className="hidden" autoPlay playsInline />
+      <audio
+        ref={remoteAudioElementRef}
+        className="hidden"
+        autoPlay
+        playsInline
+        onPlay={() => {
+          setAudioPlaybackReady(true);
+          setAudioPlaybackError("");
+        }}
+        onError={() => {
+          setAudioPlaybackReady(false);
+          setAudioPlaybackError("Audio element playback failed.");
+        }}
+      />
     </section>
   );
 }
