@@ -11,18 +11,12 @@ import { getUserAuthState, restoreUserAuthSessionFromFirebase, subscribeUserAuth
 
 const navItems = [
   { label: "Talk Now", href: "/connect-now" },
-  { label: "How it Works", href: "/how-it-works" },
-  { label: "Safety", href: "/trust-safety" },
-  { label: "Become a Companion", href: "/partner" },
-  { label: "Support", href: "/support" },
-];
-
-const homeNavItems = [
-  { label: "Talk Now", href: "/connect-now" },
   { label: "Home Visit", href: "/home-visit" },
   { label: "Safety", href: "/trust-safety" },
   { label: "Become a Companion", href: "/partner" },
 ];
+
+const homeNavItems = navItems;
 
 function isActive(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
@@ -72,14 +66,13 @@ export function AppHeader() {
       className={
         isHome
           ? "fixed inset-x-0 top-0 z-50 h-16 border-b border-[#d8e5df] bg-[#eff8f4]/96 backdrop-blur"
-          : "sticky top-0 z-50 h-[72px] border-b border-[#dceae5] bg-[#fffdf8]/95 backdrop-blur"
+          : "sticky top-0 z-50 h-16 border-b border-[#d8e5df] bg-[#eff8f4]/96 backdrop-blur"
       }
     >
-      <div className={`mx-auto flex h-full w-full items-center justify-between px-4 lg:px-8 ${isHome ? "max-w-[1180px]" : "max-w-[1600px]"}`}>
+      <div className="mx-auto flex h-full w-full max-w-[1180px] items-center justify-between px-4 lg:px-8">
         <Link href="/" className="inline-flex min-w-0 items-center gap-2" onClick={() => setOpen(false)}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/images/logo.png" alt="YoPartner" className={isHome ? "h-6 w-6 object-contain" : "h-auto max-h-12 w-[130px] object-contain"} />
-          {isHome ? <span className="text-[19px] font-semibold text-[#102f2b]">YoPartner</span> : null}
+          <img src="/images/logo.png" alt="YoPartner" className="h-10 w-auto object-contain sm:h-11 lg:h-[52px]" />
         </Link>
 
         <nav className={`hidden items-center lg:flex ${isHome ? "gap-6 text-[13px] text-[#203934]" : "gap-7 text-[15px] text-slate-600"}`}>
@@ -117,12 +110,10 @@ export function AppHeader() {
           ) : (
             <Link
               href="/login"
-              className={`inline-flex items-center gap-1.5 rounded-full px-4 text-sm font-semibold !text-white shadow-sm ${
-                isHome ? "h-9 bg-[#00433d] hover:bg-[#005c55]" : "h-10 bg-[#0f766e] hover:bg-[#115e59]"
-              }`}
+              className="inline-flex h-9 items-center gap-1.5 rounded-full bg-[#00433d] px-4 text-sm font-semibold !text-white shadow-sm hover:bg-[#005c55]"
             >
               <LogIn size={15} className="text-white" />
-              {isHome ? "Get Started" : "Talk to someone"}
+              Get Started
             </Link>
           )}
         </div>
@@ -139,12 +130,10 @@ export function AppHeader() {
           ) : (
             <Link
               href="/login"
-              className={`inline-flex h-9 items-center gap-1 rounded-full px-3 text-xs font-semibold !text-white ${
-                isHome ? "bg-[#00433d]" : "bg-gradient-to-r from-[#2563EB] to-[#00A6B2]"
-              }`}
+              className="inline-flex h-9 items-center gap-1 rounded-full bg-[#00433d] px-3 text-xs font-semibold !text-white"
             >
               <LogIn size={13} className="text-white" />
-              {isHome ? "Get Started" : "Login"}
+              Get Started
             </Link>
           )}
 
@@ -221,7 +210,7 @@ export function AppHeader() {
                 className="col-span-2 inline-flex items-center justify-center rounded-xl bg-[#0f766e] px-3 py-2 text-center text-sm font-medium text-white"
                 onClick={() => setOpen(false)}
               >
-                Talk to someone
+                Get Started
               </Link>
             )}
           </div>

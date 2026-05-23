@@ -13,8 +13,7 @@ const navItems = [
   { label: "Talk Now", href: "/connect-now" },
   { label: "Home Visit", href: "/home-visit" },
   { label: "Safety", href: "/trust-safety" },
-  { label: "Stories", href: "/client-diaries" },
-  { label: "Support", href: "/support" },
+  { label: "Become a Companion", href: "/partner" },
 ];
 
 function isActive(pathname: string, href: string) {
@@ -43,27 +42,35 @@ export function ConnectAppHeader() {
     };
   }, []);
 
+  const isHome = pathname === "/";
+
   return (
-    <header className="sticky top-0 z-50 h-16 border-b border-[#dceae5] bg-[#fffdf8]/95 backdrop-blur sm:h-[72px]">
-      <div className="mx-auto flex h-full w-full max-w-[1500px] items-center justify-between px-4 lg:px-8">
+    <header className="sticky top-0 z-50 h-16 border-b border-[#d8e5df] bg-[#eff8f4]/96 backdrop-blur">
+      <div className="mx-auto flex h-full w-full max-w-[1180px] items-center justify-between px-4 lg:px-8">
         <Link href="/" className="inline-flex items-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/images/logo.png" alt="YoPartner" className="h-auto max-h-10 w-[112px] object-contain sm:max-h-12 sm:w-[130px]" />
+          <img src="/images/logo.png" alt="YoPartner" className="h-10 w-auto object-contain sm:h-11 lg:h-[52px]" />
         </Link>
 
-        <nav className="hidden items-center gap-7 text-[15px] text-slate-600 xl:flex">
-          {navItems.map((item) => (
-            <Link
-              key={item.label}
-              href={item.href}
-              className={`transition hover:text-[#0f766e] ${isActive(pathname, item.href) ? "font-semibold text-slate-900" : ""}`}
-            >
-              {item.label}
-            </Link>
-          ))}
+        <nav className="hidden items-center gap-6 text-[13px] text-[#203934] lg:flex">
+          {navItems.map((item) => {
+            const active = isActive(pathname, item.href);
+            const homeForcedActive = isHome && item.label === "Talk Now";
+            const showActive = active || homeForcedActive;
+            return (
+              <Link
+                key={item.label}
+                href={item.href}
+                className={`relative pb-1 transition hover:text-[#0f766e] ${showActive ? "font-semibold text-[#123f30]" : ""}`}
+              >
+                {item.label}
+                {showActive ? <span className="absolute inset-x-0 -bottom-[2px] h-[1.5px] rounded-full bg-[#123f30]" /> : null}
+              </Link>
+            );
+          })}
         </nav>
 
-        <div className="hidden items-center gap-3 xl:flex">
+        <div className="hidden items-center gap-3 lg:flex">
           {!authReady ? (
             <div className="h-10 w-[170px] rounded-full border border-[#dceae5] bg-white/70" />
           ) : loggedIn ? (
@@ -80,15 +87,15 @@ export function ConnectAppHeader() {
           ) : (
             <Link
               href="/login"
-              className="inline-flex h-10 items-center gap-1.5 rounded-full bg-[#0f766e] px-4 text-sm font-semibold text-white transition hover:bg-[#115e59]"
+              className="inline-flex h-9 items-center gap-1.5 rounded-full bg-[#00433d] px-4 text-sm font-semibold !text-white transition hover:bg-[#005c55]"
             >
-              <LogIn size={15} />
-              Talk to someone
+              <LogIn size={15} className="text-white" />
+              Get Started
             </Link>
           )}
         </div>
 
-        <div className="flex items-center gap-2 xl:hidden">
+        <div className="flex items-center gap-2 lg:hidden">
           {!authReady ? (
             <div className="h-9 w-[98px] rounded-full border border-slate-200 bg-white/70" />
           ) : loggedIn ? (
@@ -100,10 +107,10 @@ export function ConnectAppHeader() {
           ) : (
             <Link
               href="/login"
-              className="inline-flex h-9 items-center gap-1 rounded-full bg-[#0f766e] px-3 text-xs font-semibold text-white transition hover:bg-[#115e59]"
+              className="inline-flex h-9 items-center gap-1 rounded-full bg-[#00433d] px-3 text-xs font-semibold !text-white transition hover:bg-[#005c55]"
             >
-              <LogIn size={13} />
-              Talk
+              <LogIn size={13} className="text-white" />
+              Get Started
             </Link>
           )}
 
@@ -118,7 +125,7 @@ export function ConnectAppHeader() {
       </div>
 
       {open && (
-        <div className="border-t border-slate-200 bg-white px-4 py-4 xl:hidden">
+        <div className="border-t border-white/70 bg-white/90 px-4 py-4 backdrop-blur lg:hidden">
           <nav className="space-y-2 text-sm">
             {navItems.map((item) => (
               <Link
@@ -174,10 +181,10 @@ export function ConnectAppHeader() {
             ) : (
               <Link
                 href="/login"
-                className="col-span-2 inline-flex items-center justify-center rounded-xl bg-[#0f766e] px-3 py-2 text-center text-sm font-medium text-white transition hover:bg-[#115e59]"
+                className="col-span-2 inline-flex items-center justify-center rounded-xl bg-[#00433d] px-3 py-2 text-center text-sm font-medium text-white transition hover:bg-[#005c55]"
                 onClick={() => setOpen(false)}
               >
-                Talk to someone
+                Get Started
               </Link>
             )}
           </div>
