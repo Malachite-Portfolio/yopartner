@@ -50,12 +50,20 @@ export default function HomePage() {
           <div className="relative mx-auto h-[390px] w-full max-w-[470px] sm:h-[440px] lg:h-[470px] lg:max-w-[500px]">
             <article className="absolute left-[4%] top-[22%] h-[250px] w-[44%] overflow-hidden rounded-[24px] border border-white/90 bg-white shadow-[0_16px_48px_rgba(0,67,61,0.18)] sm:h-[290px]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/images/home-portrait-1.svg" alt="Companion portrait" className="h-full w-full object-cover" />
+              <img
+                src="https://i.pinimg.com/736x/bb/5b/42/bb5b4215d43654b0fe2fe868d7022d38.jpg"
+                alt="Companion portrait"
+                className="h-full w-full object-cover"
+              />
             </article>
 
             <article className="absolute right-[2%] top-[5%] h-[290px] w-[46%] overflow-hidden rounded-[24px] border border-white/90 bg-white shadow-[0_16px_48px_rgba(0,67,61,0.2)] sm:h-[340px]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/images/home-portrait-2.svg" alt="Companion portrait" className="h-full w-full object-cover" />
+              <img
+                src="https://photolive.in/wp-content/uploads/2025/10/Cute-Girl-Pic-for-Dp-5.jpg"
+                alt="Companion portrait"
+                className="h-full w-full object-cover"
+              />
             </article>
 
             <div className="absolute left-[10%] top-[56%] w-[260px] rounded-[24px] border border-white/80 bg-white/78 p-4 shadow-[0_14px_36px_rgba(0,67,61,0.2)] backdrop-blur-md sm:left-[14%]">
