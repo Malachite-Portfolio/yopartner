@@ -117,11 +117,11 @@ export function AppHeader() {
           ) : (
             <Link
               href="/login"
-              className={`inline-flex items-center gap-1.5 rounded-full px-4 text-sm font-semibold text-white shadow-sm ${
+              className={`inline-flex items-center gap-1.5 rounded-full px-4 text-sm font-semibold !text-white shadow-sm ${
                 isHome ? "h-9 bg-[#00433d] hover:bg-[#005c55]" : "h-10 bg-[#0f766e] hover:bg-[#115e59]"
               }`}
             >
-              <LogIn size={15} />
+              <LogIn size={15} className="text-white" />
               {isHome ? "Get Started" : "Talk to someone"}
             </Link>
           )}
@@ -139,11 +139,11 @@ export function AppHeader() {
           ) : (
             <Link
               href="/login"
-              className={`inline-flex h-9 items-center gap-1 rounded-full px-3 text-xs font-semibold text-white ${
+              className={`inline-flex h-9 items-center gap-1 rounded-full px-3 text-xs font-semibold !text-white ${
                 isHome ? "bg-[#00433d]" : "bg-gradient-to-r from-[#2563EB] to-[#00A6B2]"
               }`}
             >
-              <LogIn size={13} />
+              <LogIn size={13} className="text-white" />
               {isHome ? "Get Started" : "Login"}
             </Link>
           )}

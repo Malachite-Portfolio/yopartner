@@ -33,10 +33,10 @@ export default function HomePage() {
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
                 href="/connect-now"
-                className="inline-flex h-11 items-center gap-2 rounded-full bg-[#00433d] px-6 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(0,67,61,0.24)] transition hover:-translate-y-0.5 hover:bg-[#005c55]"
+                className="inline-flex h-11 items-center gap-2 rounded-full bg-[#00433d] px-6 text-sm font-semibold !text-white shadow-[0_12px_30px_rgba(0,67,61,0.24)] transition hover:-translate-y-0.5 hover:bg-[#005c55]"
               >
                 Find a Companion
-                <ArrowRight size={15} />
+                <ArrowRight size={15} className="text-white" />
               </Link>
               <Link
                 href="/about"
@@ -181,7 +181,7 @@ export default function HomePage() {
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link
               href="/partner"
-              className="inline-flex h-11 items-center justify-center rounded-full bg-[#00433d] px-7 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(0,67,61,0.22)] transition hover:-translate-y-0.5 hover:bg-[#005c55]"
+              className="inline-flex h-11 items-center justify-center rounded-full bg-[#00433d] px-7 text-sm font-semibold !text-white shadow-[0_10px_24px_rgba(0,67,61,0.22)] transition hover:-translate-y-0.5 hover:bg-[#005c55]"
             >
               Become a Partner
             </Link>
