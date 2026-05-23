@@ -50,7 +50,7 @@ export function Footer() {
         title: "Platform",
         links: [
           { label: "Find a Companion", href: "/connect-now" },
-          { label: "How It Works", href: "/how-it-works" },
+          { label: "Home Visit", href: "/home-visit" },
           { label: "Become a Partner", href: "/partner" },
         ],
       },
@@ -73,28 +73,28 @@ export function Footer() {
     ];
 
     return (
-      <footer className="border-t border-[#dce7dd] bg-[#123f30] text-[#eef8f2]">
+      <footer className="border-t border-[#dce7dd] bg-[#EEF8F5] text-[#00433d]">
         <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
           <div className="grid gap-10 lg:grid-cols-[1.2fr_1.8fr]">
             <div>
               <Link href="/" className="inline-flex items-center gap-3">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/images/logo.png" alt="YoPartner" className="h-auto max-h-12 w-[128px] object-contain brightness-0 invert" />
+                <img src="/images/logo.png" alt="YoPartner" className="h-auto max-h-12 w-[128px] object-contain" />
                 <span className="text-lg font-semibold">YoPartner</span>
               </Link>
-              <p className="mt-4 max-w-sm text-sm leading-7 text-[#c8ded3]">
-                Calm, verified, strictly platonic companionship for people who want to feel heard.
+              <p className="mt-4 max-w-sm text-sm leading-7 text-[#5a7069]">
+                Your safe space for emotional connection and authentic platonic support.
               </p>
             </div>
 
             <div className="grid gap-8 sm:grid-cols-3">
               {homeColumns.map((column) => (
                 <div key={column.title}>
-                  <p className="font-semibold text-white">{column.title}</p>
-                  <ul className="mt-3 space-y-2 text-sm text-[#c8ded3]">
+                  <p className="font-semibold text-[#00433d]">{column.title}</p>
+                  <ul className="mt-3 space-y-2 text-sm text-[#5a7069]">
                     {column.links.map((item) => (
                       <li key={item.label}>
-                        <Link href={item.href} className="transition hover:text-white">
+                        <Link href={item.href} className="transition hover:text-[#00433d]">
                           {item.label}
                         </Link>
                       </li>
@@ -105,16 +105,16 @@ export function Footer() {
             </div>
           </div>
 
-          <div className="mt-10 flex flex-col gap-4 border-t border-white/15 pt-6 text-sm text-[#c8ded3] sm:flex-row sm:items-center sm:justify-between">
+          <div className="mt-10 flex flex-col gap-4 border-t border-[#cfe4d7] pt-6 text-sm text-[#5a7069] sm:flex-row sm:items-center sm:justify-between">
             <p>Copyright (c) {new Date().getFullYear()} YoPartner. All rights reserved.</p>
             <div className="flex items-center gap-3">
-              <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-white/10">
+              <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#cfe4d7] bg-white/70">
                 <Globe size={15} />
               </span>
-              <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-white/10">
+              <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#cfe4d7] bg-white/70">
                 <MessageCircle size={15} />
               </span>
-              <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-white/10">
+              <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#cfe4d7] bg-white/70">
                 <ShieldCheck size={15} />
               </span>
             </div>

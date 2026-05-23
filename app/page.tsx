@@ -1,4 +1,4 @@
-import { Heart, MessageCircle, ShieldCheck, Sparkles, Star, UsersRound } from "lucide-react";
+import { HeartHandshake, MessageCircleHeart, ShieldCheck, Sparkles, UsersRound } from "lucide-react";
 import { Outfit } from "next/font/google";
 import Link from "next/link";
 
@@ -7,168 +7,147 @@ const outfit = Outfit({
   variable: "--font-outfit-home",
 });
 
-const wellbeingCards = [
-  {
-    title: "Verified Safety First",
-    text: "Every companion is reviewed, identity checked, and guided by clear boundaries.",
-    icon: ShieldCheck,
-    tone: "bg-[#ecf8f3] text-[#145c43]",
-  },
-  {
-    title: "Heart-to-Heart",
-    text: "Talk with someone who listens gently, remembers context, and keeps things human.",
-    icon: Heart,
-    tone: "bg-[#f7efff] text-[#6f4aa8]",
-  },
-  {
-    title: "No Judgment",
-    text: "Share what is on your mind without pressure, advice overload, or awkwardness.",
-    icon: Sparkles,
-    tone: "bg-[#fff4de] text-[#936415]",
-  },
-  {
-    title: "Real-time Connections",
-    text: "Start with chat, audio, or video when you need a calm presence in the moment.",
-    icon: MessageCircle,
-    tone: "bg-[#e8f5f3] text-[#0f766e]",
-  },
-];
-
-const companions = [
-  { name: "Aanya", tag: "Calm listener", status: "Online" },
-  { name: "Meera", tag: "Gentle check-ins", status: "Available" },
-  { name: "Riya", tag: "Everyday support", status: "Online" },
-];
-
 export default function HomePage() {
   return (
-    <div className={`${outfit.variable} bg-[#fbf8ef] font-[var(--font-outfit-home)] text-[#1a2e25]`}>
-      <section className="relative isolate overflow-hidden px-4 pb-16 pt-28 sm:px-6 lg:px-8 lg:pb-24 lg:pt-32">
-        <div className="absolute inset-x-0 top-0 -z-10 h-[78%] bg-[radial-gradient(circle_at_20%_16%,rgba(209,232,219,0.95),transparent_32%),radial-gradient(circle_at_82%_12%,rgba(231,218,246,0.78),transparent_28%),linear-gradient(180deg,#fbf8ef_0%,#edf7f1_100%)]" />
-        <div className="mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[1.03fr_0.97fr]">
+    <div className={`${outfit.variable} overflow-hidden bg-[#FFFDF8] font-[var(--font-outfit-home)] text-[#102f2b]`}>
+      <section className="relative isolate min-h-[calc(100svh-1px)] px-4 pb-[4.5rem] pt-28 sm:px-6 lg:px-8 lg:pb-24 lg:pt-[8.5rem]">
+        <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_16%_18%,rgba(238,248,245,1),transparent_28%),radial-gradient(circle_at_84%_18%,rgba(199,210,254,0.46),transparent_24%),radial-gradient(circle_at_72%_82%,rgba(227,255,254,0.82),transparent_30%),linear-gradient(180deg,#FFFDF8_0%,#F4FBF8_58%,#EEF8F5_100%)]" />
+        <div className="mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[0.95fr_1.05fr]">
           <div className="max-w-3xl">
-            <span className="inline-flex items-center gap-2 rounded-full border border-[#cfe4d7] bg-white/55 px-4 py-2 text-sm font-semibold text-[#315b48] shadow-sm backdrop-blur">
+            <span className="inline-flex items-center gap-2 rounded-full border border-[#cce3da] bg-white/60 px-4 py-2 text-sm font-semibold text-[#00433d] shadow-sm backdrop-blur-md">
               <UsersRound size={16} />
-              Trusted community support
+              Trusted Community Support
             </span>
-            <h1 className="mt-7 max-w-4xl text-5xl font-semibold leading-[1.02] text-[#133b2e] sm:text-6xl lg:text-7xl">
+            <h1 className="mt-7 max-w-4xl text-[3.35rem] font-semibold leading-[0.98] text-[#00433d] sm:text-7xl lg:text-[5.45rem]">
               Your safe space for authentic connection.
             </h1>
-            <p className="mt-6 max-w-2xl text-lg leading-8 text-[#4d675d]">
-              YoPartner helps you find verified companions for calm conversations, emotional support, and everyday moments when being heard matters.
+            <p className="mt-6 max-w-2xl text-lg leading-8 text-[#516962]">
+              Experience compassionate listening and platonic companionship. We provide a digital sanctuary where you can express yourself freely without judgment.
             </p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
               <Link
                 href="/connect-now"
-                className="inline-flex min-h-12 items-center justify-center rounded-full bg-[#123f30] px-6 text-sm font-semibold text-white shadow-[0_18px_38px_rgba(18,63,48,0.22)] hover:bg-[#0d3226]"
+                className="inline-flex min-h-12 items-center justify-center rounded-full bg-[#00433d] px-7 text-sm font-semibold text-white shadow-[0_18px_42px_rgba(0,67,61,0.24)] hover:-translate-y-0.5 hover:bg-[#005c55]"
               >
-                Talk to Someone Now
+                Find a Companion
               </Link>
               <Link
-                href="/partner"
-                className="inline-flex min-h-12 items-center justify-center rounded-full border border-[#b9d5c7] bg-white/65 px-6 text-sm font-semibold text-[#123f30] backdrop-blur hover:bg-white"
+                href="/about"
+                className="inline-flex min-h-12 items-center justify-center rounded-full border border-[#bdd7cf] bg-white/70 px-7 text-sm font-semibold text-[#00433d] backdrop-blur hover:-translate-y-0.5 hover:bg-white"
               >
-                Become a Partner
+                Learn Our Story
               </Link>
             </div>
           </div>
 
-          <div className="relative min-h-[430px] lg:min-h-[560px]">
-            <div className="absolute right-0 top-4 w-[78%] rounded-[34px] border border-white/70 bg-white/45 p-5 shadow-[0_30px_80px_rgba(57,92,77,0.16)] backdrop-blur-xl sm:w-[68%] lg:w-[74%]">
-              <div className="rounded-[26px] bg-[#e5f4ec] p-5">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#164733] text-xl font-semibold text-white">
-                    YP
-                  </div>
-                  <div>
-                    <p className="text-lg font-semibold text-[#123f30]">Active companions</p>
-                    <p className="text-sm text-[#5d746b]">Ready when you are</p>
-                  </div>
-                </div>
-                <div className="mt-6 space-y-3">
-                  {companions.map((item) => (
-                    <div key={item.name} className="flex items-center justify-between rounded-2xl bg-white/75 px-4 py-3">
-                      <div>
-                        <p className="font-semibold text-[#153b2f]">{item.name}</p>
-                        <p className="text-sm text-[#60756d]">{item.tag}</p>
-                      </div>
-                      <span className="rounded-full bg-[#d8f2e5] px-3 py-1 text-xs font-semibold text-[#1d6b4b]">{item.status}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="absolute left-0 top-20 w-[70%] rounded-[30px] border border-white/70 bg-white/65 p-5 shadow-[0_22px_70px_rgba(57,92,77,0.14)] backdrop-blur-xl sm:w-[54%]">
-              <div className="flex items-center gap-4">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#dbeee5] text-lg font-semibold text-[#174a37]">
-                  A
-                </div>
+          <div className="relative min-h-[520px] lg:min-h-[650px]">
+            <div className="absolute left-[4%] top-12 h-[430px] w-[44%] overflow-hidden rounded-[2.2rem] border border-white/80 bg-[#e3fffe] shadow-[0_32px_90px_rgba(0,67,61,0.17)] sm:left-[8%] sm:w-[39%] lg:h-[500px]">
+              <div className="flex h-full flex-col justify-between bg-[linear-gradient(155deg,#d2f6ea_0%,#e3fffe_48%,#C7D2FE_150%)] p-5">
+                <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-white/70 text-2xl font-semibold text-[#00433d] shadow-sm">M</div>
                 <div>
-                  <p className="font-semibold text-[#143d30]">A safe hello</p>
-                  <p className="text-sm text-[#687b73]">Start with chat, move at your pace.</p>
+                  <p className="text-2xl font-semibold text-[#00433d]">Mira</p>
+                  <p className="mt-1 text-sm font-medium text-[#527168]">Mindful listener</p>
                 </div>
               </div>
             </div>
 
-            <div className="absolute bottom-8 left-8 w-[78%] rounded-[30px] border border-white/70 bg-white/70 p-5 shadow-[0_24px_74px_rgba(57,92,77,0.16)] backdrop-blur-xl sm:w-[58%]">
-              <div className="flex items-center gap-2 text-[#174a37]">
-                <Star size={18} fill="currentColor" />
-                <span className="font-semibold">4.9 average warmth rating</span>
+            <div className="absolute right-[3%] top-0 h-[455px] w-[44%] overflow-hidden rounded-[2.2rem] border border-white/80 bg-[#EEF8F5] shadow-[0_32px_90px_rgba(0,67,61,0.16)] sm:right-[9%] sm:w-[39%] lg:h-[525px]">
+              <div className="flex h-full flex-col justify-between bg-[linear-gradient(160deg,#f7fffc_0%,#bdece1_58%,#005c55_145%)] p-5">
+                <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-[#00433d] text-2xl font-semibold text-white shadow-sm">A</div>
+                <div>
+                  <p className="text-2xl font-semibold text-[#00433d]">Aanya</p>
+                  <p className="mt-1 text-sm font-medium text-[#527168]">Calm companion</p>
+                </div>
               </div>
-              <p className="mt-3 text-sm leading-6 text-[#60756d]">Verified companions for chat, audio, and video support.</p>
+            </div>
+
+            <div className="absolute bottom-10 left-1/2 w-[82%] -translate-x-1/2 rounded-[2rem] border border-white/75 bg-white/62 p-5 shadow-[0_22px_70px_rgba(0,67,61,0.16)] backdrop-blur-xl sm:w-[60%]">
+              <div className="flex items-center gap-4">
+                <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-[#e3fffe] text-[#00433d]">
+                  <UsersRound size={24} />
+                </span>
+                <div>
+                  <p className="text-2xl font-semibold text-[#00433d]">1,240 Active Companions</p>
+                  <p className="mt-1 text-sm leading-6 text-[#5a7069]">Ready to talk and listen whenever you need support.</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      <section id="wellbeing" className="px-4 py-16 sm:px-6 lg:px-8">
+      <section id="wellbeing" className="bg-[#FFFDF8] px-4 py-[4.5rem] sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
-          <div className="max-w-2xl">
-            <p className="text-sm font-semibold uppercase text-[#7a6aa5]">Designed for emotional wellbeing</p>
-            <h2 className="mt-3 text-3xl font-semibold text-[#143d30] sm:text-4xl">Support that feels steady, private, and human.</h2>
+          <div className="mx-auto max-w-3xl text-center">
+            <h2 className="text-4xl font-semibold text-[#00433d] sm:text-5xl">Designed for Emotional Wellbeing</h2>
+            <p className="mt-4 text-lg leading-8 text-[#5a7069]">We&apos;ve built a sanctuary based on empathy, safety, and mutual respect.</p>
           </div>
-          <div className="mt-9 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {wellbeingCards.map((card) => {
-              const Icon = card.icon;
-              return (
-                <article key={card.title} className="rounded-3xl border border-[#dce7dd] bg-white/68 p-5 shadow-[0_16px_48px_rgba(56,82,69,0.08)] backdrop-blur">
-                  <span className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl ${card.tone}`}>
-                    <Icon size={22} />
-                  </span>
-                  <h3 className="mt-5 text-lg font-semibold text-[#173f32]">{card.title}</h3>
-                  <p className="mt-3 text-sm leading-6 text-[#60756d]">{card.text}</p>
-                </article>
-              );
-            })}
+
+          <div className="mt-12 grid auto-rows-[minmax(230px,auto)] gap-5 lg:grid-cols-4">
+            <article className="rounded-[2rem] border border-[#d8ebe4] bg-[#EEF8F5] p-7 shadow-[0_22px_70px_rgba(0,67,61,0.08)] lg:col-span-2 lg:row-span-2">
+              <span className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-[#00433d]">
+                <ShieldCheck size={28} />
+              </span>
+              <h3 className="mt-8 text-3xl font-semibold text-[#00433d]">Verified Safety First</h3>
+              <p className="mt-4 max-w-lg text-base leading-8 text-[#5a7069]">
+                Every companion is carefully reviewed, identity checked, and guided by strong platonic boundaries so support feels calm and trustworthy.
+              </p>
+              <div className="mt-9 rounded-[1.5rem] bg-white/70 p-5 text-sm font-semibold text-[#00433d]">Private conversations, reviewed companions, clear standards.</div>
+            </article>
+
+            <article className="rounded-[2rem] bg-[#005c55] p-7 text-white shadow-[0_22px_70px_rgba(0,67,61,0.18)] lg:col-span-2">
+              <span className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15">
+                <HeartHandshake size={28} />
+              </span>
+              <h3 className="mt-7 text-3xl font-semibold">Heart-to-Heart</h3>
+              <p className="mt-4 text-base leading-7 text-[#d5efeb]">Warm conversations with real humans who listen first and let you set the pace.</p>
+            </article>
+
+            <article className="rounded-[2rem] border border-[#e3e7dc] bg-white p-7 shadow-[0_22px_70px_rgba(0,67,61,0.07)]">
+              <span className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-[#f2f0ff] text-[#6b5bb8]">
+                <Sparkles size={28} />
+              </span>
+              <h3 className="mt-7 text-2xl font-semibold text-[#00433d]">No Judgment</h3>
+              <p className="mt-4 text-base leading-7 text-[#5a7069]">Bring your thoughts as they are. No pressure, no labels, no awkward expectations.</p>
+            </article>
+
+            <article className="rounded-[2rem] border border-[#d8ebe4] bg-[#e3fffe] p-7 shadow-[0_22px_70px_rgba(0,67,61,0.08)] lg:col-span-1">
+              <span className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-[#00433d]">
+                <MessageCircleHeart size={28} />
+              </span>
+              <h3 className="mt-7 text-2xl font-semibold text-[#00433d]">Real-time Connections</h3>
+              <p className="mt-4 text-base leading-7 text-[#5a7069]">Chat, audio, and video support when you want someone steady nearby.</p>
+            </article>
           </div>
         </div>
       </section>
 
-      <section className="px-4 py-14 sm:px-6 lg:px-8">
-        <div className="mx-auto grid max-w-7xl gap-8 rounded-[36px] border border-[#dce7dd] bg-[#eef7f0] p-6 shadow-[0_20px_70px_rgba(56,82,69,0.08)] sm:p-10 lg:grid-cols-[0.85fr_1.15fr] lg:p-12">
-          <div>
-            <p className="text-sm font-semibold uppercase text-[#174a37]">From our community</p>
-            <h2 className="mt-3 text-3xl font-semibold text-[#143d30]">A softer way to feel less alone.</h2>
-          </div>
-          <blockquote className="text-xl leading-9 text-[#315b48]">
-            “I did not need a lecture. I just needed someone kind to stay with me through the moment. YoPartner made that feel simple and safe.”
-            <footer className="mt-5 text-sm font-semibold text-[#6f4aa8]">Member story, shared anonymously</footer>
+      <section className="px-4 py-16 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-6xl rounded-[2.2rem] bg-[#00433d] p-7 text-white shadow-[0_30px_90px_rgba(0,67,61,0.22)] sm:p-10 lg:p-14">
+          <blockquote className="mx-auto max-w-4xl text-center text-2xl font-medium leading-10 sm:text-3xl">
+            &quot;YoPartner wasn&apos;t just a service; it was the bridge I needed during a lonely transition. Having someone who truly listens changed everything.&quot;
           </blockquote>
+          <div className="mt-10 flex items-center justify-center gap-4">
+            <span className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-[#e3fffe] text-lg font-semibold text-[#00433d]">J</span>
+            <div>
+              <p className="font-semibold">James R.</p>
+              <p className="text-sm text-[#c8e5df]">Community Member since 2023</p>
+            </div>
+          </div>
         </div>
       </section>
 
-      <section className="px-4 pb-20 pt-12 sm:px-6 lg:px-8">
+      <section className="px-4 pb-[5.5rem] pt-10 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-5xl text-center">
-          <h2 className="text-4xl font-semibold text-[#143d30] sm:text-5xl">Start your journey today.</h2>
-          <p className="mx-auto mt-4 max-w-2xl text-lg leading-8 text-[#60756d]">
-            Choose a verified companion, begin with a calm message, or apply to support others with empathy.
+          <h2 className="text-4xl font-semibold text-[#00433d] sm:text-5xl">Start your journey today.</h2>
+          <p className="mx-auto mt-4 max-w-2xl text-lg leading-8 text-[#5a7069]">
+            Join thousands of others finding support and connection. Your first 10 minutes are on us.
           </p>
-          <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-            <Link href="/partner" className="inline-flex min-h-12 items-center justify-center rounded-full border border-[#b9d5c7] bg-white px-6 text-sm font-semibold text-[#123f30] hover:bg-[#f5fbf7]">
+          <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
+            <Link href="/partner" className="inline-flex min-h-12 items-center justify-center rounded-full border border-[#bdd7cf] bg-white px-7 text-sm font-semibold text-[#00433d] hover:-translate-y-0.5 hover:bg-[#F7FCFA]">
               Become a Partner
             </Link>
-            <Link href="/connect-now" className="inline-flex min-h-12 items-center justify-center rounded-full bg-[#123f30] px-6 text-sm font-semibold text-white hover:bg-[#0d3226]">
+            <Link href="/connect-now" className="inline-flex min-h-12 items-center justify-center rounded-full bg-[#00433d] px-7 text-sm font-semibold text-white shadow-[0_18px_42px_rgba(0,67,61,0.2)] hover:-translate-y-0.5 hover:bg-[#005c55]">
               Talk to Someone Now
             </Link>
           </div>

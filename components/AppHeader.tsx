@@ -17,6 +17,14 @@ const navItems = [
   { label: "Support", href: "/support" },
 ];
 
+const homeNavItems = [
+  { label: "Talk Now", href: "/connect-now" },
+  { label: "Home Visit", href: "/home-visit" },
+  { label: "Safety", href: "/trust-safety" },
+  { label: "Become a Companion", href: "/partner" },
+  { label: "Support", href: "/support" },
+];
+
 function isActive(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
   return pathname === href || pathname.startsWith(`${href}/`);
@@ -25,6 +33,7 @@ function isActive(pathname: string, href: string) {
 export function AppHeader() {
   const pathname = usePathname();
   const isHome = pathname === "/";
+  const activeNavItems = isHome ? homeNavItems : navItems;
   const [open, setOpen] = useState(false);
   const [loggedIn, setLoggedIn] = useState(() => (typeof window !== "undefined" ? getUserAuthState().loggedIn : false));
   const [authReady, setAuthReady] = useState(false);
@@ -63,7 +72,7 @@ export function AppHeader() {
     <header
       className={
         isHome
-          ? "fixed inset-x-3 top-3 z-50 h-[68px] rounded-full border border-white/70 bg-white/55 shadow-[0_16px_42px_rgba(45,74,62,0.12)] backdrop-blur-xl sm:inset-x-6 lg:inset-x-8"
+          ? "fixed inset-x-3 top-3 z-50 h-[74px] rounded-full border border-white/70 bg-white/58 shadow-[0_16px_42px_rgba(45,74,62,0.12)] backdrop-blur-xl sm:inset-x-6 lg:inset-x-8 lg:h-20"
           : "sticky top-0 z-50 h-[72px] border-b border-[#dceae5] bg-[#fffdf8]/95 backdrop-blur"
       }
     >
@@ -75,7 +84,7 @@ export function AppHeader() {
         </Link>
 
         <nav className={`hidden items-center text-[15px] lg:flex ${isHome ? "gap-5 text-[#365d4b]" : "gap-7 text-slate-600"}`}>
-          {navItems.map((item) => {
+          {activeNavItems.map((item) => {
             const active = isActive(pathname, item.href);
             return (
               <Link
@@ -111,7 +120,7 @@ export function AppHeader() {
                 }`}
             >
               <LogIn size={15} />
-              Talk to someone
+              {isHome ? "Get Started" : "Talk to someone"}
             </Link>
           )}
         </div>
@@ -133,7 +142,7 @@ export function AppHeader() {
               }`}
             >
               <LogIn size={13} />
-              Login
+              {isHome ? "Get Started" : "Login"}
             </Link>
           )}
 
@@ -150,7 +159,7 @@ export function AppHeader() {
       {open && (
         <div className={`border-t px-4 py-4 lg:hidden ${isHome ? "mt-2 rounded-3xl border-white/70 bg-white/90 shadow-xl backdrop-blur" : "border-slate-200 bg-white"}`}>
           <nav className="space-y-2 text-sm">
-            {navItems.map((item) => {
+            {activeNavItems.map((item) => {
               const active = isActive(pathname, item.href);
               return (
                 <Link
