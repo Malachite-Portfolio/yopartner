@@ -22,7 +22,6 @@ const homeNavItems = [
   { label: "Home Visit", href: "/home-visit" },
   { label: "Safety", href: "/trust-safety" },
   { label: "Become a Companion", href: "/partner" },
-  { label: "Support", href: "/support" },
 ];
 
 function isActive(pathname: string, href: string) {
@@ -72,27 +71,30 @@ export function AppHeader() {
     <header
       className={
         isHome
-          ? "fixed inset-x-3 top-3 z-50 h-[74px] rounded-full border border-white/70 bg-white/58 shadow-[0_16px_42px_rgba(45,74,62,0.12)] backdrop-blur-xl sm:inset-x-6 lg:inset-x-8 lg:h-20"
+          ? "fixed inset-x-0 top-0 z-50 h-16 border-b border-[#d8e5df] bg-[#eff8f4]/96 backdrop-blur"
           : "sticky top-0 z-50 h-[72px] border-b border-[#dceae5] bg-[#fffdf8]/95 backdrop-blur"
       }
     >
-      <div className={`mx-auto flex h-full w-full items-center justify-between px-4 lg:px-8 ${isHome ? "max-w-7xl" : "max-w-[1600px]"}`}>
+      <div className={`mx-auto flex h-full w-full items-center justify-between px-4 lg:px-8 ${isHome ? "max-w-[1180px]" : "max-w-[1600px]"}`}>
         <Link href="/" className="inline-flex min-w-0 items-center gap-2" onClick={() => setOpen(false)}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/images/logo.png" alt="YoPartner" className={isHome ? "h-auto max-h-10 w-[104px] object-contain sm:w-[118px]" : "h-auto max-h-12 w-[130px] object-contain"} />
-          {isHome ? <span className="hidden text-base font-semibold text-[#123f30] sm:inline">YoPartner</span> : null}
+          <img src="/images/logo.png" alt="YoPartner" className={isHome ? "h-6 w-6 object-contain" : "h-auto max-h-12 w-[130px] object-contain"} />
+          {isHome ? <span className="text-[19px] font-semibold text-[#102f2b]">YoPartner</span> : null}
         </Link>
 
-        <nav className={`hidden items-center text-[15px] lg:flex ${isHome ? "gap-5 text-[#365d4b]" : "gap-7 text-slate-600"}`}>
+        <nav className={`hidden items-center lg:flex ${isHome ? "gap-6 text-[13px] text-[#203934]" : "gap-7 text-[15px] text-slate-600"}`}>
           {activeNavItems.map((item) => {
             const active = isActive(pathname, item.href);
+            const homeForcedActive = isHome && item.label === "Talk Now";
+            const showActive = active || homeForcedActive;
             return (
               <Link
                 key={item.label}
                 href={item.href}
-                className={`transition hover:text-[#0f766e] ${active ? `font-semibold ${isHome ? "text-[#123f30]" : "text-slate-900"}` : ""}`}
+                className={`relative pb-1 transition hover:text-[#0f766e] ${showActive ? `font-semibold ${isHome ? "text-[#123f30]" : "text-slate-900"}` : ""}`}
               >
                 {item.label}
+                {showActive && isHome ? <span className="absolute inset-x-0 -bottom-[2px] h-[1.5px] rounded-full bg-[#123f30]" /> : null}
               </Link>
             );
           })}
@@ -115,9 +117,9 @@ export function AppHeader() {
           ) : (
             <Link
               href="/login"
-                className={`inline-flex h-10 items-center gap-1.5 rounded-full px-4 text-sm font-semibold text-white shadow-sm ${
-                  isHome ? "bg-[#123f30] hover:bg-[#0d3226]" : "bg-[#0f766e] hover:bg-[#115e59]"
-                }`}
+              className={`inline-flex items-center gap-1.5 rounded-full px-4 text-sm font-semibold text-white shadow-sm ${
+                isHome ? "h-9 bg-[#00433d] hover:bg-[#005c55]" : "h-10 bg-[#0f766e] hover:bg-[#115e59]"
+              }`}
             >
               <LogIn size={15} />
               {isHome ? "Get Started" : "Talk to someone"}
@@ -138,7 +140,7 @@ export function AppHeader() {
             <Link
               href="/login"
               className={`inline-flex h-9 items-center gap-1 rounded-full px-3 text-xs font-semibold text-white ${
-                isHome ? "bg-[#123f30]" : "bg-gradient-to-r from-[#2563EB] to-[#00A6B2]"
+                isHome ? "bg-[#00433d]" : "bg-gradient-to-r from-[#2563EB] to-[#00A6B2]"
               }`}
             >
               <LogIn size={13} />

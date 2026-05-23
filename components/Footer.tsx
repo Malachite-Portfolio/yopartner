@@ -49,17 +49,9 @@ export function Footer() {
       {
         title: "Platform",
         links: [
-          { label: "Find a Companion", href: "/connect-now" },
-          { label: "Home Visit", href: "/home-visit" },
-          { label: "Become a Partner", href: "/partner" },
-        ],
-      },
-      {
-        title: "Legal",
-        links: [
-          { label: "Trust & Safety", href: "/trust-safety" },
-          { label: "FAQs", href: "/faqs" },
-          { label: "Contact", href: "/contact" },
+          { label: "How it Works", href: "/how-it-works" },
+          { label: "Safety Guidelines", href: "/trust-safety" },
+          { label: "Help Center", href: "/support" },
         ],
       },
       {
@@ -73,41 +65,58 @@ export function Footer() {
     ];
 
     return (
-      <footer className="border-t border-[#dce7dd] bg-[#EEF8F5] text-[#00433d]">
-        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-          <div className="grid gap-10 lg:grid-cols-[1.2fr_1.8fr]">
+      <footer className="border-t border-[#d9e8e1] bg-[#eaf5f3] text-[#1b3c37]">
+        <div className="mx-auto max-w-[1180px] px-4 py-12 sm:px-6 lg:px-8">
+          <div className="grid gap-10 lg:grid-cols-[1.35fr_1.65fr]">
             <div>
-              <Link href="/" className="inline-flex items-center gap-3">
+              <Link href="/" className="inline-flex items-center gap-2.5">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/images/logo.png" alt="YoPartner" className="h-auto max-h-12 w-[128px] object-contain" />
-                <span className="text-lg font-semibold">YoPartner</span>
+                <img src="/images/logo.png" alt="YoPartner" className="h-6 w-6 object-contain" />
+                <span className="text-[22px] font-semibold text-[#0f2f2c]">YoPartner</span>
               </Link>
-              <p className="mt-4 max-w-sm text-sm leading-7 text-[#5a7069]">
+              <p className="mt-4 max-w-[300px] text-[13px] leading-6 text-[#58706a]">
                 Your safe space for emotional connection and authentic platonic support.
               </p>
             </div>
 
             <div className="grid gap-8 sm:grid-cols-3">
-              {homeColumns.map((column) => (
-                <div key={column.title}>
-                  <p className="font-semibold text-[#00433d]">{column.title}</p>
-                  <ul className="mt-3 space-y-2 text-sm text-[#5a7069]">
-                    {column.links.map((item) => (
-                      <li key={item.label}>
-                        <Link href={item.href} className="transition hover:text-[#00433d]">
-                          {item.label}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#244b45]">{homeColumns[0].title}</p>
+                <ul className="mt-3 space-y-2 text-[13px] text-[#4c6460]">
+                  {homeColumns[0].links.map((item) => (
+                    <li key={item.label}>
+                      <Link href={item.href} className="transition hover:text-[#00433d]">
+                        {item.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#244b45]">Legal</p>
+                <ul className="mt-3 space-y-2 text-[13px] text-[#4c6460]">
+                  <li>Privacy Policy</li>
+                  <li>Terms of Service</li>
+                </ul>
+              </div>
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#244b45]">{homeColumns[1].title}</p>
+                <ul className="mt-3 space-y-2 text-[13px] text-[#4c6460]">
+                  {homeColumns[1].links.map((item) => (
+                    <li key={item.label}>
+                      <Link href={item.href} className="transition hover:text-[#00433d]">
+                        {item.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
           </div>
 
-          <div className="mt-10 flex flex-col gap-4 border-t border-[#cfe4d7] pt-6 text-sm text-[#5a7069] sm:flex-row sm:items-center sm:justify-between">
-            <p>Copyright (c) {new Date().getFullYear()} YoPartner. All rights reserved.</p>
-            <div className="flex items-center gap-3">
+          <div className="mt-10 flex flex-col gap-4 border-t border-[#c8ddd3] pt-6 text-[11px] text-[#5a7069] sm:flex-row sm:items-center sm:justify-between">
+            <p>(c) {new Date().getFullYear()} YoPartner. Your safe space for connection.</p>
+            <div className="flex items-center gap-2">
               <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#cfe4d7] bg-white/70">
                 <Globe size={15} />
               </span>

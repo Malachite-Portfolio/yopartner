@@ -54,6 +54,11 @@ function formatTimer(seconds: number) {
   return `${mins}:${secs}`;
 }
 
+type SinkCapableAudioElement = HTMLAudioElement & {
+  setSinkId?: (sinkId: string) => Promise<void>;
+  sinkId?: string;
+};
+
 export default function VideoCallPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
@@ -88,7 +93,19 @@ export default function VideoCallPage() {
   const [debugRemoteUserUids, setDebugRemoteUserUids] = useState<string[]>([]);
   const [debugAudioPublishEvents, setDebugAudioPublishEvents] = useState(0);
   const [debugRemoteAudioSubscribed, setDebugRemoteAudioSubscribed] = useState(false);
-  const [setSinkIdSupported, setSetSinkIdSupported] = useState<boolean | null>(null);
+  const [setSinkIdSupported, setSetSinkIdSupported] = useState<boolean | null>(() => {
+    if (typeof HTMLMediaElement === "undefined") return null;
+    return typeof (HTMLMediaElement.prototype as SinkCapableAudioElement).setSinkId === "function";
+  });
+  const [enumerateDevicesSupported, setEnumerateDevicesSupported] = useState<boolean | null>(null);
+  const [audioOutputDeviceCount, setAudioOutputDeviceCount] = useState(0);
+  const [audioOutputDevicesDebug, setAudioOutputDevicesDebug] = useState("");
+  const [selectedSinkId, setSelectedSinkId] = useState("");
+  const [lastOutputSwitchError, setLastOutputSwitchError] = useState("");
+  const [browserUserAgent] = useState(() => {
+    if (typeof navigator === "undefined") return "unknown";
+    return navigator.userAgent || "unknown";
+  });
   const [joined, setJoined] = useState(false);
   const [needsPermissionAction, setNeedsPermissionAction] = useState(false);
   const [joining, setJoining] = useState(false);
@@ -120,6 +137,57 @@ export default function VideoCallPage() {
   const syncRemoteUsersDebug = useCallback((client: IAgoraRTCClient) => {
     setRemoteUserCount(client.remoteUsers.length);
     setDebugRemoteUserUids(client.remoteUsers.map((user) => String(user.uid ?? "unknown")));
+  }, []);
+
+  const refreshAudioOutputDevices = useCallback(async () => {
+    if (typeof navigator === "undefined") return [] as MediaDeviceInfo[];
+    if (!navigator.mediaDevices?.enumerateDevices) {
+      setEnumerateDevicesSupported(false);
+      setAudioOutputDeviceCount(0);
+      setAudioOutputDevicesDebug("");
+      return [] as MediaDeviceInfo[];
+    }
+
+    setEnumerateDevicesSupported(true);
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const outputs = devices.filter((device) => device.kind === "audiooutput");
+      setAudioOutputDeviceCount(outputs.length);
+      setAudioOutputDevicesDebug(
+        outputs
+          .map((device) => `${device.label || "unknown"} (${device.deviceId || "default"})`)
+          .join(" | "),
+      );
+      return outputs;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to enumerate output devices.";
+      setLastOutputSwitchError(message);
+      return [] as MediaDeviceInfo[];
+    }
+  }, []);
+
+  const pickOutputSinkId = useCallback((speakerOn: boolean, outputs: MediaDeviceInfo[]) => {
+    if (outputs.length === 0) {
+      return "default";
+    }
+
+    const normalized = outputs.map((device) => ({
+      deviceId: device.deviceId || "default",
+      label: (device.label || "").toLowerCase(),
+    }));
+
+    if (speakerOn) {
+      const preferredSpeaker = normalized.find((device) => /speaker|loud|hands.?free|external|default/.test(device.label));
+      return preferredSpeaker?.deviceId || "default";
+    }
+
+    const communications = normalized.find((device) => device.deviceId === "communications");
+    if (communications) return communications.deviceId;
+
+    const preferredEarpiece = normalized.find((device) => /earpiece|receiver|phone|handset|communication/.test(device.label));
+    if (preferredEarpiece) return preferredEarpiece.deviceId;
+
+    return "default";
   }, []);
 
   const cleanupAgora = useCallback(async () => {
@@ -166,6 +234,11 @@ export default function VideoCallPage() {
     setDebugAudioPublishEvents(0);
     setDebugRemoteAudioSubscribed(false);
     setSetSinkIdSupported(null);
+    setEnumerateDevicesSupported(null);
+    setAudioOutputDeviceCount(0);
+    setAudioOutputDevicesDebug("");
+    setSelectedSinkId("");
+    setLastOutputSwitchError("");
     setSpeakerEnabled(false);
     setDebugChannelName("");
     setDebugTokenFetched(false);
@@ -294,18 +367,18 @@ export default function VideoCallPage() {
   const playRemoteAudio = useCallback(async (reason: "auto" | "gesture") => {
     const remoteAudioTrack = remoteAudioTrackRef.current;
     if (!remoteAudioTrack) {
-      setAudioAssistMessage("Remote audio is not available yet.");
-      setAudioPlaybackReady(false);
-      setAudioPlaybackError("Remote audio track missing.");
+      if (reason === "gesture") {
+        setAudioAssistMessage("Remote audio is not available yet.");
+      }
       return false;
     }
     setAudioPlaybackAttempted(true);
     setAudioPlaybackError("");
 
     try {
-      const audioElement = remoteAudioElementRef.current;
+      const audioElement = remoteAudioElementRef.current as SinkCapableAudioElement | null;
       if (audioElement) {
-        const supportsSetSinkId = typeof (audioElement as HTMLAudioElement & { setSinkId?: unknown }).setSinkId === "function";
+        const supportsSetSinkId = typeof audioElement.setSinkId === "function";
         setSetSinkIdSupported(supportsSetSinkId);
         const mediaTrack = remoteAudioTrack.getMediaStreamTrack?.();
         if (mediaTrack) {
@@ -314,21 +387,6 @@ export default function VideoCallPage() {
         } else {
           remoteAudioTrack.play();
         }
-        const sinkElement = audioElement as HTMLAudioElement & { setSinkId?: (sinkId: string) => Promise<void> };
-        if (typeof sinkElement.setSinkId === "function") {
-          try {
-            await sinkElement.setSinkId("default");
-            if (!speakerEnabled && reason === "gesture") {
-              setAudioAssistMessage("Speaker control depends on your browser. Use phone volume/output controls if needed.");
-            } else {
-              setAudioAssistMessage("");
-            }
-          } catch {
-            setAudioAssistMessage("Speaker control depends on your browser. Use phone volume/output controls if needed.");
-          }
-        } else {
-          setAudioAssistMessage("Speaker control depends on your browser. Use phone volume/output controls if needed.");
-        }
       } else {
         remoteAudioTrack.play();
       }
@@ -336,12 +394,66 @@ export default function VideoCallPage() {
       setAudioPlaybackError("");
       return true;
     } catch {
-      setAudioAssistMessage("Speaker control depends on your browser. Use phone volume/output controls if needed.");
       setAudioPlaybackReady(false);
       setAudioPlaybackError("Playback blocked until user interaction.");
+      if (reason === "gesture") {
+        setAudioAssistMessage("Speaker switching is limited in this browser. Use phone audio controls.");
+      }
       return false;
     }
-  }, [speakerEnabled]);
+  }, []);
+
+  const applyOutputRoute = useCallback(
+    async (speakerOn: boolean) => {
+      const audioElement = remoteAudioElementRef.current as SinkCapableAudioElement | null;
+      if (!audioElement) {
+        return false;
+      }
+
+      const supportsSetSinkId = typeof audioElement.setSinkId === "function";
+      setSetSinkIdSupported(supportsSetSinkId);
+      setLastOutputSwitchError("");
+
+      if (!supportsSetSinkId) {
+        if (speakerOn) {
+          setAudioAssistMessage("Speaker switching is limited in this browser. Use phone audio controls.");
+        } else {
+          setAudioAssistMessage("Ear speaker routing is controlled by your browser/device.");
+        }
+        return false;
+      }
+
+      const outputs = await refreshAudioOutputDevices();
+      const targetSinkId = pickOutputSinkId(speakerOn, outputs);
+
+      try {
+        await audioElement.setSinkId?.(targetSinkId);
+        setSelectedSinkId(targetSinkId);
+        if (speakerOn) {
+          if (targetSinkId === "default") {
+            setAudioAssistMessage("Speaker switching depends on available outputs in your browser.");
+          } else {
+            setAudioAssistMessage("");
+          }
+        } else if (targetSinkId === "default") {
+          setAudioAssistMessage("Ear speaker routing is controlled by your browser/device.");
+        } else {
+          setAudioAssistMessage("");
+        }
+        return true;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unable to switch output device.";
+        setLastOutputSwitchError(message);
+        if (speakerOn) {
+          setAudioAssistMessage("Speaker switching is limited in this browser. Use phone audio controls.");
+        } else {
+          setAudioAssistMessage("Ear speaker routing is controlled by your browser/device.");
+        }
+        return false;
+      }
+    },
+    [pickOutputSinkId, refreshAudioOutputDevices],
+  );
 
   const toggleMute = useCallback(async () => {
     const audioTrack = localAudioTrackRef.current;
@@ -435,6 +547,7 @@ export default function VideoCallPage() {
     setError("");
     try {
       await requestVideoPermission();
+      await refreshAudioOutputDevices();
       setNeedsPermissionAction(false);
 
       const client = await createAgoraClient();
@@ -581,7 +694,7 @@ export default function VideoCallPage() {
     } finally {
       setJoining(false);
     }
-  }, [cleanupAgora, companion, joined, joining, notifyMediaReady, playRemoteAudio, session, syncRemoteUsersDebug]);
+  }, [cleanupAgora, companion, joined, joining, notifyMediaReady, playRemoteAudio, refreshAudioOutputDevices, session, syncRemoteUsersDebug]);
 
   useEffect(() => {
     if ((session?.status !== "LIVE" && session?.status !== "ACCEPTED") || joined || joining) return;
@@ -597,16 +710,23 @@ export default function VideoCallPage() {
     const nextSpeakerState = !speakerEnabled;
     setSpeakerEnabled(nextSpeakerState);
     setLastSpeakerToggleError("");
-    if (nextSpeakerState || !audioPlaybackReady) {
-      void playRemoteAudio("gesture").then((played) => {
-        if (!played) {
-          setLastSpeakerToggleError("Speaker switching depends on your browser. Use phone audio output/volume controls.");
-        }
-      });
-      return;
-    }
-    setAudioAssistMessage("Speaker off on this device.");
-  }, [audioPlaybackReady, playRemoteAudio, speakerEnabled]);
+    setLastOutputSwitchError("");
+
+    void applyOutputRoute(nextSpeakerState).then((switched) => {
+      if (!switched && nextSpeakerState) {
+        setLastSpeakerToggleError("Speaker switching is limited in this browser. Use phone audio controls.");
+      }
+      if (!switched && !nextSpeakerState) {
+        setLastSpeakerToggleError("Ear speaker routing is controlled by your browser/device.");
+      }
+    });
+
+    void playRemoteAudio("gesture").then((played) => {
+      if (!played) {
+        setLastSpeakerToggleError("Speaker switching depends on your browser. Use phone audio output/volume controls.");
+      }
+    });
+  }, [applyOutputRoute, playRemoteAudio, speakerEnabled]);
 
   const handleCancel = async () => {
     if (!session?.id || isCancelling) return;
@@ -909,6 +1029,12 @@ export default function VideoCallPage() {
             <p>speakerEnabled: {String(speakerEnabled)}</p>
             <p>last speaker toggle error: {lastSpeakerToggleError || "-"}</p>
             <p>setSinkId supported: {setSinkIdSupported == null ? "unknown" : String(setSinkIdSupported)}</p>
+            <p>enumerateDevices supported: {enumerateDevicesSupported == null ? "unknown" : String(enumerateDevicesSupported)}</p>
+            <p>audiooutput devices count: {audioOutputDeviceCount}</p>
+            <p>audiooutput devices: {audioOutputDevicesDebug || "-"}</p>
+            <p>selectedSinkId: {selectedSinkId || "-"}</p>
+            <p>last output switch error: {lastOutputSwitchError || "-"}</p>
+            <p>userAgent: {browserUserAgent || "-"}</p>
           </div>
         ) : null}
       </div>
