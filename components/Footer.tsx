@@ -26,6 +26,7 @@ const supportLinks = [
 
 export function Footer() {
   const pathname = usePathname();
+  const isHome = pathname === "/";
 
   if (
     pathname.startsWith("/admin") ||
@@ -41,6 +42,86 @@ export function Footer() {
     pathname.startsWith("/bookings")
   ) {
     return null;
+  }
+
+  if (isHome) {
+    const homeColumns = [
+      {
+        title: "Platform",
+        links: [
+          { label: "Find a Companion", href: "/connect-now" },
+          { label: "How It Works", href: "/how-it-works" },
+          { label: "Become a Partner", href: "/partner" },
+        ],
+      },
+      {
+        title: "Legal",
+        links: [
+          { label: "Trust & Safety", href: "/trust-safety" },
+          { label: "FAQs", href: "/faqs" },
+          { label: "Contact", href: "/contact" },
+        ],
+      },
+      {
+        title: "Connect",
+        links: [
+          { label: "Support", href: "/support" },
+          { label: "Media", href: "/media" },
+          { label: "Client Diaries", href: "/client-diaries" },
+        ],
+      },
+    ];
+
+    return (
+      <footer className="border-t border-[#dce7dd] bg-[#123f30] text-[#eef8f2]">
+        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+          <div className="grid gap-10 lg:grid-cols-[1.2fr_1.8fr]">
+            <div>
+              <Link href="/" className="inline-flex items-center gap-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/images/logo.png" alt="YoPartner" className="h-auto max-h-12 w-[128px] object-contain brightness-0 invert" />
+                <span className="text-lg font-semibold">YoPartner</span>
+              </Link>
+              <p className="mt-4 max-w-sm text-sm leading-7 text-[#c8ded3]">
+                Calm, verified, strictly platonic companionship for people who want to feel heard.
+              </p>
+            </div>
+
+            <div className="grid gap-8 sm:grid-cols-3">
+              {homeColumns.map((column) => (
+                <div key={column.title}>
+                  <p className="font-semibold text-white">{column.title}</p>
+                  <ul className="mt-3 space-y-2 text-sm text-[#c8ded3]">
+                    {column.links.map((item) => (
+                      <li key={item.label}>
+                        <Link href={item.href} className="transition hover:text-white">
+                          {item.label}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-10 flex flex-col gap-4 border-t border-white/15 pt-6 text-sm text-[#c8ded3] sm:flex-row sm:items-center sm:justify-between">
+            <p>Copyright (c) {new Date().getFullYear()} YoPartner. All rights reserved.</p>
+            <div className="flex items-center gap-3">
+              <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-white/10">
+                <Globe size={15} />
+              </span>
+              <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-white/10">
+                <MessageCircle size={15} />
+              </span>
+              <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-white/10">
+                <ShieldCheck size={15} />
+              </span>
+            </div>
+          </div>
+        </div>
+      </footer>
+    );
   }
 
   return (

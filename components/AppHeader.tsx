@@ -24,6 +24,7 @@ function isActive(pathname: string, href: string) {
 
 export function AppHeader() {
   const pathname = usePathname();
+  const isHome = pathname === "/";
   const [open, setOpen] = useState(false);
   const [loggedIn, setLoggedIn] = useState(() => (typeof window !== "undefined" ? getUserAuthState().loggedIn : false));
   const [authReady, setAuthReady] = useState(false);
@@ -59,21 +60,28 @@ export function AppHeader() {
   }
 
   return (
-    <header className="sticky top-0 z-50 h-[72px] border-b border-[#dceae5] bg-[#fffdf8]/95 backdrop-blur">
-      <div className="mx-auto flex h-full w-full max-w-[1600px] items-center justify-between px-4 lg:px-8">
-        <Link href="/" className="inline-flex items-center" onClick={() => setOpen(false)}>
+    <header
+      className={
+        isHome
+          ? "fixed inset-x-3 top-3 z-50 h-[68px] rounded-full border border-white/70 bg-white/55 shadow-[0_16px_42px_rgba(45,74,62,0.12)] backdrop-blur-xl sm:inset-x-6 lg:inset-x-8"
+          : "sticky top-0 z-50 h-[72px] border-b border-[#dceae5] bg-[#fffdf8]/95 backdrop-blur"
+      }
+    >
+      <div className={`mx-auto flex h-full w-full items-center justify-between px-4 lg:px-8 ${isHome ? "max-w-7xl" : "max-w-[1600px]"}`}>
+        <Link href="/" className="inline-flex min-w-0 items-center gap-2" onClick={() => setOpen(false)}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/images/logo.png" alt="YoPartner" className="h-auto max-h-12 w-[130px] object-contain" />
+          <img src="/images/logo.png" alt="YoPartner" className={isHome ? "h-auto max-h-10 w-[104px] object-contain sm:w-[118px]" : "h-auto max-h-12 w-[130px] object-contain"} />
+          {isHome ? <span className="hidden text-base font-semibold text-[#123f30] sm:inline">YoPartner</span> : null}
         </Link>
 
-        <nav className="hidden items-center gap-7 text-[15px] text-slate-600 lg:flex">
+        <nav className={`hidden items-center text-[15px] lg:flex ${isHome ? "gap-5 text-[#365d4b]" : "gap-7 text-slate-600"}`}>
           {navItems.map((item) => {
             const active = isActive(pathname, item.href);
             return (
               <Link
                 key={item.label}
                 href={item.href}
-                className={`transition hover:text-[#0f766e] ${active ? "font-semibold text-slate-900" : ""}`}
+                className={`transition hover:text-[#0f766e] ${active ? `font-semibold ${isHome ? "text-[#123f30]" : "text-slate-900"}` : ""}`}
               >
                 {item.label}
               </Link>
@@ -98,7 +106,9 @@ export function AppHeader() {
           ) : (
             <Link
               href="/login"
-              className="inline-flex h-10 items-center gap-1.5 rounded-full bg-[#0f766e] px-4 text-sm font-semibold text-white shadow-sm hover:bg-[#115e59]"
+                className={`inline-flex h-10 items-center gap-1.5 rounded-full px-4 text-sm font-semibold text-white shadow-sm ${
+                  isHome ? "bg-[#123f30] hover:bg-[#0d3226]" : "bg-[#0f766e] hover:bg-[#115e59]"
+                }`}
             >
               <LogIn size={15} />
               Talk to someone
@@ -118,7 +128,9 @@ export function AppHeader() {
           ) : (
             <Link
               href="/login"
-              className="inline-flex h-9 items-center gap-1 rounded-full bg-gradient-to-r from-[#2563EB] to-[#00A6B2] px-3 text-xs font-semibold text-white"
+              className={`inline-flex h-9 items-center gap-1 rounded-full px-3 text-xs font-semibold text-white ${
+                isHome ? "bg-[#123f30]" : "bg-gradient-to-r from-[#2563EB] to-[#00A6B2]"
+              }`}
             >
               <LogIn size={13} />
               Login
@@ -126,7 +138,7 @@ export function AppHeader() {
           )}
 
           <button
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#d8e7dd] bg-white/80 text-slate-700"
             aria-label="Toggle menu"
             onClick={() => setOpen((prev) => !prev)}
           >
@@ -136,7 +148,7 @@ export function AppHeader() {
       </div>
 
       {open && (
-        <div className="border-t border-slate-200 bg-white px-4 py-4 lg:hidden">
+        <div className={`border-t px-4 py-4 lg:hidden ${isHome ? "mt-2 rounded-3xl border-white/70 bg-white/90 shadow-xl backdrop-blur" : "border-slate-200 bg-white"}`}>
           <nav className="space-y-2 text-sm">
             {navItems.map((item) => {
               const active = isActive(pathname, item.href);
