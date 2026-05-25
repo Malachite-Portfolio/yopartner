@@ -149,3 +149,22 @@ export async function listFeaturedCompanions() {
   }
   return { data: (result.data?.companions ?? []).map(toCompanionItem), error: null };
 }
+
+export async function getCompanionStats() {
+  const result = await apiRequest<{ totalActiveCompanions: number }>("/api/companions/stats");
+  if (result.error) {
+    return {
+      data: null,
+      error: { ...result.error, message: "Companion stats are currently unavailable. Please try again later." },
+    };
+  }
+
+  return {
+    data: {
+      totalActiveCompanions: Number.isFinite(Number(result.data?.totalActiveCompanions))
+        ? Number(result.data?.totalActiveCompanions)
+        : 0,
+    },
+    error: null,
+  };
+}

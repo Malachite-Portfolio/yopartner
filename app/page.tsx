@@ -1,6 +1,7 @@
 import { ArrowRight, HeartHandshake, MessageCircleHeart, Quote, ShieldCheck, Sparkles, Users } from "lucide-react";
 import { Outfit } from "next/font/google";
 import Link from "next/link";
+import { ActiveCompanionsCount } from "@/components/home/ActiveCompanionsCount";
 
 const outfit = Outfit({
   subsets: ["latin"],
@@ -67,7 +68,7 @@ export default function HomePage() {
             </article>
 
             <div className="absolute left-[10%] top-[56%] w-[260px] rounded-[24px] border border-white/80 bg-white/78 p-4 shadow-[0_14px_36px_rgba(0,67,61,0.2)] backdrop-blur-md sm:left-[14%]">
-              <p className="text-[15px] font-semibold text-[#003e38]">1,240 Active Companions</p>
+              <ActiveCompanionsCount />
               <p className="mt-1 text-xs leading-5 text-[#5b716c]">Ready to talk and listen whenever you need support.</p>
             </div>
           </div>
