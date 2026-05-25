@@ -22,7 +22,7 @@ function Initials({ name }: { name: string }) {
     .toUpperCase();
 
   return (
-    <span className="inline-flex h-[88px] w-[88px] shrink-0 items-center justify-center rounded-full bg-[#dce5ea] text-2xl font-semibold text-[#204454]">
+    <span className="inline-flex h-[78px] w-[78px] shrink-0 items-center justify-center rounded-full bg-[#dce5ea] text-[20px] font-semibold text-[#204454]">
       {text}
     </span>
   );
@@ -63,11 +63,11 @@ function ActionPriceButton({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className={`flex h-11 items-center justify-center gap-1 rounded-xl px-2 text-[14px] font-semibold transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 ${toneClasses}`}
+      className={`flex h-10 items-center justify-center gap-1 rounded-lg px-1.5 text-[13px] font-semibold transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 ${toneClasses}`}
     >
-      {icon === "chat" ? <MessageSquareText size={15} /> : null}
-      {icon === "voice" ? <Mic size={15} /> : null}
-      {icon === "video" ? <Video size={15} /> : null}
+      {icon === "chat" ? <MessageSquareText size={14} /> : null}
+      {icon === "voice" ? <Mic size={14} /> : null}
+      {icon === "video" ? <Video size={14} /> : null}
       <span>{formatINRPrice(price)}</span>
     </button>
   );
@@ -167,7 +167,7 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
 
   return (
     <article
-      className="flex h-full min-h-[226px] cursor-pointer flex-col rounded-[22px] border border-[#e4e8ed] bg-[#f5f7fa] p-3.5 shadow-[0_1px_0_rgba(5,32,57,0.03)] transition hover:-translate-y-0.5"
+      className="flex h-full min-h-[206px] cursor-pointer flex-col rounded-[20px] border border-[#e4e8ed] bg-[#f5f7fa] p-3 shadow-[0_1px_0_rgba(5,32,57,0.03)] transition hover:-translate-y-0.5"
       onClick={() => router.push(profileUrl)}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
@@ -179,11 +179,11 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
       role="link"
       aria-label={`Open ${name} profile`}
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-2.5">
         <div className="relative shrink-0">
           {companion.image ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={companion.image} alt={name} className="h-[84px] w-[84px] rounded-full object-cover" />
+            <img src={companion.image} alt={name} className="h-[78px] w-[78px] rounded-full object-cover" />
           ) : (
             <Initials name={name} />
           )}
@@ -197,36 +197,36 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <div>
-              <h3 className="line-clamp-1 text-[21px] font-medium leading-tight text-[#172533] md:text-[23px]">{name}</h3>
-              <p className="mt-0.5 line-clamp-1 text-[14px] leading-5 text-[#637382]">{tagline}</p>
+              <h3 className="line-clamp-1 text-[19px] font-medium leading-tight text-[#172533] md:text-[21px]">{name}</h3>
+              <p className="mt-0.5 line-clamp-1 text-[13px] leading-4 text-[#637382]">{tagline}</p>
             </div>
-            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#e6e9ee] px-2.5 py-1 text-xs font-medium text-[#4f5c69]">
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#e6e9ee] px-2 py-0.5 text-[11px] font-medium text-[#4f5c69]">
               <span className="h-2.5 w-2.5 rounded-full bg-[#9ba8b6]" />
               {status === "ONLINE" ? "Online" : status === "BUSY" ? "Busy" : "Offline"}
             </span>
           </div>
 
-          <div className="mt-1.5 flex items-center gap-1 text-[#b56a00]">
+          <div className="mt-1 flex items-center gap-1 text-[#b56a00]">
             {Array.from({ length: 5 }).map((_, index) => (
-              <Star key={index} size={12} fill="currentColor" strokeWidth={0} />
+              <Star key={index} size={11} fill="currentColor" strokeWidth={0} />
             ))}
-            <span className="ml-1 text-[15px] font-semibold text-[#1f2e3b]">{rating.toFixed(1)}/5</span>
+            <span className="ml-0.5 text-[13px] font-semibold text-[#1f2e3b]">{rating.toFixed(1)}/5</span>
             <span className="text-[#9aa7b4]">|</span>
-            <span className="text-[13px] text-[#61707f]">{experienceLabel}</span>
+            <span className="text-[12px] text-[#61707f]">{experienceLabel}</span>
           </div>
 
-          <div className="mt-1.5 flex items-center gap-1.5">
+          <div className="mt-1 flex items-center gap-1">
             {metaChips.map((chip) => (
-              <span key={chip} className="rounded-full bg-[#e9eef5] px-2 py-0.5 text-[11px] font-medium text-[#5d6b79]">
+              <span key={chip} className="rounded-full bg-[#e9eef5] px-1.5 py-0.5 text-[10px] font-medium text-[#5d6b79]">
                 {chip}
               </span>
             ))}
-            <span className="text-[11px] text-[#7b8a96]">Replies in ~2 min</span>
+            <span className="text-[10px] text-[#7b8a96]">Replies ~2 min</span>
           </div>
         </div>
       </div>
 
-      <div className="mt-3.5 grid grid-cols-3 gap-1.5" onClick={(event) => event.stopPropagation()}>
+      <div className="mt-2.5 grid grid-cols-3 gap-1.5" onClick={(event) => event.stopPropagation()}>
         <ActionPriceButton
           icon="chat"
           price={chatPrice}

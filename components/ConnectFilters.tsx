@@ -85,21 +85,25 @@ export function ConnectFilters({
   };
 
   return (
-    <div className={mobile ? "rounded-[20px] border border-[#c8d2d8] bg-[#eef2f5] p-4" : "px-4 py-5"}>
+    <div className={mobile ? "rounded-[20px] border border-[#c8d2d8] bg-[#eef2f5] p-4" : "px-4 py-4.5"}>
       <div className="flex items-center justify-between">
-        <h2 className={`${mobile ? "text-[24px]" : "text-4xl"} font-semibold leading-none text-[#0e2230]`}>Filters</h2>
-        <button type="button" onClick={onClearAll} className={`${mobile ? "text-sm" : "text-[20px]"} font-medium text-[#0b736d]`}>
+        <h2 className={`${mobile ? "text-[22px]" : "text-3xl"} font-semibold leading-none text-[#0e2230]`}>Filters</h2>
+        <button
+          type="button"
+          onClick={onClearAll}
+          className={`${mobile ? "text-sm" : "text-sm"} font-medium text-[#0b736d] outline-none focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0b736d]/40`}
+        >
           Clear All
         </button>
       </div>
 
       <div className="mt-5">
         <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[#1b2834]">Availability</p>
-        <div className="mt-2.5 grid grid-cols-2 rounded-2xl bg-[#e1e6f0] p-1">
+        <div className="mt-2 grid grid-cols-2 rounded-xl bg-[#e1e6f0] p-1">
           <button
             type="button"
             onClick={() => onAvailabilityChange("all")}
-            className={`h-9 rounded-xl text-[14px] font-medium ${
+            className={`h-[34px] rounded-lg px-2 text-[13px] font-medium ${
               selectedAvailability === "all" ? "bg-[#076e68] text-white" : "text-[#192734]"
             }`}
           >
@@ -108,7 +112,7 @@ export function ConnectFilters({
           <button
             type="button"
             onClick={() => onAvailabilityChange("online")}
-            className={`h-9 rounded-xl text-[14px] font-medium ${
+            className={`h-[34px] rounded-lg px-2 text-[13px] font-medium ${
               selectedAvailability === "online" ? "bg-[#076e68] text-white" : "text-[#192734]"
             }`}
           >
@@ -121,43 +125,43 @@ export function ConnectFilters({
         <div className="flex items-center justify-between">
           <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[#1b2834]">Categories</p>
           <div className="flex items-center gap-2.5 text-[11px]">
-            <button type="button" onClick={expandAll} className="text-[#0b736d]/80">
+            <button type="button" onClick={expandAll} className="text-[#0b736d]/75 outline-none focus-visible:underline">
               Expand All
             </button>
-            <button type="button" onClick={collapseAll} className="text-[#0b736d]/80">
+            <button type="button" onClick={collapseAll} className="text-[#0b736d]/75 outline-none focus-visible:underline">
               Collapse All
             </button>
           </div>
         </div>
 
-        <div className="mt-2 space-y-2">
+        <div className="mt-2 space-y-1.5">
           {connectCategoryGroups.map((group) => {
             const open = expandedLookup.has(group.title);
             return (
-              <section key={group.title} className="overflow-hidden rounded-2xl border border-[#bac6cc] bg-[#f1f4f8]">
+              <section key={group.title} className="overflow-hidden rounded-xl border border-[#bac6cc] bg-[#f1f4f8]">
                 <button
                   type="button"
                   onClick={() => toggle(group.title)}
-                  className="flex w-full items-center justify-between px-3.5 py-2.5 text-left"
+                  className="flex w-full items-center justify-between px-3.5 py-2 text-left"
                 >
-                  <span className="pr-3 text-[14px] font-medium leading-5 text-[#152530]">{group.title}</span>
-                  {open ? <ChevronUp size={20} className="text-[#5a6772]" /> : <ChevronDown size={20} className="text-[#5a6772]" />}
+                  <span className="pr-3 text-[13px] font-medium leading-5 text-[#152530]">{group.title}</span>
+                  {open ? <ChevronUp size={17} className="text-[#5a6772]" /> : <ChevronDown size={17} className="text-[#5a6772]" />}
                 </button>
 
                 {open ? (
-                  <div className="border-t border-[#d2dae1] bg-[#e6ebf5] px-3.5 py-2.5">
-                    <ul className="space-y-2">
+                  <div className="border-t border-[#d2dae1] bg-[#e6ebf5] px-3 py-2">
+                    <ul className="space-y-1.5">
                       {group.items.map((item) => {
                         const checked = selectedCategory === item;
                         return (
                           <li key={item}>
                             <button
                               type="button"
-                              className="flex min-h-7 items-start gap-2.5 text-left"
+                              className="flex min-h-6 items-start gap-2 text-left"
                               onClick={() => onCategoryChange(item)}
                             >
                               <FilterCheckbox checked={checked} />
-                              <span className="text-[13px] leading-5 text-[#1b2a36]">{item}</span>
+                              <span className="text-[12px] leading-[1.35rem] text-[#1b2a36]">{item}</span>
                             </button>
                           </li>
                         );

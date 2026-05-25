@@ -139,7 +139,7 @@ export default function ConnectNowPage() {
       <ConnectAppHeader />
 
       <div className="mx-auto flex w-full max-w-[1560px] gap-0">
-        <aside className="hidden w-[364px] shrink-0 border-r border-[#b9c6cd] lg:block">
+        <aside className="hidden w-[336px] shrink-0 border-r border-[#b9c6cd] lg:block">
           <div className="sticky top-16 h-[calc(100vh-64px)] overflow-y-auto">
             <ConnectFilters
               selectedAvailability={availability}
@@ -212,18 +212,18 @@ export default function ConnectNowPage() {
               </div>
             ) : null}
 
-            <div className="mt-8 rounded-[22px] border border-[#e4c294] bg-[#f6eee2] p-6 sm:p-8">
-              <div className="flex items-start gap-5">
-                <span className="inline-flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-white text-[#946106] shadow-sm">
-                  <ShieldCheck size={30} />
+            <div className="mt-7 rounded-[20px] border border-[#e4c294] bg-[#f6eee2] p-4 sm:p-5">
+              <div className="flex items-start gap-4">
+                <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white text-[#946106] shadow-sm">
+                  <ShieldCheck size={24} />
                 </span>
                 <div>
-                  <h3 className="text-3xl font-semibold text-[#8a5300] md:text-4xl">Safety first, always</h3>
-                  <p className="mt-2 max-w-4xl text-base leading-relaxed text-[#2b3744] md:text-lg">
+                  <h3 className="text-2xl font-semibold text-[#8a5300] md:text-[28px]">Safety first, always</h3>
+                  <p className="mt-1.5 max-w-4xl text-[14px] leading-relaxed text-[#2b3744] md:text-[15px]">
                     We prioritize your mental well-being and security. Every conversation is private, and our listeners go through
                     a strict vetting process to ensure you get the best support possible.
                   </p>
-                  <Link href="/trust-safety" className="mt-2 inline-flex text-lg font-semibold text-[#5b2dd6] md:text-xl">
+                  <Link href="/trust-safety" className="mt-1.5 inline-flex text-[14px] font-semibold text-[#5b2dd6] md:text-[15px]">
                     Learn more about our safety protocols.
                   </Link>
                 </div>
