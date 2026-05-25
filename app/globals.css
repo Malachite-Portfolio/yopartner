@@ -50,30 +50,28 @@ a {
   text-decoration: none;
 }
 
-button[class*="bg-[#00433d]"],
-a[class*="bg-[#00433d]"],
-button[class*="bg-[#005c55]"],
-a[class*="bg-[#005c55]"],
-button[class*="bg-[#0f766e]"],
-a[class*="bg-[#0f766e]"],
-button[class*="bg-[#00554d]"],
-a[class*="bg-[#00554d]"],
-button[class*="from-brand"][class*="to-brand-purple"],
-a[class*="from-brand"][class*="to-brand-purple"] {
+:is(button, a):not([class*="bg-white"]):not([class*="bg-brand-soft"])[class*="bg-[#00433d]"],
+:is(button, a):not([class*="bg-white"]):not([class*="bg-brand-soft"])[class*="bg-[#005c55]"],
+:is(button, a):not([class*="bg-white"]):not([class*="bg-brand-soft"])[class*="bg-[#0f766e]"],
+:is(button, a):not([class*="bg-white"]):not([class*="bg-brand-soft"])[class*="bg-[#00554d]"],
+:is(button, a):not([class*="bg-white"]):not([class*="bg-brand-soft"])[class*="from-brand"][class*="to-brand-purple"] {
   color: #fff !important;
 }
 
-button[class*="bg-[#00433d]"] svg,
-a[class*="bg-[#00433d]"] svg,
-button[class*="bg-[#005c55]"] svg,
-a[class*="bg-[#005c55]"] svg,
-button[class*="bg-[#0f766e]"] svg,
-a[class*="bg-[#0f766e]"] svg,
-button[class*="bg-[#00554d]"] svg,
-a[class*="bg-[#00554d]"] svg,
-button[class*="from-brand"][class*="to-brand-purple"] svg,
-a[class*="from-brand"][class*="to-brand-purple"] svg {
+:is(button, a):not([class*="bg-white"]):not([class*="bg-brand-soft"])[class*="bg-[#00433d]"] svg,
+:is(button, a):not([class*="bg-white"]):not([class*="bg-brand-soft"])[class*="bg-[#005c55]"] svg,
+:is(button, a):not([class*="bg-white"]):not([class*="bg-brand-soft"])[class*="bg-[#0f766e]"] svg,
+:is(button, a):not([class*="bg-white"]):not([class*="bg-brand-soft"])[class*="bg-[#00554d]"] svg,
+:is(button, a):not([class*="bg-white"]):not([class*="bg-brand-soft"])[class*="from-brand"][class*="to-brand-purple"] svg {
   color: #fff !important;
+}
+
+.yp-light-pill-on-dark {
+  color: #0f4d47 !important;
+}
+
+.yp-light-pill-on-dark svg {
+  color: inherit !important;
 }
 
 button,

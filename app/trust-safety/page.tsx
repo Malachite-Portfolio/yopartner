@@ -125,7 +125,7 @@ export default function TrustSafetyPage() {
             </p>
             <Link
               href="/connect-now"
-              className="mt-8 inline-flex h-11 items-center justify-center rounded-full bg-white px-6 text-sm font-semibold text-[#0f4d47] transition hover:bg-[#eaf7f4]"
+              className="yp-light-pill-on-dark mt-8 inline-flex h-11 items-center justify-center rounded-full bg-white px-6 text-sm font-semibold text-[#0f4d47] transition hover:bg-[#eaf7f4]"
             >
               Browse Verified Companions
             </Link>

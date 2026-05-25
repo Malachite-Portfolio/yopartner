@@ -142,7 +142,7 @@ export function Footer() {
             <h3 className="text-2xl font-semibold">Use your empathy to help people feel heard</h3>
             <Link
               href="/partner"
-              className="rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-[#0f766e] transition hover:bg-[#eef8f5]"
+              className="yp-light-pill-on-dark rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-[#0f766e] transition hover:bg-[#eef8f5]"
             >
               Apply as a companion
             </Link>
