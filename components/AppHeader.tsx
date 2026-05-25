@@ -10,6 +10,7 @@ import { logoutUserAuthSession } from "@/lib/auth/logout";
 import { getUserAuthState, restoreUserAuthSessionFromFirebase, subscribeUserAuthState } from "@/lib/auth/userAuth";
 
 const navItems = [
+  { label: "Home", href: "/" },
   { label: "Talk Now", href: "/connect-now" },
   { label: "Home Visit", href: "/home-visit" },
   { label: "Safety", href: "/trust-safety" },
@@ -78,8 +79,7 @@ export function AppHeader() {
         <nav className={`hidden items-center lg:flex ${isHome ? "gap-6 text-[13px] text-[#203934]" : "gap-7 text-[15px] text-slate-600"}`}>
           {activeNavItems.map((item) => {
             const active = isActive(pathname, item.href);
-            const homeForcedActive = isHome && item.label === "Talk Now";
-            const showActive = active || homeForcedActive;
+            const showActive = active;
             return (
               <Link
                 key={item.label}

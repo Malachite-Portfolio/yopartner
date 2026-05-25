@@ -10,6 +10,7 @@ import { logoutUserAuthSession } from "@/lib/auth/logout";
 import { getUserAuthState, restoreUserAuthSessionFromFirebase, subscribeUserAuthState } from "@/lib/auth/userAuth";
 
 const navItems = [
+  { label: "Home", href: "/" },
   { label: "Talk Now", href: "/connect-now" },
   { label: "Home Visit", href: "/home-visit" },
   { label: "Safety", href: "/trust-safety" },
@@ -42,8 +43,6 @@ export function ConnectAppHeader() {
     };
   }, []);
 
-  const isHome = pathname === "/";
-
   return (
     <header className="sticky top-0 z-50 h-16 border-b border-[#d8e5df] bg-[#eff8f4]/96 backdrop-blur">
       <div className="mx-auto flex h-full w-full max-w-[1180px] items-center justify-between px-4 lg:px-8">
@@ -55,8 +54,7 @@ export function ConnectAppHeader() {
         <nav className="hidden items-center gap-6 text-[13px] text-[#203934] lg:flex">
           {navItems.map((item) => {
             const active = isActive(pathname, item.href);
-            const homeForcedActive = isHome && item.label === "Talk Now";
-            const showActive = active || homeForcedActive;
+            const showActive = active;
             return (
               <Link
                 key={item.label}
