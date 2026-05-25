@@ -28,7 +28,6 @@ import {
   getWallet,
   getWalletTransactions as getWalletTransactionsFromApi,
 } from "@/lib/api/wallet";
-import { demoWallet, isClientDemoEnabled } from "@/lib/clientDemoData";
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { getUserAuthTokenWithRestore } from "@/lib/auth/userAuth";
 
@@ -151,7 +150,6 @@ export default function WalletPage() {
   const [successMessage, setSuccessMessage] = useState("");
   const [rechargeError, setRechargeError] = useState("");
   const [apiError, setApiError] = useState("");
-  const [isDemoWalletPreview, setIsDemoWalletPreview] = useState(false);
   const [authReady, setAuthReady] = useState(!IS_PRODUCTION_READY_MODE);
 
   const [balance, setBalance] = useState(0);
@@ -197,11 +195,9 @@ export default function WalletPage() {
           getWalletTransactionsFromApi(),
         ]);
         const hasRealWallet = Boolean(walletResponse.data);
-        const hasRealTransactions = Boolean(transactionResponse.data && transactionResponse.data.length > 0);
 
         if (hasRealWallet && walletResponse.data) {
           setBalance(walletResponse.data.balance);
-          setIsDemoWalletPreview(false);
         }
         if (transactionResponse.data) {
           const mapped = mapApiTransactions(transactionResponse.data);
@@ -211,18 +207,6 @@ export default function WalletPage() {
               .filter((tx) => tx.type === "booking")
               .reduce((sum, tx) => sum + Math.abs(tx.amountAdded), 0),
           );
-        }
-        if (!hasRealWallet && !hasRealTransactions && isClientDemoEnabled()) {
-          setBalance(demoWallet.balance);
-          setTransactions(demoWallet.transactions);
-          setTotalSpent(
-            demoWallet.transactions
-              .filter((tx) => tx.type === "booking")
-              .reduce((sum, tx) => sum + Math.abs(tx.amountAdded), 0),
-          );
-          setApiError("");
-          setIsDemoWalletPreview(true);
-          return;
         }
         if (walletResponse.error || transactionResponse.error) {
           setApiError("We couldn't load wallet details right now. Please retry.");
@@ -328,13 +312,10 @@ export default function WalletPage() {
         <article className="rounded-3xl border border-[#dceae5] bg-white p-6 shadow-sm shadow-teal-900/5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-semibold text-slate-900">Your balance</h1>
+            <h1 className="text-3xl font-semibold text-slate-900">Your balance</h1>
               <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-600 sm:text-base">
                 Platform-protected payments for calm conversations with verified companions.
               </p>
-              {isDemoWalletPreview ? (
-                <p className="mt-2 text-xs font-semibold text-slate-500">Demo wallet for preview</p>
-              ) : null}
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -347,11 +328,9 @@ export default function WalletPage() {
                         getWalletTransactionsFromApi(),
                       ]);
                       const hasRealWallet = Boolean(walletResponse.data);
-                      const hasRealTransactions = Boolean(txResponse.data && txResponse.data.length > 0);
 
                       if (hasRealWallet && walletResponse.data) {
                         setBalance(walletResponse.data.balance);
-                        setIsDemoWalletPreview(false);
                       }
                       if (txResponse.data) {
                         const mapped = mapApiTransactions(txResponse.data);
@@ -361,19 +340,6 @@ export default function WalletPage() {
                             .filter((tx) => tx.type === "booking")
                             .reduce((sum, tx) => sum + Math.abs(tx.amountAdded), 0),
                         );
-                      }
-                      if (!hasRealWallet && !hasRealTransactions && isClientDemoEnabled()) {
-                        setBalance(demoWallet.balance);
-                        setTransactions(demoWallet.transactions);
-                        setTotalSpent(
-                          demoWallet.transactions
-                            .filter((tx) => tx.type === "booking")
-                            .reduce((sum, tx) => sum + Math.abs(tx.amountAdded), 0),
-                        );
-                        setApiError("");
-                        setIsDemoWalletPreview(true);
-                        setSuccessMessage("Demo wallet loaded.");
-                        return;
                       }
                       if (walletResponse.error || txResponse.error) {
                         setApiError("We couldn't load wallet details right now. Please retry.");

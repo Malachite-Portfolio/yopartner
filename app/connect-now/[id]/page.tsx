@@ -7,7 +7,6 @@ import { ProfileHeroCard } from "@/components/ProfileHeroCard";
 import { ProfileInfoSection } from "@/components/ProfileInfoSection";
 import { ProfileReviews } from "@/components/ProfileReviews";
 import { ProfileVerification } from "@/components/ProfileVerification";
-import { demoHosts, isClientDemoEnabled } from "@/lib/clientDemoData";
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { connectCompanions, type ConnectCompanion } from "@/lib/data";
 
@@ -78,11 +77,9 @@ export default async function ConnectProfilePage({ params, searchParams }: Conne
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const preferredType = resolvedSearchParams?.type;
 
-  const demoCompanion = isClientDemoEnabled() ? demoHosts.find((item) => item.id === id) : null;
   const response = await getCompanionById(id);
   const apiCompanion = response.data ? toProfileCompanion(response.data) : null;
-  const companion =
-    apiCompanion ?? demoCompanion ?? (!IS_PRODUCTION_READY_MODE ? connectCompanions.find((item) => item.id === id) : null);
+  const companion = apiCompanion ?? (!IS_PRODUCTION_READY_MODE ? connectCompanions.find((item) => item.id === id) : null);
 
   if (IS_PRODUCTION_READY_MODE && !companion) {
     return (

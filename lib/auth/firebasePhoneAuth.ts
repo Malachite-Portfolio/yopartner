@@ -25,7 +25,7 @@ type FirebaseDebugDetails = { code: string; message: string };
 let recaptchaVerifierRef: RecaptchaVerifier | null = null;
 let recaptchaWidgetIdRef: number | null = null;
 let pendingConfirmationResultRef: ConfirmationResult | null = null;
-let activeAuthMode: AuthMode = "demo";
+let activeAuthMode: AuthMode = "firebase";
 
 function canUseStorage() {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined";

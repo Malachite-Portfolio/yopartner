@@ -32,7 +32,10 @@ export const ADMIN_DEMO_SESSION_KEY = "yopartner_admin_demo_session";
 const PARTNER_APPROVAL_STATE_KEY = "yopartner_partner_approval_state";
 
 export function isClientDemoEnabled() {
-  return process.env.NEXT_PUBLIC_CLIENT_DEMO_ENABLED === "true";
+  return (
+    process.env.NODE_ENV === "development" &&
+    process.env.NEXT_PUBLIC_CLIENT_DEMO_ENABLED === "true"
+  );
 }
 
 function canUseStorage() {

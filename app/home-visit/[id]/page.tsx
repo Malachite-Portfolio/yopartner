@@ -3,10 +3,8 @@ import { notFound } from "next/navigation";
 import { BadgeCheck, MapPin, ShieldCheck, Star } from "lucide-react";
 import { ConnectAppHeader } from "@/components/ConnectAppHeader";
 import { HomeVisitBookingFlow } from "@/components/HomeVisitBookingFlow";
-import {
-  getClientDemoHomeVisitCompanions,
-  isClientDemoEnabled,
-} from "@/lib/clientDemoData";
+import { getCompanionById } from "@/lib/api/companions";
+import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { connectCompanions, homeVisitCompanions, type ConnectCompanion, type HomeVisitCompanion } from "@/lib/data";
 import { formatINR } from "@/lib/wallet";
 
@@ -37,9 +35,8 @@ function getHomeVisitSource() {
   const connectHomeVisitCompanions = connectCompanions
     .filter((companion) => companion.visitPrice > 0)
     .map(toHomeVisitCompanion);
-  const demoCompanions = isClientDemoEnabled() ? getClientDemoHomeVisitCompanions() : [];
   const byId = new Map<string, HomeVisitCompanion>();
-  [...connectHomeVisitCompanions, ...homeVisitCompanions, ...demoCompanions].forEach((item) => {
+  [...connectHomeVisitCompanions, ...homeVisitCompanions].forEach((item) => {
     byId.set(item.id, item);
   });
   return [...byId.values()];
@@ -47,7 +44,28 @@ function getHomeVisitSource() {
 
 export default async function HomeVisitProfilePage({ params }: HomeVisitProfilePageProps) {
   const { id } = await params;
-  const companion = getHomeVisitSource().find((item) => item.id === id);
+  let companion = getHomeVisitSource().find((item) => item.id === id);
+  if (IS_PRODUCTION_READY_MODE) {
+    const response = await getCompanionById(id);
+    if (response.data && (response.data.visitPrice ?? 0) > 0) {
+      companion = {
+        id: response.data.id,
+        name: response.data.name,
+        tagline: response.data.tagline,
+        image: response.data.image ?? "/images/logo.png",
+        rating: response.data.rating || 0,
+        experience: response.data.experience || "Verified companion",
+        verified: true,
+        price: response.data.visitPrice ?? 0,
+        category: response.data.category,
+        services: response.data.servicesOffered,
+        city: "India",
+        connectProfileId: response.data.id,
+      };
+    } else {
+      companion = undefined;
+    }
+  }
 
   if (!companion) {
     notFound();

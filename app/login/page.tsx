@@ -13,10 +13,10 @@ import {
   setupRecaptcha,
 } from "@/lib/auth/firebasePhoneAuth";
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
-import { setDemoPhone } from "@/lib/demoAuth";
 import { restoreUserAuthSessionFromFirebase } from "@/lib/auth/userAuth";
 
 const POST_LOGIN_REDIRECT_KEY = "yopartner_post_login_redirect";
+const PENDING_USER_PHONE_KEY = "yopartner_pending_user_phone";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -64,12 +64,12 @@ export default function LoginPage() {
     }
 
     const normalized = `+91${digits}`;
-    setDemoPhone(normalized);
     const returnUrl =
       typeof window !== "undefined"
         ? new URLSearchParams(window.location.search).get("returnUrl")
         : null;
     if (typeof window !== "undefined") {
+      window.localStorage.setItem(PENDING_USER_PHONE_KEY, normalized);
       if (returnUrl && returnUrl.startsWith("/")) {
         window.localStorage.setItem(POST_LOGIN_REDIRECT_KEY, returnUrl);
       } else {

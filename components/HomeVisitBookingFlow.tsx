@@ -139,6 +139,11 @@ export function HomeVisitBookingFlow({ companion }: HomeVisitBookingFlowProps) {
   const handleProceed = () => {
     if (!canProceed) return;
 
+    if (IS_PRODUCTION_READY_MODE) {
+      setSuccessMessage("Home Visit requests are currently handled by support. Please contact support to continue.");
+      return;
+    }
+
     const pendingBooking = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       bookingId: createPendingBookingId(),

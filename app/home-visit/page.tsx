@@ -1,15 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ConnectAppHeader } from "@/components/ConnectAppHeader";
 import { HomeVisitCompanionCard } from "@/components/HomeVisitCompanionCard";
 import { HomeVisitFilters } from "@/components/HomeVisitFilters";
-import {
-  getClientDemoHomeVisitCompanions,
-  isClientDemoEnabled,
-} from "@/lib/clientDemoData";
+import { listCompanions, type CompanionItem } from "@/lib/api/companions";
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
-import { homeVisitCompanions } from "@/lib/data";
+import { homeVisitCompanions, type HomeVisitCompanion } from "@/lib/data";
 
 const homeVisitSafetyMessage =
   "Home Visit is available only for verified companions. Please contact support to enable this service.";
@@ -18,19 +15,46 @@ export default function HomeVisitPage() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
-
-  const demoHomeVisitCompanions = useMemo(
-    () => (isClientDemoEnabled() ? getClientDemoHomeVisitCompanions() : []),
-    [],
+  const [companions, setCompanions] = useState<HomeVisitCompanion[]>(() =>
+    IS_PRODUCTION_READY_MODE ? [] : homeVisitCompanions,
   );
+  const [isLoading, setIsLoading] = useState(IS_PRODUCTION_READY_MODE);
 
-  const companions = useMemo(() => {
-    const source = IS_PRODUCTION_READY_MODE
-      ? demoHomeVisitCompanions
-      : [...homeVisitCompanions, ...demoHomeVisitCompanions];
-    const byId = new Map(source.map((item) => [item.id, item]));
-    return [...byId.values()];
-  }, [demoHomeVisitCompanions]);
+  useEffect(() => {
+    if (!IS_PRODUCTION_READY_MODE) return;
+    let cancelled = false;
+    const fetchCompanions = async () => {
+      const response = await listCompanions();
+      if (cancelled) return;
+      if (response.error) {
+        setCompanions([]);
+        setIsLoading(false);
+        return;
+      }
+      const mapped = response.data
+        .filter((item) => (item.visitPrice ?? 0) > 0)
+        .map((item: CompanionItem) => ({
+          id: item.id,
+          name: item.name,
+          tagline: item.tagline,
+          image: item.image ?? "/images/logo.png",
+          rating: item.rating || 0,
+          experience: item.experience || "Verified companion",
+          verified: true,
+          price: item.visitPrice ?? 0,
+          category: item.category,
+          services: item.servicesOffered,
+          city: "India",
+          connectProfileId: item.id,
+        }));
+      setCompanions(mapped);
+      setIsLoading(false);
+    };
+    void fetchCompanions();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const filteredCompanions = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
@@ -118,7 +142,7 @@ export default function HomeVisitPage() {
             </div>
           ) : (
             <div className="rounded-3xl border border-[#dceae5] bg-white px-4 py-10 text-center text-sm text-slate-600">
-              {homeVisitSafetyMessage}
+              {isLoading ? "Finding verified companions..." : homeVisitSafetyMessage}
             </div>
           )}
         </section>

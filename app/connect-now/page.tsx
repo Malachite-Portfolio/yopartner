@@ -8,7 +8,6 @@ import { ConnectCompanionCard } from "@/components/ConnectCompanionCard";
 import { ConnectFilters } from "@/components/ConnectFilters";
 import { ConnectTabs, type ConnectServiceTab } from "@/components/ConnectTabs";
 import { listCompanions } from "@/lib/api/companions";
-import { isClientDemoEnabled, demoHosts } from "@/lib/clientDemoData";
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { connectCompanions } from "@/lib/data";
 
@@ -43,7 +42,6 @@ export default function ConnectNowPage() {
   const [companions, setCompanions] = useState(() => (IS_PRODUCTION_READY_MODE ? [] : connectCompanions));
   const [isLoadingCompanions, setIsLoadingCompanions] = useState(IS_PRODUCTION_READY_MODE);
   const [apiError, setApiError] = useState("");
-  const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   useEffect(() => {
@@ -55,30 +53,13 @@ export default function ConnectNowPage() {
       if (cancelled) return;
 
       if (response.error) {
-        if (isClientDemoEnabled()) {
-          setCompanions(demoHosts);
-          setApiError("");
-          setIsPreviewMode(true);
-          setIsLoadingCompanions(false);
-          return;
-        }
-
         setApiError("Verified listeners are currently unavailable. Please try again shortly.");
         setCompanions([]);
         setIsLoadingCompanions(false);
         return;
       }
 
-      if (response.data.length === 0 && isClientDemoEnabled()) {
-        setCompanions(demoHosts);
-        setApiError("");
-        setIsPreviewMode(true);
-        setIsLoadingCompanions(false);
-        return;
-      }
-
       setCompanions(response.data as typeof connectCompanions);
-      setIsPreviewMode(false);
       setApiError("");
       setIsLoadingCompanions(false);
     };
@@ -188,13 +169,6 @@ export default function ConnectNowPage() {
                 <ConnectCompanionCard key={companion.id} companion={companion} />
               ))}
             </div>
-
-            {isPreviewMode ? (
-              <p className="mt-4 inline-flex items-center gap-2 rounded-full border border-[#c9d3da] bg-white px-3 py-1 text-xs font-semibold text-[#4e5f6c]">
-                <span>Demo mode enabled</span>
-                <span className="text-[#8c98a6]">local preview</span>
-              </p>
-            ) : null}
 
             {apiError ? (
               <div className="mt-6 rounded-3xl border border-amber-200 bg-amber-50 px-4 py-8 text-center text-sm text-amber-700">

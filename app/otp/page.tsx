@@ -19,6 +19,7 @@ import { getUserAuthState, saveUserAuthSession } from "@/lib/auth/userAuth";
 
 const OTP_LENGTH = 6;
 const POST_LOGIN_REDIRECT_KEY = "yopartner_post_login_redirect";
+const PENDING_USER_PHONE_KEY = "yopartner_pending_user_phone";
 
 function getPostLoginRedirect() {
   if (typeof window === "undefined") return null;
@@ -33,6 +34,16 @@ function consumePostLoginRedirect() {
     window.localStorage.removeItem(POST_LOGIN_REDIRECT_KEY);
   }
   return redirect;
+}
+
+function getPendingPhone() {
+  if (typeof window === "undefined") return "";
+  return window.localStorage.getItem(PENDING_USER_PHONE_KEY) ?? "";
+}
+
+function clearPendingPhone() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(PENDING_USER_PHONE_KEY);
 }
 
 export default function OtpPage() {
@@ -50,7 +61,7 @@ export default function OtpPage() {
 
   const phone = useMemo(() => {
     if (typeof window === "undefined") return "";
-    return getUserAuthState().phone || getDemoPhone();
+    return getUserAuthState().phone || getPendingPhone() || getDemoPhone();
   }, []);
   const isComplete = otp.every((digit) => digit.length === 1);
 
@@ -99,7 +110,6 @@ export default function OtpPage() {
         const user = await verifyOtp(pendingConfirmation, otpValue);
         const idToken = await user.getIdToken(true);
 
-        setDemoLoggedIn(true);
         const normalizedPhone = phone.replace(/\D/g, "").slice(-10);
         const phoneValue = normalizedPhone.length === 10 ? `+91${normalizedPhone}` : phone;
         saveUserAuthSession({
@@ -109,6 +119,7 @@ export default function OtpPage() {
         });
 
         clearPendingConfirmationResult();
+        clearPendingPhone();
         setAuthMode("firebase");
         setMessage("Verification successful. Redirecting...");
         setTimeout(() => {
@@ -125,6 +136,7 @@ export default function OtpPage() {
 
     setDemoLoggedIn(true);
     setAuthMode("demo");
+    clearPendingPhone();
     setError("");
     setMessage("Verification successful. Redirecting...");
     setTimeout(() => {

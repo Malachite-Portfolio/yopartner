@@ -309,7 +309,7 @@ export const demoPartnerEarnings: PartnerEarningItem[] = [
 ];
 
 function shouldHideDemoPartnerData() {
-  return IS_PRODUCTION_READY_MODE && process.env.NEXT_PUBLIC_CLIENT_DEMO_ENABLED !== "true";
+  return IS_PRODUCTION_READY_MODE || process.env.NODE_ENV !== "development";
 }
 
 export function getPartnerInbox() {
