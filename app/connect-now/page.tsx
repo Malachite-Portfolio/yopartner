@@ -1,15 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { ShieldCheck } from "lucide-react";
 import Link from "next/link";
-import { listCompanions } from "@/lib/api/companions";
+import { useEffect, useMemo, useState } from "react";
 import { ConnectAppHeader } from "@/components/ConnectAppHeader";
 import { ConnectCompanionCard } from "@/components/ConnectCompanionCard";
 import { ConnectFilters } from "@/components/ConnectFilters";
 import { ConnectTabs, type ConnectServiceTab } from "@/components/ConnectTabs";
+import { listCompanions } from "@/lib/api/companions";
+import { isClientDemoEnabled, demoHosts } from "@/lib/clientDemoData";
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { connectCompanions } from "@/lib/data";
-import { demoHosts, isClientDemoEnabled } from "@/lib/clientDemoData";
 
 function safeStringArray(value: unknown) {
   if (!Array.isArray(value)) return [];
@@ -30,7 +31,7 @@ function hasHomeVisitService(companion: { servicesOffered?: unknown; visitPrice?
   const visitPrice = safeNumber(companion.homeVisitPrice) ?? safeNumber(companion.visitPrice);
   return (
     services.some((service) => ["home visit", "home_visit"].includes(service.trim().toLowerCase())) ||
-    typeof visitPrice === "number" && visitPrice > 0
+    (typeof visitPrice === "number" && visitPrice > 0)
   );
 }
 
@@ -48,9 +49,11 @@ export default function ConnectNowPage() {
   useEffect(() => {
     if (!IS_PRODUCTION_READY_MODE) return;
     let cancelled = false;
+
     const fetchCompanions = async () => {
       const response = await listCompanions();
       if (cancelled) return;
+
       if (response.error) {
         if (isClientDemoEnabled()) {
           setCompanions(demoHosts);
@@ -59,11 +62,13 @@ export default function ConnectNowPage() {
           setIsLoadingCompanions(false);
           return;
         }
-        setApiError("Verified companions are currently unavailable. Please try again later.");
+
+        setApiError("Verified listeners are currently unavailable. Please try again shortly.");
         setCompanions([]);
         setIsLoadingCompanions(false);
         return;
       }
+
       if (response.data.length === 0 && isClientDemoEnabled()) {
         setCompanions(demoHosts);
         setApiError("");
@@ -71,15 +76,18 @@ export default function ConnectNowPage() {
         setIsLoadingCompanions(false);
         return;
       }
+
       setCompanions(response.data as typeof connectCompanions);
       setIsPreviewMode(false);
       setApiError("");
       setIsLoadingCompanions(false);
     };
+
     void fetchCompanions();
     const timer = window.setInterval(() => {
       void fetchCompanions();
     }, 12000);
+
     return () => {
       cancelled = true;
       window.clearInterval(timer);
@@ -88,6 +96,7 @@ export default function ConnectNowPage() {
 
   const filteredCompanions = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
+
     return companions.filter((companion) => {
       const services = safeStringArray(companion.servicesOffered);
       const languages = safeStringArray(companion.languages);
@@ -95,14 +104,6 @@ export default function ConnectNowPage() {
       const tagline = safeText(companion.tagline);
       const name = safeText(companion.name, "Verified Companion");
       const videoPrice = safeNumber(companion.videoPrice);
-
-      if (process.env.NODE_ENV !== "production" && (!Array.isArray(companion.servicesOffered) || !Array.isArray(companion.languages))) {
-        console.warn("Connect companion data normalized before filtering", {
-          id: companion.id,
-          hasServicesOffered: Array.isArray(companion.servicesOffered),
-          hasLanguages: Array.isArray(companion.languages),
-        });
-      }
 
       if (availability === "online" && !Boolean(companion.online)) return false;
       if (selectedTab === "Video Call" && typeof videoPrice !== "number") return false;
@@ -114,11 +115,13 @@ export default function ConnectNowPage() {
         const inLanguages = languages.some((language) => language.toLowerCase().includes(selected));
         const inProfile = `${category} ${tagline}`.toLowerCase().includes(selected);
         const inHomeVisit = selected === "home visit" && hasHomeVisitService(companion);
+
         if (!inServices && !inLanguages && !inProfile && !inHomeVisit) return false;
         if (selected === "home visit" && !inHomeVisit) return false;
       }
 
       if (!term) return true;
+
       const haystack = `${name} ${tagline} ${category} ${languages.join(" ")} ${services.join(" ")}`.toLowerCase();
       return haystack.includes(term);
     });
@@ -132,30 +135,20 @@ export default function ConnectNowPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#fffdf8]">
+    <main className="min-h-screen bg-[#eceff3]">
       <ConnectAppHeader />
 
-      <div className="border-b border-[#dceae5] bg-[#f7fbf8]">
-        <div className="mx-auto w-full max-w-[1500px] px-4 py-8 sm:px-6 lg:px-8">
-          <p className="text-sm font-semibold uppercase text-[#0f766e]">Find Support</p>
-          <h1 className="mt-2 text-3xl font-semibold leading-tight text-slate-950 sm:text-4xl">
-            Who would you like to talk to today?
-          </h1>
-          <p className="mt-3 max-w-2xl text-base leading-7 text-slate-600">
-            Choose a verified companion based on mood, language, and comfort. Real conversations. No judgment.
-          </p>
-        </div>
-      </div>
-
-      <div className="mx-auto flex min-h-[calc(100vh-72px)] w-full max-w-[1500px]">
-        <aside className="hidden w-[260px] shrink-0 border-r border-[#dceae5] bg-[#fffdf8] lg:block">
-          <ConnectFilters
-            selectedAvailability={availability}
-            selectedCategory={selectedCategory}
-            onAvailabilityChange={setAvailability}
-            onCategoryChange={(value) => setSelectedCategory((current) => (current === value ? null : value))}
-            onClearAll={handleClearAll}
-          />
+      <div className="mx-auto flex w-full max-w-[1560px] gap-0">
+        <aside className="hidden w-[364px] shrink-0 border-r border-[#b9c6cd] lg:block">
+          <div className="sticky top-16 h-[calc(100vh-64px)] overflow-y-auto">
+            <ConnectFilters
+              selectedAvailability={availability}
+              selectedCategory={selectedCategory}
+              onAvailabilityChange={setAvailability}
+              onCategoryChange={(value) => setSelectedCategory((current) => (current === value ? null : value))}
+              onClearAll={handleClearAll}
+            />
+          </div>
         </aside>
 
         <section className="min-w-0 flex-1">
@@ -166,17 +159,18 @@ export default function ConnectNowPage() {
             onSearchTermChange={setSearchTerm}
           />
 
-          <div className="p-4 sm:p-5 lg:p-6">
-            <div className="mb-4 space-y-3 lg:hidden">
+          <div className="px-4 pb-8 sm:px-6 lg:px-8">
+            <div className="mb-4 lg:hidden">
               <button
                 type="button"
                 onClick={() => setFiltersOpen((current) => !current)}
-                className="flex min-h-11 w-full items-center justify-between rounded-2xl border border-[#dceae5] bg-white px-4 text-[15px] font-semibold text-slate-900"
+                className="flex h-11 w-full items-center justify-between rounded-2xl border border-[#bac6cc] bg-[#eef2f5] px-4 text-sm font-semibold text-[#1b2a36]"
               >
                 Filters
-                <span className="text-xs text-slate-500">{filtersOpen ? "Hide" : "Show"}</span>
+                <span className="text-xs text-[#5c6874]">{filtersOpen ? "Hide" : "Show"}</span>
               </button>
               {filtersOpen ? (
+                <div className="mt-3">
                   <ConnectFilters
                     mobile
                     selectedAvailability={availability}
@@ -185,32 +179,20 @@ export default function ConnectNowPage() {
                     onCategoryChange={(value) => setSelectedCategory((current) => (current === value ? null : value))}
                     onClearAll={handleClearAll}
                   />
+                </div>
               ) : null}
             </div>
 
-            <div className="mb-4 rounded-3xl border border-orange-200 bg-[#fff7ed] px-4 py-3 text-sm text-slate-700 sm:px-5 sm:py-4">
-              <p className="font-semibold text-slate-950">Home Visit is safety-gated</p>
-              <p className="mt-1">
-                Verified in-person support is available only after manual safety approval. Platform rules apply.
-              </p>
-              <p className="mt-1 text-xs text-slate-500">
-                Strictly platonic | Platform-protected payments | No outside contact sharing
-              </p>
-              <Link href="/home-visit" className="mt-2 inline-flex text-sm font-semibold text-[#0f766e]">
-                Learn about safe Home Visit
-              </Link>
-            </div>
-
-            <div className="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               {filteredCompanions.map((companion) => (
                 <ConnectCompanionCard key={companion.id} companion={companion} />
               ))}
             </div>
 
             {isPreviewMode ? (
-              <p className="mt-4 inline-flex items-center gap-2 rounded-full border border-[#dceae5] bg-white px-3 py-1 text-xs font-semibold text-slate-600">
+              <p className="mt-4 inline-flex items-center gap-2 rounded-full border border-[#c9d3da] bg-white px-3 py-1 text-xs font-semibold text-[#4e5f6c]">
                 <span>Demo mode enabled</span>
-                <span className="text-slate-400">local preview</span>
+                <span className="text-[#8c98a6]">local preview</span>
               </p>
             ) : null}
 
@@ -221,14 +203,32 @@ export default function ConnectNowPage() {
             ) : null}
 
             {filteredCompanions.length === 0 ? (
-              <div className="mt-6 rounded-3xl border border-[#dceae5] bg-white px-4 py-10 text-center text-sm text-slate-600">
+              <div className="mt-6 rounded-[24px] border border-[#c9d3da] bg-[#f5f7fa] px-4 py-10 text-center text-sm text-[#4f5f6d]">
                 {isLoadingCompanions
-                  ? "Finding verified companions..."
+                  ? "Finding verified listeners..."
                   : IS_PRODUCTION_READY_MODE
-                    ? "No verified companions are available right now. Please check back soon."
-                    : "No companions matched your current mood, language, or listener style."}
+                    ? "No listeners are available right now. Please check back soon."
+                    : "No listeners matched your current filters."}
               </div>
             ) : null}
+
+            <div className="mt-8 rounded-[22px] border border-[#e4c294] bg-[#f6eee2] p-6 sm:p-8">
+              <div className="flex items-start gap-5">
+                <span className="inline-flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-white text-[#946106] shadow-sm">
+                  <ShieldCheck size={30} />
+                </span>
+                <div>
+                  <h3 className="text-3xl font-semibold text-[#8a5300] md:text-4xl">Safety first, always</h3>
+                  <p className="mt-2 max-w-4xl text-base leading-relaxed text-[#2b3744] md:text-lg">
+                    We prioritize your mental well-being and security. Every conversation is private, and our listeners go through
+                    a strict vetting process to ensure you get the best support possible.
+                  </p>
+                  <Link href="/trust-safety" className="mt-2 inline-flex text-lg font-semibold text-[#5b2dd6] md:text-xl">
+                    Learn more about our safety protocols.
+                  </Link>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
       </div>

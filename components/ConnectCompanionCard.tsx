@@ -1,9 +1,8 @@
 "use client";
 
-import { BadgeCheck, HeartHandshake, MessageCircle, Phone, ShieldCheck, Star, Video } from "lucide-react";
-import Link from "next/link";
+import { MessageSquareText, Mic, Star, Video } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { createSession } from "@/lib/api/sessions";
 import type { ConnectCompanion } from "@/lib/data";
 import { requestAudioPermission, requestVideoPermission } from "@/lib/agora";
@@ -23,7 +22,7 @@ function Initials({ name }: { name: string }) {
     .toUpperCase();
 
   return (
-    <span className="inline-flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[#eef8f5] text-lg font-semibold text-[#0f766e] sm:h-[72px] sm:w-[72px]">
+    <span className="inline-flex h-[88px] w-[88px] shrink-0 items-center justify-center rounded-full bg-[#dce5ea] text-2xl font-semibold text-[#204454]">
       {text}
     </span>
   );
@@ -39,57 +38,38 @@ function safeStringArray(value: unknown) {
   return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
 }
 
-function SupportAction({
-  href,
-  label,
-  price,
+function ActionPriceButton({
   icon,
+  price,
   onClick,
-  disabled = false,
+  disabled,
+  tone,
 }: {
-  href: string;
-  label: string;
+  icon: "chat" | "voice" | "video";
   price?: number;
-  icon: ReactNode;
-  onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
-  disabled?: boolean;
+  onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  disabled: boolean;
+  tone: "mint" | "lavender" | "cream";
 }) {
-  if (onClick) {
-    return (
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={onClick}
-        className="flex min-h-[52px] items-center justify-between gap-2 rounded-2xl border border-[#dceae5] bg-white px-3 text-left text-sm font-semibold leading-tight text-slate-800 hover:border-[#0f766e]/40 hover:bg-[#eef8f5] disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        <span className="inline-flex min-w-0 items-center gap-2">
-          {icon}
-          <span className="truncate">{label}</span>
-        </span>
-        {typeof price === "number" ? (
-          <span className="shrink-0 text-xs font-semibold text-[#0f766e]">{formatINRPrice(price, "/min")}</span>
-        ) : null}
-      </button>
-    );
-  }
+  const toneClasses =
+    tone === "mint"
+      ? "bg-[#dff1ef] text-[#0b6b66]"
+      : tone === "lavender"
+        ? "bg-[#e8e6f6] text-[#5834d2]"
+        : "bg-[#f3eadf] text-[#8f5718]";
 
   return (
-    <Link
-      href={href}
-      className={`flex min-h-[52px] items-center justify-between gap-2 rounded-2xl border border-[#dceae5] bg-white px-3 text-left text-sm font-semibold leading-tight text-slate-800 hover:border-[#0f766e]/40 hover:bg-[#eef8f5] ${
-        disabled ? "pointer-events-none opacity-60" : ""
-      }`}
-      onClick={(event) => event.stopPropagation()}
-      onKeyDown={(event) => event.stopPropagation()}
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className={`flex h-11 items-center justify-center gap-1 rounded-xl px-2 text-[14px] font-semibold transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 ${toneClasses}`}
     >
-      <span className="inline-flex min-w-0 items-center gap-2">
-        {icon}
-        <span className="truncate">{label}</span>
-      </span>
-      {typeof price === "number" ? (
-        <span className="shrink-0 text-xs font-semibold text-[#0f766e]">{formatINRPrice(price, "/min")}</span>
-      ) : null}
-    </Link>
+      {icon === "chat" ? <MessageSquareText size={15} /> : null}
+      {icon === "voice" ? <Mic size={15} /> : null}
+      {icon === "video" ? <Video size={15} /> : null}
+      <span>{formatINRPrice(price)}</span>
+    </button>
   );
 }
 
@@ -99,18 +79,22 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
   const name = companion.name || "Verified Companion";
   const tagline = companion.tagline || "Calm, respectful conversations";
   const rating = safeNumber(companion.rating) ?? 0;
-  const languages = safeStringArray(companion.languages);
-  const languageLabel = languages.length > 0 ? languages.slice(0, 2).join(" & ") : "Hindi & English";
   const chatPrice = safeNumber(companion.chatPrice);
   const voicePrice = safeNumber(companion.voicePrice);
   const videoPrice = safeNumber(companion.videoPrice);
-  const visitPrice = safeNumber(companion.visitPrice);
+  const experienceLabel = companion.experience || "1 yrs+";
+  const services = safeStringArray(companion.servicesOffered).map((service) => service.toLowerCase());
   const hasVideo = typeof videoPrice === "number";
-  const hasHomeVisit = typeof visitPrice === "number" && visitPrice > 0;
   const status = companion.effectiveStatus ?? (companion.isBusy ? "BUSY" : companion.online ? "ONLINE" : "OFFLINE");
   const isBusy = status === "BUSY";
-  const isOffline = status === "OFFLINE";
   const profileUrl = `/connect-now/${companion.id}`;
+  const rawMetaChips = [
+    services.some((service) => service.includes("active listening") || service.includes("empathetic")) ? "Good listener" : null,
+    services.some((service) => service.includes("motivational") || service.includes("conversation")) ? "Friendly" : null,
+    services.some((service) => service.includes("stress") || service.includes("break-up")) ? "Non-judgmental" : null,
+    "Verified",
+  ].filter((chip): chip is string => Boolean(chip));
+  const metaChips = Array.from(new Set(rawMetaChips)).slice(0, 2);
 
   const createSessionAndRoute = async (
     event: React.MouseEvent<HTMLButtonElement>,
@@ -122,14 +106,15 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
       return;
     }
     setActionError("");
+
     const returnUrl =
       serviceType === "chat"
         ? `/chat/${companion.id}`
         : serviceType === "audio"
           ? `/call/audio/${companion.id}`
           : `/call/video/${companion.id}`;
-    const token = await getUserAuthTokenWithRestore();
 
+    const token = await getUserAuthTokenWithRestore();
     if (!token) {
       router.push(`/login?returnUrl=${encodeURIComponent(returnUrl)}`);
       return;
@@ -139,10 +124,11 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
       try {
         await requestAudioPermission();
       } catch {
-        setActionError("Microphone permission is required for audio calls.");
+        setActionError("Microphone permission is required for voice calls.");
         return;
       }
     }
+
     if (serviceType === "video") {
       try {
         await requestVideoPermission();
@@ -181,7 +167,7 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
 
   return (
     <article
-      className="flex h-full cursor-pointer flex-col rounded-[28px] border border-[#dceae5] bg-white p-4 shadow-sm shadow-teal-900/5 transition hover:-translate-y-0.5 hover:border-[#0f766e]/35"
+      className="flex h-full min-h-[226px] cursor-pointer flex-col rounded-[22px] border border-[#e4e8ed] bg-[#f5f7fa] p-3.5 shadow-[0_1px_0_rgba(5,32,57,0.03)] transition hover:-translate-y-0.5"
       onClick={() => router.push(profileUrl)}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
@@ -194,126 +180,84 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
       aria-label={`Open ${name} profile`}
     >
       <div className="flex items-start gap-3">
-        {companion.image ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={companion.image}
-            alt={name}
-            className="h-16 w-16 shrink-0 rounded-2xl object-cover shadow-sm sm:h-[72px] sm:w-[72px]"
+        <div className="relative shrink-0">
+          {companion.image ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={companion.image} alt={name} className="h-[84px] w-[84px] rounded-full object-cover" />
+          ) : (
+            <Initials name={name} />
+          )}
+          <span
+            className={`absolute -bottom-1 right-1 h-3.5 w-3.5 rounded-full border-2 border-[#f5f7fa] ${
+              status === "ONLINE" ? "bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.18)]" : "bg-[#96a2b1]"
+            }`}
           />
-        ) : (
-          <Initials name={name} />
-        )}
+        </div>
 
-        <div className="min-w-0 grow">
+        <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
-            <h3 className="text-lg font-semibold leading-tight text-slate-950">{name}</h3>
-            <span
-              className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                status === "ONLINE"
-                  ? "bg-emerald-50 text-emerald-700"
-                  : status === "BUSY"
-                    ? "bg-amber-50 text-amber-700"
-                    : "bg-slate-100 text-slate-600"
-              }`}
-            >
-              <span
-                className={`h-2 w-2 rounded-full ${
-                  status === "ONLINE" ? "bg-emerald-500" : status === "BUSY" ? "bg-amber-500" : "bg-slate-400"
-                }`}
-              />
+            <div>
+              <h3 className="line-clamp-1 text-[21px] font-medium leading-tight text-[#172533] md:text-[23px]">{name}</h3>
+              <p className="mt-0.5 line-clamp-1 text-[14px] leading-5 text-[#637382]">{tagline}</p>
+            </div>
+            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#e6e9ee] px-2.5 py-1 text-xs font-medium text-[#4f5c69]">
+              <span className="h-2.5 w-2.5 rounded-full bg-[#9ba8b6]" />
               {status === "ONLINE" ? "Online" : status === "BUSY" ? "Busy" : "Offline"}
             </span>
           </div>
 
-          <p className="mt-1 line-clamp-1 text-sm leading-5 text-slate-600">{tagline}</p>
+          <div className="mt-1.5 flex items-center gap-1 text-[#b56a00]">
+            {Array.from({ length: 5 }).map((_, index) => (
+              <Star key={index} size={12} fill="currentColor" strokeWidth={0} />
+            ))}
+            <span className="ml-1 text-[15px] font-semibold text-[#1f2e3b]">{rating.toFixed(1)}/5</span>
+            <span className="text-[#9aa7b4]">|</span>
+            <span className="text-[13px] text-[#61707f]">{experienceLabel}</span>
+          </div>
 
-          <div className="mt-2 flex items-center gap-1 text-amber-500">
-            <Star size={15} fill="currentColor" />
-            <span className="text-sm font-semibold text-slate-900">{rating.toFixed(1)}</span>
-            <span className="text-xs text-slate-500">rating</span>
+          <div className="mt-1.5 flex items-center gap-1.5">
+            {metaChips.map((chip) => (
+              <span key={chip} className="rounded-full bg-[#e9eef5] px-2 py-0.5 text-[11px] font-medium text-[#5d6b79]">
+                {chip}
+              </span>
+            ))}
+            <span className="text-[11px] text-[#7b8a96]">Replies in ~2 min</span>
           </div>
         </div>
       </div>
 
-      <div className="mt-3 flex flex-wrap gap-2">
-        <span className="inline-flex items-center gap-1 rounded-full border border-[#dceae5] bg-[#eef8f5] px-2.5 py-1 text-xs font-semibold text-[#0f766e]">
-          <BadgeCheck size={13} />
-          Verified
-        </span>
-        <span className="inline-flex items-center gap-1 rounded-full border border-[#dceae5] bg-white px-2.5 py-1 text-xs font-semibold text-slate-700">
-          <ShieldCheck size={13} />
-          Strictly platonic
-        </span>
-        <span className="rounded-full border border-[#dceae5] bg-white px-2.5 py-1 text-xs font-semibold text-slate-700">
-          {languageLabel}
-        </span>
-      </div>
-
-      <div className="mt-3 rounded-2xl bg-[#f7fbf8] p-3">
-        <p className="text-xs font-semibold uppercase text-slate-500">Good for</p>
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {["Calm listening", "Overthinking", "Daily support"].map((item) => (
-            <span key={item} className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-700">
-              {item}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      <div className="mt-auto grid grid-cols-2 gap-2 pt-4">
-        <button
-          type="button"
+      <div className="mt-3.5 grid grid-cols-3 gap-1.5" onClick={(event) => event.stopPropagation()}>
+        <ActionPriceButton
+          icon="chat"
+          price={chatPrice}
+          tone="mint"
           disabled={isBusy}
           onClick={(event) => {
             void createSessionAndRoute(event, "chat");
           }}
-          className="flex min-h-[52px] items-center justify-between gap-2 rounded-2xl border border-[#dceae5] bg-white px-3 text-left text-sm font-semibold leading-tight text-slate-800 hover:border-[#0f766e]/40 hover:bg-[#eef8f5] disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          <span className="inline-flex min-w-0 items-center gap-2">
-            <MessageCircle size={15} />
-            <span className="truncate">{isBusy ? "Busy" : "Start chat"}</span>
-          </span>
-          {typeof chatPrice === "number" ? (
-            <span className="shrink-0 text-xs font-semibold text-[#0f766e]">{formatINRPrice(chatPrice, "/min")}</span>
-          ) : null}
-        </button>
-        <SupportAction
-          href={`/call/audio/${companion.id}`}
-          label={isBusy ? "Busy" : "Audio call"}
+        />
+        <ActionPriceButton
+          icon="voice"
           price={voicePrice}
-          icon={<Phone size={15} />}
+          tone="lavender"
           disabled={isBusy}
           onClick={(event) => {
             void createSessionAndRoute(event, "audio");
           }}
         />
-        {hasVideo ? (
-          <SupportAction
-            href={`/call/video/${companion.id}`}
-            label={isBusy ? "Busy" : "Video call"}
-            price={videoPrice}
-            icon={<Video size={15} />}
-            disabled={isBusy}
-            onClick={(event) => {
-              void createSessionAndRoute(event, "video");
-            }}
-          />
-        ) : null}
-        {hasHomeVisit ? (
-          <Link
-            href={`/home-visit/${companion.id}?booking=1`}
-            className="flex min-h-[52px] items-center justify-center gap-2 rounded-2xl border border-orange-200 bg-[#fff7ed] px-3 text-center text-sm font-semibold leading-tight text-orange-700 hover:bg-[#ffedd5]"
-            onClick={(event) => event.stopPropagation()}
-            onKeyDown={(event) => event.stopPropagation()}
-          >
-            <HeartHandshake size={15} />
-            Safe visit
-          </Link>
-        ) : null}
+        <ActionPriceButton
+          icon="video"
+          price={hasVideo ? videoPrice : undefined}
+          tone="cream"
+          disabled={isBusy || !hasVideo}
+          onClick={(event) => {
+            if (!hasVideo) return;
+            void createSessionAndRoute(event, "video");
+          }}
+        />
       </div>
+
       {isBusy ? <p className="mt-2 text-xs font-medium text-amber-700">Currently busy in another session.</p> : null}
-      {!isBusy && isOffline ? <p className="mt-2 text-xs font-medium text-slate-600">Currently offline.</p> : null}
       {actionError ? <p className="mt-2 text-xs font-medium text-rose-600">{actionError}</p> : null}
     </article>
   );
