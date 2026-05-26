@@ -27,6 +27,18 @@ function toLoginUrl(returnUrl: string) {
   return `/login?returnUrl=${encodeURIComponent(returnUrl)}`;
 }
 
+function getCallAvailabilityErrorMessage(error: { message?: string; status?: number } | null) {
+  if (!error) return "Unable to start call right now.";
+  const message = (error.message ?? "").trim();
+  const normalized = message.toLowerCase();
+  if (normalized.includes("offline")) return "Partner is currently offline.";
+  if (normalized.includes("busy")) return "Partner is currently busy.";
+  if (!error.status || error.status >= 500 || error.status === 503) {
+    return "Could not check partner availability. Please try again.";
+  }
+  return message || "Unable to start call right now.";
+}
+
 function toScreenMessages(messages: SessionMessageRecord[]): ChatScreenMessage[] {
   return messages.map((message) => ({
     id: message.id,
@@ -260,7 +272,7 @@ export default function ChatPage() {
       return;
     }
     if (!created.data?.id) {
-      setMessageError(created.error?.message || "Unable to start audio call right now.");
+      setMessageError(getCallAvailabilityErrorMessage(created.error));
       return;
     }
     router.push(`/call/audio/${created.data.id}?companionId=${encodeURIComponent(companion.id)}`);
@@ -283,7 +295,7 @@ export default function ChatPage() {
       return;
     }
     if (!created.data?.id) {
-      setMessageError(created.error?.message || "Unable to start video call right now.");
+      setMessageError(getCallAvailabilityErrorMessage(created.error));
       return;
     }
     router.push(`/call/video/${created.data.id}?companionId=${encodeURIComponent(companion.id)}`);
