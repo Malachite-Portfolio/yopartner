@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ChatScreen, type ChatScreenMessage } from "@/components/chat/ChatScreen";
 import { EndSessionConfirmModal } from "@/components/session/EndSessionConfirmModal";
@@ -51,6 +51,16 @@ function toScreenMessages(messages: SessionMessageRecord[]): ChatScreenMessage[]
   }));
 }
 
+function isReviewableChatSession(session?: SessionRecord | null): session is SessionRecord {
+  if (!session) return false;
+  const serviceType = session.serviceType ?? session.type;
+  return serviceType === "CHAT" && (session.status === "ENDED" || session.status === "COMPLETED");
+}
+
+function getReviewUrl(session: SessionRecord) {
+  return `/review/${session.id}?companionId=${encodeURIComponent(session.companionId)}`;
+}
+
 export default function ChatPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
@@ -67,6 +77,7 @@ export default function ChatPage() {
   const [messageError, setMessageError] = useState("");
   const [isEndingSession, setIsEndingSession] = useState(false);
   const [clockNow, setClockNow] = useState(() => Date.now());
+  const reviewRedirectUrlRef = useRef<string | null>(null);
 
   const currentPath = useMemo(() => {
     const query = searchParams.toString();
@@ -200,11 +211,12 @@ export default function ChatPage() {
 
   useEffect(() => {
     if (!isTerminalSessionStatus(session?.status)) return;
+    const redirectTarget = isReviewableChatSession(session) ? getReviewUrl(session) : "/connect-now";
     const timer = window.setTimeout(() => {
-      router.push("/connect-now");
+      router.push(redirectTarget);
     }, 900);
     return () => window.clearTimeout(timer);
-  }, [router, session?.status]);
+  }, [router, session]);
 
   const handleCancelPending = async () => {
     if (!session?.id || isCancelling) return;
@@ -221,20 +233,24 @@ export default function ChatPage() {
   const handleConfirmEndSession = useCallback(async () => {
     if (!session?.id) return;
     if (isEndingSession) throw new Error("Session is already ending.");
+    const shouldReviewAfterEnd = session.status === "LIVE";
     setIsEndingSession(true);
     try {
       const response = await endSession(session.id);
       if (!response.data) {
         throw new Error(response.error?.message || "Unable to end this session. Please try again.");
       }
+      reviewRedirectUrlRef.current =
+        shouldReviewAfterEnd && isReviewableChatSession(response.data) ? getReviewUrl(response.data) : null;
       setSession(response.data);
     } finally {
       setIsEndingSession(false);
     }
-  }, [isEndingSession, session?.id]);
+  }, [isEndingSession, session]);
 
   const navigateAfterExit = useCallback(() => {
-    router.push("/connect-now");
+    router.push(reviewRedirectUrlRef.current ?? "/connect-now");
+    reviewRedirectUrlRef.current = null;
   }, [router]);
 
   const exitGuard = useSessionExitGuard({
