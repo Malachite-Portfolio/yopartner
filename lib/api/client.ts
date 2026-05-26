@@ -19,6 +19,7 @@ export type ApiResult<T> = {
 };
 
 type AuthScope = "user" | "partner" | "admin";
+type ApiUrlResolution = { url: string; configError?: null } | { url: null; configError: ApiClientError };
 
 const ADMIN_AUTH_TOKEN_KEY = "yopartner_admin_auth_token";
 const ADMIN_LOGIN_KEY = "yopartner_admin_login";
@@ -50,6 +51,18 @@ function canUseStorage() {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
 }
 
+function isBackendManagedApiPath(path: string) {
+  return (
+    path.startsWith("/api/companions") ||
+    path.startsWith("/api/sessions") ||
+    path.startsWith("/api/bookings") ||
+    path.startsWith("/api/wallet") ||
+    path.startsWith("/api/users") ||
+    path.startsWith("/api/partner") ||
+    path.startsWith("/api/admin")
+  );
+}
+
 function resolveServerOrigin() {
   if (typeof window !== "undefined") return null;
 
@@ -66,15 +79,31 @@ function resolveServerOrigin() {
   return `https://${configuredHost.replace(/\/+$/, "")}`;
 }
 
-function resolveApiUrl(input: string) {
-  if (!input.startsWith("/")) return input;
+function resolveApiUrl(input: string): ApiUrlResolution {
+  if (!input.startsWith("/")) return { url: input };
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
-  if (baseUrl) return `${baseUrl.replace(/\/+$/, "")}${input}`;
+  if (baseUrl) {
+    return { url: `${baseUrl.replace(/\/+$/, "")}${input}` };
+  }
+
+  if (isBackendManagedApiPath(input)) {
+    const isDevelopment = process.env.NODE_ENV !== "production";
+    const detail = isDevelopment
+      ? " NEXT_PUBLIC_API_BASE_URL is missing."
+      : "";
+    return {
+      url: null,
+      configError: {
+        status: 503,
+        message: `Service is temporarily unavailable.${detail}`,
+      },
+    };
+  }
 
   const origin = resolveServerOrigin();
-  if (origin) return `${origin}${input}`;
+  if (origin) return { url: `${origin}${input}` };
 
-  return input;
+  return { url: input };
 }
 
 function normalizeToken(raw: string | null | undefined) {
@@ -204,19 +233,31 @@ async function getRequestToken(scope: AuthScope) {
 }
 
 async function fetchJson<T>(input: string, init: RequestInit | undefined, token: string | null) {
+  const resolved = resolveApiUrl(input);
+  if (!resolved.url) {
+    return {
+      response: null,
+      payload: resolved.configError as { message?: string; error?: string; status?: number } & T,
+    };
+  }
+
   const headers = new Headers(init?.headers);
   headers.set("Content-Type", "application/json");
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);
   }
 
-  const response = await fetch(resolveApiUrl(input), {
+  const response = await fetch(resolved.url, {
     ...init,
     headers,
     cache: "no-store",
   });
 
-  const payload = (await response.json().catch(() => ({}))) as { message?: string; error?: string } & T;
+  const payload = (await response.json().catch(() => ({}))) as {
+    message?: string;
+    error?: string;
+    status?: number;
+  } & T;
   return { response, payload };
 }
 
@@ -242,6 +283,15 @@ export async function apiRequest<T>(input: string, init?: RequestInit): Promise<
     const scope = resolveScope(input);
     const token = await getRequestToken(scope);
     const first = await fetchJson<T>(input, init, token);
+    if (!first.response) {
+      return {
+        data: null,
+        error: {
+          status: first.payload.status,
+          message: first.payload.message || "Service is temporarily unavailable.",
+        },
+      };
+    }
 
     if (first.response.ok) {
       return {
@@ -254,6 +304,15 @@ export async function apiRequest<T>(input: string, init?: RequestInit): Promise<
       const refreshedToken = await tryRefreshFirebaseScopeToken(scope, true);
       if (refreshedToken) {
         const retry = await fetchJson<T>(input, init, refreshedToken);
+        if (!retry.response) {
+          return {
+            data: null,
+            error: {
+              status: retry.payload.status,
+              message: retry.payload.message || "Service is temporarily unavailable.",
+            },
+          };
+        }
         if (retry.response.ok) {
           return {
             data: retry.payload as T,

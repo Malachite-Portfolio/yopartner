@@ -120,9 +120,13 @@ export async function listCompanions(filters?: CompanionFilters) {
   const suffix = query.toString() ? `?${query.toString()}` : "";
   const result = await apiRequest<{ companions: RawCompanionItem[] }>(`/api/companions${suffix}`);
   if (result.error) {
+    const message =
+      process.env.NODE_ENV !== "production" && result.error.status === 503
+        ? result.error.message
+        : "Companions are currently unavailable. Please try again later.";
     return {
       data: [],
-      error: { ...result.error, message: "Companions are currently unavailable. Please try again later." },
+      error: { ...result.error, message },
     };
   }
   return { data: (result.data?.companions ?? []).map(toCompanionItem), error: null };
@@ -131,9 +135,13 @@ export async function listCompanions(filters?: CompanionFilters) {
 export async function getCompanionById(id: string) {
   const result = await apiRequest<{ companion: RawCompanionItem }>(`/api/companions/${id}`);
   if (result.error) {
+    const message =
+      process.env.NODE_ENV !== "production" && result.error.status === 503
+        ? result.error.message
+        : "Companions are currently unavailable. Please try again later.";
     return {
       data: null,
-      error: { ...result.error, message: "Companions are currently unavailable. Please try again later." },
+      error: { ...result.error, message },
     };
   }
   return { data: result.data?.companion ? toCompanionItem(result.data.companion) : null, error: null };

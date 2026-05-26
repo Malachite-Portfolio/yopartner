@@ -83,6 +83,8 @@ export default async function ConnectProfilePage({ params, searchParams }: Conne
 
   if (IS_PRODUCTION_READY_MODE && !companion) {
     const isNotFound = response.error?.status === 404;
+    const isDevelopment = process.env.NODE_ENV !== "production";
+    const technicalMessage = response.error?.message?.trim();
     return (
       <main className="min-h-screen bg-[#f4f7fb]">
         <ConnectAppHeader />
@@ -93,6 +95,9 @@ export default async function ConnectProfilePage({ params, searchParams }: Conne
                 ? "Profile not found. This companion may no longer be available."
                 : "Companion profile is not available right now. Please try again later."}
             </p>
+            {!isNotFound && isDevelopment && technicalMessage ? (
+              <p className="mt-2 text-xs text-amber-700">{technicalMessage}</p>
+            ) : null}
           </div>
         </div>
       </main>
