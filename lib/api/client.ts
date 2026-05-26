@@ -50,11 +50,31 @@ function canUseStorage() {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
 }
 
+function resolveServerOrigin() {
+  if (typeof window !== "undefined") return null;
+
+  const configuredHost =
+    process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
+    process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim() ||
+    process.env.VERCEL_URL?.trim();
+  if (!configuredHost) return null;
+
+  if (/^https?:\/\//i.test(configuredHost)) {
+    return configuredHost.replace(/\/+$/, "");
+  }
+
+  return `https://${configuredHost.replace(/\/+$/, "")}`;
+}
+
 function resolveApiUrl(input: string) {
   if (!input.startsWith("/")) return input;
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
-  if (!baseUrl) return input;
-  return `${baseUrl.replace(/\/+$/, "")}${input}`;
+  if (baseUrl) return `${baseUrl.replace(/\/+$/, "")}${input}`;
+
+  const origin = resolveServerOrigin();
+  if (origin) return `${origin}${input}`;
+
+  return input;
 }
 
 function normalizeToken(raw: string | null | undefined) {
