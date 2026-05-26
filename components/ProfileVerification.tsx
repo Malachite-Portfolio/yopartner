@@ -1,4 +1,5 @@
-﻿import type { ConnectCompanion } from "@/lib/data";
+import { CheckCircle2, ShieldCheck } from "lucide-react";
+import type { ConnectCompanion } from "@/lib/data";
 
 type ProfileVerificationProps = {
   verification: ConnectCompanion["verification"];
@@ -6,19 +7,23 @@ type ProfileVerificationProps = {
 
 export function ProfileVerification({ verification }: ProfileVerificationProps) {
   return (
-    <section className="rounded-3xl border border-[#dceae5] bg-white p-6 shadow-sm">
-      <h3 className="text-2xl font-semibold text-slate-900">Safety and verification</h3>
+    <section className="rounded-[22px] border border-[#e6e2eb] bg-white p-5 shadow-[0_10px_35px_rgba(43,31,63,0.06)] sm:p-7">
+      <h2 className="flex items-center gap-2 text-2xl font-semibold text-[#201a2f]">
+        <ShieldCheck size={24} className="text-emerald-600" />
+        YoPartner Verification
+      </h2>
 
-      <div className="mt-4 overflow-hidden rounded-3xl border border-[#dceae5]">
-        {verification.map((item, idx) => (
+      <div className="mt-5 grid gap-4 sm:grid-cols-2">
+        {verification.map((item) => (
           <div
             key={item.label}
-            className={`grid gap-2 px-4 py-3 text-sm sm:grid-cols-[1fr_auto] ${
-              idx !== verification.length - 1 ? "border-b border-slate-200" : ""
-            }`}
+            className="flex items-center justify-between gap-4 rounded-xl border border-[#eee6f2] bg-[#fdf9ff] px-4 py-4"
           >
-            <p className="font-semibold text-slate-700">{item.label}</p>
-            <p className="font-semibold text-emerald-700">{item.status}</p>
+            <p className="text-[15px] font-medium text-[#44394f]">{item.label}</p>
+            <span className="inline-flex items-center gap-2 text-sm font-semibold text-emerald-600">
+              {item.status}
+              <CheckCircle2 size={17} />
+            </span>
           </div>
         ))}
       </div>

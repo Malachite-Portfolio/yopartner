@@ -1,18 +1,18 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import type { ComponentType } from "react";
-import { BadgeCheck, CheckCircle2, HeartHandshake, MessageCircle, PhoneCall, Video } from "lucide-react";
+import { BarChart3, CheckCircle2, MessageSquareText, PhoneCall, RefreshCw, Video, Wallet } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createBooking } from "@/lib/api/bookings";
 import { createSession } from "@/lib/api/sessions";
 import { getWallet } from "@/lib/api/wallet";
+import { requestAudioPermission, requestVideoPermission } from "@/lib/agora";
+import { getUserAuthTokenWithRestore, subscribeUserAuthState } from "@/lib/auth/userAuth";
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import type { ConnectCompanion } from "@/lib/data";
-import { requestAudioPermission, requestVideoPermission } from "@/lib/agora";
 import { formatINR, getWalletBalance, subscribeWalletUpdates } from "@/lib/wallet";
-import { getUserAuthTokenWithRestore } from "@/lib/auth/userAuth";
 
 type ProfileBookingPanelProps = {
   companion: ConnectCompanion;
@@ -25,7 +25,7 @@ type SessionOption = {
   type: SessionType;
   label: string;
   icon: ComponentType<{ size?: number; className?: string }>;
-  unit: "/min" | "/session";
+  unit: "/ min" | "/ session";
   price: number;
   badge: "CHAT" | "AUDIO" | "VIDEO" | "HOME VISIT";
 };
@@ -45,198 +45,200 @@ function SessionCard({
     <button
       type="button"
       onClick={onSelect}
-      className={`rounded-xl border p-3 text-left transition sm:p-3.5 ${
+      className={`flex min-h-[74px] items-center gap-3 rounded-xl border px-4 py-3 text-left transition ${
         selected
-          ? "border-[#0f766e] bg-[#eef8f5] text-slate-900 shadow-sm"
-          : "border-[#dceae5] bg-white text-slate-700 hover:border-[#0f766e]/40"
+          ? "border-white bg-white text-[#201a2f]"
+          : "border-white/10 bg-white/[0.07] text-white hover:border-white/25"
       }`}
     >
-      <div className="flex items-start justify-between gap-2">
-        <span
-          className={`inline-flex h-7 w-7 items-center justify-center rounded-md ${
-            selected ? "bg-white text-[#0f766e]" : "bg-slate-100 text-slate-600"
-          }`}
-        >
-          <Icon size={15} />
+      <Icon size={22} className={selected ? "text-[#201a2f]" : "text-white"} />
+      <span>
+        <span className="block text-base font-semibold">{option.label}</span>
+        <span className={selected ? "text-sm font-medium text-[#5f536a]" : "text-sm font-medium text-white/70"}>
+          {formatINR(option.price).replace(".00", "")} {option.unit}
         </span>
-        {selected ? <CheckCircle2 size={16} className="text-emerald-500" /> : null}
-      </div>
-      <p className="mt-2 text-sm font-semibold">{option.label}</p>
-      <p className={`mt-0.5 text-sm ${selected ? "text-slate-600" : "text-slate-500"}`}>
-        {formatINR(option.price)}{option.unit}
-      </p>
+      </span>
     </button>
   );
 }
 
-export function ProfileBookingPanel({
-  companion,
-  initialType,
-}: ProfileBookingPanelProps) {
+export function ProfileBookingPanel({ companion, initialType }: ProfileBookingPanelProps) {
   const router = useRouter();
-  const options = useMemo<SessionOption[]>(
-    () => {
-      const base: SessionOption[] = [
-      { type: "chat", label: "Start chat", icon: MessageCircle, unit: "/min", price: companion.chatPrice, badge: "CHAT" },
-      { type: "audio", label: "Audio call", icon: PhoneCall, unit: "/min", price: companion.voicePrice, badge: "AUDIO" },
-      { type: "video", label: "Video call", icon: Video, unit: "/min", price: companion.videoPrice ?? 20, badge: "VIDEO" },
-      ];
-      if (companion.visitPrice > 0) {
-        base.push({
-          type: "visit",
-          label: "Safe visit",
-          icon: HeartHandshake,
-          unit: "/session",
-          price: companion.visitPrice,
-          badge: "HOME VISIT",
-        });
-      }
-      return base;
-    },
-    [companion.chatPrice, companion.voicePrice, companion.videoPrice, companion.visitPrice],
-  );
+  const options = useMemo<SessionOption[]>(() => {
+    const base: SessionOption[] = [
+      { type: "chat", label: "Chat", icon: MessageSquareText, unit: "/ min", price: companion.chatPrice, badge: "CHAT" },
+      { type: "audio", label: "Audio", icon: PhoneCall, unit: "/ min", price: companion.voicePrice, badge: "AUDIO" },
+      { type: "video", label: "Video", icon: Video, unit: "/ min", price: companion.videoPrice ?? 0, badge: "VIDEO" },
+    ];
+    const available = base.filter((option) => option.price > 0);
+
+    if (companion.visitPrice > 0) {
+      available.push({
+        type: "visit",
+        label: "Home Visit",
+        icon: CheckCircle2,
+        unit: "/ session",
+        price: companion.visitPrice,
+        badge: "HOME VISIT",
+      });
+    }
+
+    return available;
+  }, [companion.chatPrice, companion.voicePrice, companion.videoPrice, companion.visitPrice]);
 
   const [selectedType, setSelectedType] = useState<SessionType>(initialType ?? "chat");
   const [walletBalance, setWalletBalance] = useState(0);
   const [actionMessage, setActionMessage] = useState("");
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
+    return subscribeUserAuthState((state) => {
+      setLoggedIn(state.loggedIn);
+      if (!state.loggedIn) setWalletBalance(0);
+      setAuthChecked(true);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!loggedIn) {
+      return () => undefined;
+    }
+
     if (IS_PRODUCTION_READY_MODE) {
+      let cancelled = false;
       void (async () => {
         const walletResponse = await getWallet();
-        if (walletResponse.data) {
+        if (!cancelled && walletResponse.data) {
           setWalletBalance(walletResponse.data.balance);
         }
       })();
-      return () => undefined;
+      return () => {
+        cancelled = true;
+      };
     }
+
     const sync = () => setWalletBalance(getWalletBalance());
     sync();
     return subscribeWalletUpdates(sync);
-  }, []);
+  }, [loggedIn]);
 
   const selectedOption = options.find((option) => option.type === selectedType) ?? options[0];
-  const multiplier = 5;
-  const requiredAmount = selectedOption.price * multiplier;
+  const multiplier = selectedOption?.type === "visit" ? 1 : 5;
+  const requiredAmount = (selectedOption?.price ?? 0) * multiplier;
   const shortfall = Math.max(requiredAmount - walletBalance, 0);
-  const hasSufficientBalance = walletBalance >= requiredAmount;
+  const hasSufficientBalance = loggedIn && walletBalance >= requiredAmount;
+  const returnPath = `/connect-now/${companion.id}?type=${selectedOption?.type ?? "chat"}`;
 
   const handlePrimaryAction = () => {
+    if (!selectedOption) return;
+    if (!loggedIn) {
+      router.push(`/login?returnUrl=${encodeURIComponent(returnPath)}`);
+      return;
+    }
+
     if (selectedType === "visit") {
       router.push(`/home-visit/${companion.id}?booking=1`);
       return;
     }
     if (!hasSufficientBalance) return;
 
-    if (IS_PRODUCTION_READY_MODE) {
-      void (async () => {
-        const token = await getUserAuthTokenWithRestore();
-        const currentPath =
-          selectedType === "chat"
-            ? `/chat/${companion.id}`
-            : selectedType === "audio"
-              ? `/call/audio/${companion.id}`
-              : `/call/video/${companion.id}`;
+    void (async () => {
+      const token = await getUserAuthTokenWithRestore();
+      const currentPath =
+        selectedType === "chat"
+          ? `/chat/${companion.id}`
+          : selectedType === "audio"
+            ? `/call/audio/${companion.id}`
+            : `/call/video/${companion.id}`;
 
-        if (!token) {
-          router.push(`/login?returnUrl=${encodeURIComponent(currentPath)}`);
+      if (!token) {
+        router.push(`/login?returnUrl=${encodeURIComponent(currentPath)}`);
+        return;
+      }
+
+      if (selectedType === "audio") {
+        try {
+          await requestAudioPermission();
+        } catch {
+          setActionMessage("Microphone permission is required for audio calls.");
           return;
         }
-
-        if (selectedType === "audio") {
-          try {
-            await requestAudioPermission();
-          } catch {
-            setActionMessage("Microphone permission is required for audio calls.");
-            return;
-          }
-        }
-        if (selectedType === "video") {
-          try {
-            await requestVideoPermission();
-          } catch {
-            setActionMessage("Camera and microphone permission are required for video calls.");
-            return;
-          }
-        }
-
-        const response = await createBooking({
-          companionId: companion.id,
-          serviceType: selectedType,
-        });
-        if (response.error) {
-          setActionMessage(response.error.message || "Unable to create booking right now. Please try again.");
+      }
+      if (selectedType === "video") {
+        try {
+          await requestVideoPermission();
+        } catch {
+          setActionMessage("Camera and microphone permission are required for video calls.");
           return;
         }
+      }
 
-        const serviceType = selectedType === "chat" ? "chat" : selectedType === "audio" ? "audio" : "video";
-        const sessionResponse = await createSession({
-          companionId: companion.id,
-          serviceType,
-          bookingId: response.data?.booking.id,
-        });
+      const response = await createBooking({
+        companionId: companion.id,
+        serviceType: selectedType,
+      });
+      if (response.error) {
+        setActionMessage(response.error.message || "Unable to create booking right now. Please try again.");
+        return;
+      }
 
-        if (sessionResponse.error?.status === 401) {
-          router.push(`/login?returnUrl=${encodeURIComponent(currentPath)}`);
-          return;
-        }
-        if (sessionResponse.error) {
-          setActionMessage(sessionResponse.error.message || "Unable to create a new session. Please try again.");
-          return;
-        }
+      const sessionResponse = await createSession({
+        companionId: companion.id,
+        serviceType: selectedType,
+        bookingId: response.data?.booking.id,
+      });
 
-        const sessionId = sessionResponse.data?.id;
-        if (!sessionId) {
-          setActionMessage("Unable to create a new session. Please try again.");
-          return;
-        }
+      if (sessionResponse.error?.status === 401) {
+        router.push(`/login?returnUrl=${encodeURIComponent(currentPath)}`);
+        return;
+      }
+      if (sessionResponse.error) {
+        setActionMessage(sessionResponse.error.message || "Unable to create a new session. Please try again.");
+        return;
+      }
 
-        if (selectedType === "chat") {
-          router.push(`/chat/${sessionId}?companionId=${encodeURIComponent(companion.id)}`);
-          return;
-        }
-        if (selectedType === "audio") {
-          router.push(`/call/audio/${sessionId}?companionId=${encodeURIComponent(companion.id)}`);
-          return;
-        }
-        router.push(`/call/video/${sessionId}?companionId=${encodeURIComponent(companion.id)}`);
-      })();
-      return;
-    }
+      const sessionId = sessionResponse.data?.id;
+      if (!sessionId) {
+        setActionMessage("Unable to create a new session. Please try again.");
+        return;
+      }
 
-    if (selectedType === "chat") {
-      router.push(`/chat/${companion.id}`);
-      return;
-    }
-
-    if (selectedType === "audio") {
-      router.push(`/call/audio/${companion.id}`);
-      return;
-    }
-
-    if (selectedType === "video") {
-      router.push(`/call/video/${companion.id}`);
-      return;
-    }
+      if (selectedType === "chat") {
+        router.push(`/chat/${sessionId}?companionId=${encodeURIComponent(companion.id)}`);
+        return;
+      }
+      if (selectedType === "audio") {
+        router.push(`/call/audio/${sessionId}?companionId=${encodeURIComponent(companion.id)}`);
+        return;
+      }
+      router.push(`/call/video/${sessionId}?companionId=${encodeURIComponent(companion.id)}`);
+    })();
   };
 
   const primaryActionLabel =
     selectedType === "chat"
-      ? "Start chat"
+      ? "Start Chat"
       : selectedType === "audio"
-        ? "Audio call"
+        ? "Start Audio"
         : selectedType === "video"
-          ? "Video call"
-          : "Request safe visit";
+          ? "Start Video"
+          : "Request Home Visit";
 
   return (
-    <div className="space-y-3.5 lg:sticky lg:top-4">
-      <section className="rounded-3xl border border-[#dceae5] bg-white p-5 text-slate-900 shadow-sm">
-        <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Book safely</p>
-        <h3 className="mt-1 text-xl font-semibold">Book your conversation</h3>
+    <aside className="space-y-6 lg:sticky lg:top-5">
+      <section className="rounded-[22px] bg-[#1d182b] p-6 text-white shadow-[0_20px_55px_rgba(29,24,43,0.25)]">
+        <div className="flex items-center gap-3">
+          <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#6729f4]">
+            <MessageSquareText size={25} />
+          </span>
+          <div>
+            <h2 className="text-2xl font-semibold">Book your session</h2>
+            <p className="text-sm font-medium text-white/65">Choose your interaction mode</p>
+          </div>
+        </div>
 
-        <p className="mt-3 text-sm font-semibold text-slate-700">Choose conversation type</p>
-        <div className="mt-3 grid grid-cols-2 gap-2">
+        <div className="mt-6 space-y-3">
           {options.map((option) => (
             <SessionCard
               key={option.type}
@@ -248,105 +250,119 @@ export function ProfileBookingPanel({
                   return;
                 }
                 setSelectedType(option.type);
+                setActionMessage("");
               }}
             />
           ))}
         </div>
 
-        <div className="mt-3.5 rounded-xl bg-white p-4 text-slate-900">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-xs font-semibold uppercase text-slate-500">Conversation price</p>
-              <p className="mt-1 text-[34px] font-semibold leading-none text-[#0f766e] sm:text-[38px]">
-                {formatINR(selectedOption.price)}
-              </p>
-              <p className="mt-1 text-xs font-medium text-slate-500">{selectedOption.unit}</p>
+        {selectedOption ? (
+          <div className="mt-6 rounded-xl bg-white p-5 text-[#201a2f]">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-[#8490a4]">Session Price</p>
+                <div className="mt-1 flex items-end gap-1">
+                  <span className="text-[36px] font-semibold leading-none text-[#a45413]">
+                    {formatINR(selectedOption.price).replace(".00", "")}
+                  </span>
+                  <span className="text-sm font-medium text-[#8490a4]">{selectedOption.unit}</span>
+                </div>
+              </div>
+              <span className="rounded-md bg-[#f4eaff] px-3 py-1.5 text-xs font-semibold text-[#a45413]">
+                {selectedOption.badge}
+              </span>
             </div>
-            <span className="inline-flex rounded-full border border-[#dceae5] bg-[#eef8f5] px-2.5 py-1 text-[11px] font-semibold text-[#0f766e]">
-              {selectedOption.badge}
-            </span>
           </div>
-        </div>
+        ) : null}
 
-        <div className="mt-3.5 rounded-3xl border border-[#dceae5] bg-[#f7fbf8] p-4 text-sm text-slate-900">
-              <p className="font-semibold">Available balance</p>
-          <p className="mt-1 text-[36px] font-semibold leading-none">{formatINR(walletBalance)}</p>
-          <p className="mt-0.5 text-sm text-slate-600">available</p>
+        <div className="mt-6 rounded-xl bg-white p-5 text-[#201a2f]">
+          <div className="flex items-center justify-between">
+            <h3 className="flex items-center gap-2 text-base font-semibold">
+              <Wallet size={18} className="text-[#a45413]" />
+              Wallet Balance
+            </h3>
+            <RefreshCw size={16} className="text-[#8490a4]" />
+          </div>
 
-          {hasSufficientBalance ? (
-            <>
-              <p className="mt-2 font-semibold text-emerald-600">Sufficient Balance</p>
-              <p className="mt-1 text-[13px] text-emerald-600">You can proceed with this session.</p>
-            </>
+          {!authChecked ? (
+            <p className="mt-4 text-sm text-[#7d7288]">Checking login...</p>
+          ) : !loggedIn ? (
+            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
+              <p className="font-semibold text-amber-800">Login Required</p>
+              <p className="mt-1 text-sm text-amber-700">Please login to continue with this session.</p>
+              <Link
+                href={`/login?returnUrl=${encodeURIComponent(returnPath)}`}
+                className="mt-4 flex h-12 w-full items-center justify-center rounded-lg bg-[#102535] text-sm font-semibold text-white"
+              >
+                Login to Continue
+              </Link>
+            </div>
           ) : (
             <>
-              <p className="mt-2 font-semibold text-red-600">Insufficient Balance</p>
-              <p className="mt-1 text-[13px] text-red-500">
-                Required: {formatINR(requiredAmount)} ({multiplier}x service price)
+              <p className="mt-4 text-[32px] font-semibold leading-none">
+                {formatINR(walletBalance)} <span className="text-base font-medium text-[#8490a4]">available</span>
               </p>
-              <p className="text-[13px] text-red-500">Shortfall: {formatINR(shortfall)}</p>
-              <Link
-                href="/wallet"
-                className="mt-3 inline-flex h-11 w-full items-center justify-center rounded-full bg-[#0f766e] px-3 text-sm font-semibold text-white"
-              >
-                Go to balance
-              </Link>
+              {!hasSufficientBalance ? (
+                <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4">
+                  <p className="font-semibold text-red-700">Insufficient Balance</p>
+                  <p className="mt-1 text-sm font-medium text-red-600">
+                    Required: {formatINR(requiredAmount)} ({multiplier}x service price)
+                  </p>
+                  <p className="text-sm font-medium text-red-600">Shortfall: {formatINR(shortfall)}</p>
+                  <Link
+                    href="/wallet"
+                    className="mt-4 flex h-12 w-full items-center justify-center rounded-lg bg-[#c8191e] text-sm font-semibold text-white"
+                  >
+                    Go to Wallet
+                  </Link>
+                </div>
+              ) : (
+                <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-700">
+                  Sufficient Balance
+                </div>
+              )}
             </>
           )}
         </div>
 
-        {actionMessage ? <p className="mt-3 text-xs font-medium text-amber-700">{actionMessage}</p> : null}
+        {actionMessage ? <p className="mt-4 rounded-xl bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">{actionMessage}</p> : null}
 
-        {hasSufficientBalance ? (
-          <button
-            type="button"
-            onClick={handlePrimaryAction}
-            className="mt-3.5 h-12 w-full rounded-full bg-[#0f766e] text-sm font-semibold text-white disabled:opacity-70"
-          >
-            {primaryActionLabel}
-          </button>
-        ) : (
-          <button
-            type="button"
-            disabled
-            className="mt-3.5 h-12 w-full rounded-full bg-slate-400 text-sm font-semibold text-white/95 disabled:cursor-not-allowed disabled:opacity-85"
-          >
-            Insufficient Balance
-          </button>
-        )}
+        <button
+          type="button"
+          disabled={authChecked && loggedIn && !hasSufficientBalance}
+          onClick={handlePrimaryAction}
+          className="mt-6 h-14 w-full rounded-xl bg-emerald-600 text-base font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-70"
+        >
+          {!authChecked ? "Checking..." : loggedIn && !hasSufficientBalance ? "Insufficient Balance" : loggedIn ? primaryActionLabel : "Login to Continue"}
+        </button>
       </section>
 
-      <section className="rounded-3xl border border-[#dceae5] bg-white p-3.5 shadow-sm">
-        <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500">Languages</h4>
-        <div className="mt-2.5 flex flex-wrap gap-2">
-          {companion.languages.map((language) => (
-            <span key={language} className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-700">
-              {language}
+      <section className="rounded-[22px] border border-[#e6e2eb] bg-white p-6 shadow-[0_10px_35px_rgba(43,31,63,0.06)]">
+        {companion.sessions > 0 ? (
+          <div className="flex items-center gap-4">
+            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-[#f0e9ff] text-[#6b2ff2]">
+              <BarChart3 size={24} />
             </span>
-          ))}
-        </div>
-      </section>
+            <div>
+              <p className="text-[34px] font-semibold leading-none text-[#201a2f]">{companion.sessions}</p>
+              <p className="text-sm font-medium text-[#8490a4]">Sessions Completed</p>
+            </div>
+          </div>
+        ) : null}
 
-      <section className="rounded-3xl border border-[#dceae5] bg-white p-3.5 shadow-sm">
-        <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500">Service Areas</h4>
-        <div className="mt-2.5 flex flex-wrap gap-2">
-          {companion.serviceAreas.map((area) => (
-            <span key={area} className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-700">
-              {area}
-            </span>
-          ))}
-        </div>
+        {companion.languages.length > 0 ? (
+          <div className={companion.sessions > 0 ? "mt-6 border-t border-[#ece7ef] pt-5" : ""}>
+            <h3 className="text-sm font-semibold text-[#44394f]">Languages</h3>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {companion.languages.map((language) => (
+                <span key={language} className="rounded-md border border-[#e6e2eb] bg-[#fbf8ff] px-2.5 py-1 text-xs font-semibold text-[#5f536a]">
+                  {language}
+                </span>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </section>
-
-      <section className="rounded-3xl border border-[#dceae5] bg-white p-3.5 shadow-sm">
-        <h4 className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500">
-          <BadgeCheck size={13} className="text-emerald-600" />
-          Trust &amp; Safety
-        </h4>
-        <p className="mt-2 text-sm font-semibold text-slate-900">YoPartner Verified</p>
-        <p className="text-xs text-slate-500">Member since November 2025</p>
-        <p className="mt-1 text-xs text-slate-500">Strictly platonic • No outside payments</p>
-      </section>
-    </div>
+    </aside>
   );
 }

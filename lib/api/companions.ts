@@ -11,6 +11,7 @@ export type CompanionItem = {
   name: string;
   tagline: string;
   category: string;
+  city?: string | null;
   rating: number;
   experience: string;
   image?: string;
@@ -19,6 +20,26 @@ export type CompanionItem = {
   effectiveStatus?: "ONLINE" | "BUSY" | "OFFLINE";
   languages: string[];
   galleryImages: string[];
+  about?: string;
+  age?: number | null;
+  gender?: string | null;
+  religion?: string | null;
+  bornCity?: string | null;
+  nationality?: string | null;
+  school?: string | null;
+  college?: string | null;
+  qualification?: string | null;
+  communicationStyle?: string[];
+  hobbies?: string[];
+  serviceAreas?: string[];
+  sessions?: number;
+  reviewsCount?: number;
+  reviews?: Array<{
+    rating: number;
+    comment: string;
+    createdAt: string;
+    phoneMasked: string;
+  }>;
   chatPrice: number;
   voicePrice: number;
   videoPrice?: number;
@@ -31,22 +52,49 @@ type RawCompanionItem = {
   name?: string;
   displayName?: string;
   tagline?: string | null;
+  headline?: string | null;
   category?: string | null;
+  city?: string | null;
   rating?: number | string | null;
+  ratingAverage?: number | string | null;
+  ratingCount?: number | string | null;
   experience?: string | null;
   image?: string | null;
+  profileImageUrl?: string | null;
+  resolvedProfileImageUrl?: string | null;
+  about?: string | null;
+  bio?: string | null;
+  age?: number | string | null;
+  gender?: string | null;
+  religion?: string | null;
+  bornCity?: string | null;
+  nationality?: string | null;
+  school?: string | null;
+  college?: string | null;
+  qualification?: string | null;
+  communicationStyle?: unknown;
+  hobbies?: unknown;
+  serviceAreas?: unknown;
+  sessions?: number | string | null;
+  sessionsCompleted?: number | string | null;
+  reviewsCount?: number | string | null;
+  reviews?: unknown;
   online?: boolean | null;
   isOnline?: boolean | null;
   isBusy?: boolean | null;
   effectiveStatus?: "ONLINE" | "BUSY" | "OFFLINE" | string | null;
   chatPrice?: number | string | null;
+  chatRate?: number | string | null;
   voicePrice?: number | string | null;
   audioPrice?: number | string | null;
+  audioRate?: number | string | null;
   videoPrice?: number | string | null;
+  videoRate?: number | string | null;
   homeVisitPrice?: number | string | null;
   visitPrice?: number | string | null;
   languages?: unknown;
   galleryImages?: unknown;
+  galleryImageUrls?: unknown;
   servicesOffered?: string[] | null;
 };
 
@@ -80,22 +128,112 @@ function normalizeServices(services: unknown) {
   return normalizeStringArray(services).map(normalizeServiceLabel);
 }
 
+function normalizeReviews(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      if (!item || typeof item !== "object") return null;
+      const candidate = item as {
+        rating?: unknown;
+        comment?: unknown;
+        createdAt?: unknown;
+        phoneMasked?: unknown;
+      };
+      const rating = toNumber(candidate.rating, 0);
+      const comment = toSafeText(candidate.comment, "");
+      const createdAt = toSafeText(candidate.createdAt, "");
+      const phoneMasked = toSafeText(candidate.phoneMasked, "");
+      if (!comment && !phoneMasked && !createdAt) return null;
+      return {
+        rating,
+        comment,
+        createdAt,
+        phoneMasked,
+      };
+    })
+    .filter((item): item is NonNullable<typeof item> => Boolean(item));
+}
+
+function resolveBackendApiUrl(path: string) {
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
+  if (!baseUrl) return null;
+  return `${baseUrl.replace(/\/+$/, "")}${path}`;
+}
+
+async function publicBackendRequest<T>(path: string) {
+  const url = resolveBackendApiUrl(path);
+  if (!url) {
+    return {
+      data: null,
+      error: {
+        status: 503,
+        message: "Service is temporarily unavailable. NEXT_PUBLIC_API_BASE_URL is missing.",
+      },
+    };
+  }
+
+  try {
+    const response = await fetch(url, {
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
+    });
+    const payload = (await response.json().catch(() => ({}))) as { message?: string; error?: string } & T;
+    if (!response.ok) {
+      return {
+        data: null,
+        error: {
+          status: response.status,
+          message: payload.message || payload.error || "Request failed.",
+        },
+      };
+    }
+    return { data: payload, error: null };
+  } catch {
+    return {
+      data: null,
+      error: {
+        message: "Network request failed. Please check your connection or backend URL.",
+      },
+    };
+  }
+}
+
 function toCompanionItem(item: RawCompanionItem): CompanionItem {
   const name = toSafeText(item.displayName || item.name, "Verified Companion");
-  const rating = typeof item.rating === "number" && Number.isFinite(item.rating) ? item.rating : 0;
-  const videoPrice = item.videoPrice == null ? undefined : toNumber(item.videoPrice, 0);
+  const rating = toNumber(item.ratingAverage ?? item.rating, 0);
+  const videoPrice = item.videoPrice == null && item.videoRate == null ? undefined : toNumber(item.videoPrice ?? item.videoRate, 0);
   const visitPrice = item.homeVisitPrice == null && item.visitPrice == null
     ? undefined
     : toNumber(item.homeVisitPrice ?? item.visitPrice, 0);
+  const image = toSafeText(item.resolvedProfileImageUrl ?? item.profileImageUrl ?? item.image, "");
+  const galleryImages = normalizeStringArray(item.galleryImages).length > 0
+    ? normalizeStringArray(item.galleryImages)
+    : normalizeStringArray(item.galleryImageUrls);
 
   return {
     id: String(item.id || name.toLowerCase().replace(/\s+/g, "-")),
     name,
-    tagline: toSafeText(item.tagline, "Calm, respectful conversations"),
+    tagline: toSafeText(item.headline ?? item.tagline, ""),
     category: toSafeText(item.category, "Communication & Emotional Support"),
+    city: toSafeText(item.city, ""),
     rating,
     experience: toSafeText(item.experience, "Verified companion"),
-    image: item.image || undefined,
+    image: image || undefined,
+    about: toSafeText(item.bio ?? item.about, ""),
+    age: item.age == null ? null : toNumber(item.age, 0),
+    gender: toSafeText(item.gender, ""),
+    religion: toSafeText(item.religion, ""),
+    bornCity: toSafeText(item.bornCity, ""),
+    nationality: toSafeText(item.nationality, ""),
+    school: toSafeText(item.school, ""),
+    college: toSafeText(item.college, ""),
+    qualification: toSafeText(item.qualification, ""),
+    communicationStyle: normalizeStringArray(item.communicationStyle),
+    hobbies: normalizeStringArray(item.hobbies),
+    serviceAreas: normalizeStringArray(item.serviceAreas),
+    sessions: item.sessionsCompleted == null && item.sessions == null ? undefined : toNumber(item.sessionsCompleted ?? item.sessions, 0),
+    reviewsCount: item.ratingCount == null && item.reviewsCount == null ? undefined : toNumber(item.ratingCount ?? item.reviewsCount, 0),
+    reviews: normalizeReviews(item.reviews),
     online: Boolean(item.isOnline ?? item.online),
     isBusy: Boolean(item.isBusy),
     effectiveStatus:
@@ -103,9 +241,9 @@ function toCompanionItem(item: RawCompanionItem): CompanionItem {
         ? item.effectiveStatus
         : undefined,
     languages: normalizeStringArray(item.languages),
-    galleryImages: normalizeStringArray(item.galleryImages),
-    chatPrice: toNumber(item.chatPrice, 0),
-    voicePrice: toNumber(item.audioPrice ?? item.voicePrice, 0),
+    galleryImages,
+    chatPrice: toNumber(item.chatPrice ?? item.chatRate, 0),
+    voicePrice: toNumber(item.audioPrice ?? item.audioRate ?? item.voicePrice, 0),
     videoPrice,
     visitPrice,
     servicesOffered: normalizeServices(item.servicesOffered),
@@ -133,7 +271,10 @@ export async function listCompanions(filters?: CompanionFilters) {
 }
 
 export async function getCompanionById(id: string) {
-  const result = await apiRequest<{ companion: RawCompanionItem }>(`/api/companions/${id}`);
+  const result =
+    typeof window === "undefined"
+      ? await publicBackendRequest<{ companion: RawCompanionItem }>(`/api/companions/${id}`)
+      : await apiRequest<{ companion: RawCompanionItem }>(`/api/companions/${id}`);
   if (result.error) {
     const message =
       process.env.NODE_ENV !== "production" && result.error.status === 503

@@ -80,6 +80,7 @@ export type ConnectCompanion = {
   name: string;
   tagline: string;
   category: string;
+  city?: string | null;
   age: number;
   gender: string;
   religion: string;
