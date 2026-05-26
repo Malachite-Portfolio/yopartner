@@ -13,6 +13,7 @@ import {
   ReceiptText,
   RefreshCcw,
   ShieldCheck,
+  Upload,
   Wallet,
   X,
 } from "lucide-react";
@@ -151,6 +152,12 @@ export default function WalletPage() {
   const [rechargeError, setRechargeError] = useState("");
   const [apiError, setApiError] = useState("");
   const [authReady, setAuthReady] = useState(!IS_PRODUCTION_READY_MODE);
+  const [qrImageAvailable, setQrImageAvailable] = useState(true);
+  const [qrMarkedPaid, setQrMarkedPaid] = useState(false);
+  const [qrUtrNumber, setQrUtrNumber] = useState("");
+  const [qrScreenshotFileName, setQrScreenshotFileName] = useState("");
+  const [qrSubmitError, setQrSubmitError] = useState("");
+  const [qrSubmitMessage, setQrSubmitMessage] = useState("");
 
   const [balance, setBalance] = useState(0);
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
@@ -235,6 +242,7 @@ export default function WalletPage() {
   const validCustom = Number.isFinite(parsedCustom) && parsedCustom >= 1 && parsedCustom <= 50000;
   const canProceed = Boolean(selectedPlan || validCustom);
   const proceedCreditAmount = selectedPlan ? selectedPlan.credit : validCustom ? parsedCustom : null;
+  const selectedRechargeAmount = selectedPlan ? selectedPlan.pay : validCustom ? parsedCustom : null;
 
   const totalRecharged = transactions
     .filter((tx) => tx.type === "recharge")
@@ -250,6 +258,11 @@ export default function WalletPage() {
     setSelectedPlanId(null);
     setCustomAmount("");
     setRechargeError("");
+    setQrMarkedPaid(false);
+    setQrUtrNumber("");
+    setQrScreenshotFileName("");
+    setQrSubmitError("");
+    setQrSubmitMessage("");
   };
 
   const handleProceed = () => {
@@ -298,6 +311,24 @@ export default function WalletPage() {
 
     closeModal();
     setSuccessMessage("Demo money added successfully.");
+  };
+
+  const handleQrVerificationSubmit = () => {
+    if (!qrMarkedPaid) {
+      setQrSubmitError("Please complete payment first and tap “I have paid”.");
+      setQrSubmitMessage("");
+      return;
+    }
+    if (qrUtrNumber.trim().length < 6) {
+      setQrSubmitError("Enter a valid UPI Reference / UTR Number.");
+      setQrSubmitMessage("");
+      return;
+    }
+
+    setQrSubmitError("");
+    setQrSubmitMessage(
+      "Your payment details have been submitted. Our team will verify and update your wallet manually.",
+    );
   };
 
   const recentTransactions = transactions.slice(0, 5);
@@ -603,6 +634,109 @@ export default function WalletPage() {
               {proceedCreditAmount ? `Proceed with ${formatINR(proceedCreditAmount)}` : "Proceed"}
             </button>
             {rechargeError ? <p className="mt-2 text-xs font-medium text-rose-600">{rechargeError}</p> : null}
+
+            <div className="mt-6 rounded-2xl border border-[#d7e6df] bg-[#f8fcfa] p-4 sm:p-5">
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="text-base font-semibold text-slate-900">Pay via QR Code</h3>
+                <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
+                  Temporary payment option
+                </span>
+              </div>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                Scan this QR code using any UPI app to add money to your YoPartner wallet.
+              </p>
+              {selectedRechargeAmount ? (
+                <p className="mt-2 text-sm font-semibold text-slate-800">
+                  Selected amount: {formatINR(selectedRechargeAmount)}
+                </p>
+              ) : (
+                <p className="mt-2 text-xs text-slate-500">Select a plan or custom amount to match your payment.</p>
+              )}
+
+              <div className="mt-4 flex justify-center">
+                {qrImageAvailable ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src="/images/payment-qr.png"
+                    alt="YoPartner payment QR"
+                    className="h-56 w-56 rounded-2xl border border-slate-200 bg-white object-contain p-2"
+                    onError={() => setQrImageAvailable(false)}
+                  />
+                ) : (
+                  <div className="w-full rounded-xl border border-dashed border-slate-300 bg-white px-4 py-5 text-center text-sm text-slate-600">
+                    QR image not found. Place your company QR at `public/images/payment-qr.png`.
+                  </div>
+                )}
+              </div>
+
+              <p className="mt-4 text-xs leading-5 text-slate-600">
+                After payment, please share the payment screenshot/UTR for manual verification.
+              </p>
+              <p className="mt-1 text-xs font-medium text-amber-700">
+                Wallet will be updated after manual verification.
+              </p>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setQrMarkedPaid(true);
+                  setQrSubmitError("");
+                }}
+                className="mt-4 inline-flex h-10 items-center justify-center rounded-full bg-[#0f766e] px-4 text-sm font-semibold text-white"
+              >
+                I have paid
+              </button>
+
+              <div className="mt-4 space-y-3">
+                <label className="block">
+                  <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Upload payment screenshot (optional)
+                  </span>
+                  <label className="inline-flex h-11 w-full cursor-pointer items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-700">
+                    <Upload size={15} />
+                    <span className="truncate">
+                      {qrScreenshotFileName || "Choose screenshot"}
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        setQrScreenshotFileName(file?.name ?? "");
+                      }}
+                    />
+                  </label>
+                </label>
+
+                <label className="block">
+                  <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Enter UPI Reference / UTR Number
+                  </span>
+                  <input
+                    type="text"
+                    value={qrUtrNumber}
+                    onChange={(event) => {
+                      setQrUtrNumber(event.target.value);
+                      setQrSubmitError("");
+                    }}
+                    placeholder="e.g. 413256789012"
+                    className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-[#2563EB]"
+                  />
+                </label>
+
+                <button
+                  type="button"
+                  onClick={handleQrVerificationSubmit}
+                  className="h-11 w-full rounded-xl bg-[#0f766e] text-sm font-semibold text-white"
+                >
+                  Submit for Verification
+                </button>
+              </div>
+
+              {qrSubmitError ? <p className="mt-2 text-xs font-medium text-rose-600">{qrSubmitError}</p> : null}
+              {qrSubmitMessage ? <p className="mt-2 text-xs font-medium text-emerald-700">{qrSubmitMessage}</p> : null}
+            </div>
 
             <p className="mt-4 inline-flex w-full items-center justify-center gap-2 text-xs font-medium text-slate-500">
               <ShieldCheck size={14} className="text-emerald-600" />
