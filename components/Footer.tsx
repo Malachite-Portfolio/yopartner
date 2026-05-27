@@ -70,7 +70,11 @@ export function Footer() {
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#244b45]">Legal</p>
               <ul className="mt-3 space-y-2 text-[13px] text-[#4c6460]">
-                <li>Privacy Policy</li>
+                <li>
+                  <Link href="/privacy" className="transition hover:text-[#00433d]">
+                    Privacy Policy
+                  </Link>
+                </li>
                 <li>
                   <Link href="/terms" className="transition hover:text-[#00433d]">
                     Terms of Use
