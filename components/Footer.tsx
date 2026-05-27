@@ -71,7 +71,11 @@ export function Footer() {
               <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#244b45]">Legal</p>
               <ul className="mt-3 space-y-2 text-[13px] text-[#4c6460]">
                 <li>Privacy Policy</li>
-                <li>Terms of Service</li>
+                <li>
+                  <Link href="/terms" className="transition hover:text-[#00433d]">
+                    Terms of Use
+                  </Link>
+                </li>
               </ul>
             </div>
             <div>
