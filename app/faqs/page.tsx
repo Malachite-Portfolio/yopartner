@@ -21,7 +21,7 @@ import { useMemo, useState } from "react";
 
 const navItems = [
   { label: "Home", href: "/" },
-  { label: "About Us", href: "/about" },
+  { label: "About Us", href: "/faqs" },
   { label: "Talk Now", href: "/connect-now" },
   { label: "Home Visit", href: "/home-visit" },
   { label: "Safety", href: "/trust-safety" },
@@ -378,7 +378,7 @@ export default function FAQsPage() {
               <p className="text-sm font-bold text-[#14201e]">Platform</p>
               <ul className="mt-3 space-y-2 text-sm text-[#61706d]">
                 <li><Link href="/how-it-works" className="hover:text-[#00433d]">How it Works</Link></li>
-                <li><Link href="/about" className="hover:text-[#00433d]">About Us</Link></li>
+                <li><Link href="/faqs" className="hover:text-[#00433d]">About Us</Link></li>
                 <li><Link href="/trust-safety" className="hover:text-[#00433d]">Safety Guidelines</Link></li>
                 <li><Link href="/faqs" className="hover:text-[#00433d]">Help Center</Link></li>
               </ul>

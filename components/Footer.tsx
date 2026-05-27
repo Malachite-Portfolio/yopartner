@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 
 const companyLinks = [
   { label: "Talk Now", href: "/connect-now" },
-  { label: "About Us", href: "/about" },
+  { label: "About Us", href: "/faqs" },
   { label: "Become a Companion", href: "/partner" },
 ];
 
@@ -51,7 +51,7 @@ export function Footer() {
         title: "Platform",
         links: [
           { label: "How it Works", href: "/how-it-works" },
-          { label: "About Us", href: "/about" },
+          { label: "About Us", href: "/faqs" },
           { label: "Safety Guidelines", href: "/trust-safety" },
           { label: "Help Center", href: "/faqs" },
         ],
