@@ -153,7 +153,7 @@ export function ConnectAppHeader() {
                   My Profile
                 </Link>
                 <Link
-                  href="/wallet"
+                  href="/wallet?addMoney=1"
                   className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-3 py-2 text-center text-sm font-medium text-slate-700"
                   onClick={() => setOpen(false)}
                 >

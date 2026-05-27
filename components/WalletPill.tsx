@@ -47,7 +47,7 @@ export function WalletPill({ className, iconSize = 15, iconClassName, onClick }:
   }, []);
 
   return (
-    <Link href="/wallet" className={className} onClick={onClick}>
+    <Link href="/wallet?addMoney=1" className={className} onClick={onClick}>
       <Wallet size={iconSize} className={iconClassName} />
       <span className="min-w-0 truncate">{loggedIn ? formatINR(balance) : formatINR(0)}</span>
     </Link>

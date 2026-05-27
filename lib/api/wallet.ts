@@ -52,6 +52,60 @@ export async function verifyRechargePayment(payload: Record<string, unknown>) {
   return result;
 }
 
+export type RazorpayOrderRequest = {
+  amount: number;
+  walletCredit: number;
+  gstAmount: number;
+  bonusAmount: number;
+  planId?: string;
+};
+
+export type RazorpayOrderResponse = {
+  success: true;
+  orderId: string;
+  amount: number;
+  currency: "INR";
+  keyId: string;
+  transactionCode: string;
+};
+
+export async function createRazorpayOrder(payload: RazorpayOrderRequest) {
+  const result = await apiRequest<RazorpayOrderResponse>("/api/payments/razorpay/order", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+
+  if (result.error) {
+    return { data: null, error: { ...result.error, message: result.error.message || "Unable to start payment." } };
+  }
+
+  return result;
+}
+
+export type RazorpayVerifyRequest = {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+  amount: number;
+  walletCredit: number;
+  gstAmount: number;
+  bonusAmount: number;
+  planId?: string;
+};
+
+export async function verifyRazorpayPayment(payload: RazorpayVerifyRequest) {
+  const result = await apiRequest<{ success: boolean }>("/api/payments/razorpay/verify", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+
+  if (result.error) {
+    return { data: null, error: { ...result.error, message: result.error.message || "Payment verification failed." } };
+  }
+
+  return result;
+}
+
 export async function createAdminCredit(payload: Record<string, unknown>) {
   const result = await apiRequest<{ success: boolean }>("/api/wallet/admin-credit", {
     method: "POST",
