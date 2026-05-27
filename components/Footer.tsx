@@ -33,6 +33,7 @@ export function Footer() {
     pathname.startsWith("/partner") ||
     pathname.startsWith("/dev-tools") ||
     pathname.startsWith("/connect-now") ||
+    pathname.startsWith("/faqs") ||
     pathname.startsWith("/home-visit") ||
     pathname.startsWith("/chat") ||
     pathname.startsWith("/call") ||
