@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ConnectAppHeader } from "@/components/ConnectAppHeader";
 import { HomeVisitCompanionCard } from "@/components/HomeVisitCompanionCard";
 import { HomeVisitFilters } from "@/components/HomeVisitFilters";
 import { listCompanions, type CompanionItem } from "@/lib/api/companions";
@@ -69,8 +68,6 @@ export default function HomeVisitPage() {
 
   return (
     <main className="min-h-screen bg-[#fffdf8]">
-      <ConnectAppHeader />
-
       <div className="mx-auto flex min-h-[calc(100vh-72px)] w-full max-w-[1500px]">
         <aside className="hidden w-[260px] shrink-0 border-r border-[#dceae5] bg-[#fffdf8] lg:block">
           <HomeVisitFilters

@@ -3,7 +3,6 @@
 import { ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { ConnectAppHeader } from "@/components/ConnectAppHeader";
 import { ConnectCompanionCard } from "@/components/ConnectCompanionCard";
 import { ConnectFilters } from "@/components/ConnectFilters";
 import { ConnectTabs, type ConnectServiceTab } from "@/components/ConnectTabs";
@@ -59,7 +58,7 @@ export default function ConnectNowPage() {
         return;
       }
 
-      setCompanions(response.data as typeof connectCompanions);
+      setCompanions(response.data as unknown as typeof connectCompanions);
       setApiError("");
       setIsLoadingCompanions(false);
     };
@@ -117,8 +116,6 @@ export default function ConnectNowPage() {
 
   return (
     <main className="min-h-screen bg-[#eceff3]">
-      <ConnectAppHeader />
-
       <div className="mx-auto flex w-full max-w-[1560px] gap-0">
         <aside className="hidden w-[336px] shrink-0 border-r border-[#b9c6cd] lg:block">
           <div className="sticky top-16 h-[calc(100vh-64px)] overflow-y-auto">

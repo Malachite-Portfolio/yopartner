@@ -1,14 +1,12 @@
 "use client";
 
 import {
-  ArrowRight,
   BadgeCheck,
   ChevronDown,
   CreditCard,
   HeartHandshake,
   HelpCircle,
   Home,
-  LockKeyhole,
   MessageCircle,
   Search,
   ShieldCheck,
@@ -18,15 +16,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-
-const navItems = [
-  { label: "Home", href: "/" },
-  { label: "About Us", href: "/faqs" },
-  { label: "Talk Now", href: "/connect-now" },
-  { label: "Home Visit", href: "/home-visit" },
-  { label: "Safety", href: "/trust-safety" },
-  { label: "Become a Partner", href: "/partner" },
-];
 
 const faqCategories = [
   {
@@ -214,29 +203,6 @@ export default function FAQsPage() {
 
   return (
     <div className="min-h-screen bg-[#f5f7f8] text-[#101828]">
-      <header className="sticky top-0 z-40 border-b border-[#dce8e5]/80 bg-white/78 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <Link href="/" className="inline-flex items-center gap-2.5" aria-label="YoPartner home">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/images/logo.png" alt="YoPartner" className="h-9 w-auto object-contain" />
-          </Link>
-          <nav className="hidden items-center gap-7 text-sm font-medium text-[#52615f] lg:flex">
-            {navItems.map((item) => (
-              <Link key={item.label} href={item.href} className="transition hover:text-[#00433d]">
-                {item.label}
-              </Link>
-            ))}
-          </nav>
-          <Link
-            href="/login"
-            className="inline-flex h-10 items-center gap-2 rounded-full bg-[#00433d] px-4 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(0,67,61,0.2)] transition hover:-translate-y-0.5 hover:bg-[#0f766e]"
-          >
-            Get Started
-            <ArrowRight size={15} />
-          </Link>
-        </div>
-      </header>
-
       <section className="relative isolate overflow-hidden bg-[linear-gradient(135deg,#fbf8ff_0%,#eef9f7_48%,#edf8ff_100%)]">
         <div className="absolute left-1/2 top-8 -z-10 h-56 w-56 -translate-x-1/2 rounded-full bg-[#8b5cf6]/18 blur-3xl" />
         <div className="absolute right-[12%] top-24 -z-10 h-48 w-48 rounded-full bg-[#0f766e]/12 blur-3xl" />
@@ -352,66 +318,6 @@ export default function FAQsPage() {
         </section>
       </main>
 
-      <footer className="border-t border-[#dde7e5] bg-[#eef2ff]/55">
-        <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-[1.25fr_2fr] lg:px-8">
-          <div>
-            <Link href="/" className="inline-flex items-center">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/images/logo.png" alt="YoPartner" className="h-9 w-auto object-contain" />
-            </Link>
-            <p className="mt-4 max-w-xs text-sm leading-7 text-[#61706d]">
-              Verified partners for meaningful human connection.
-            </p>
-            <div className="mt-5 flex gap-2">
-              {[LockKeyhole, MessageCircle, ShieldCheck].map((Icon, index) => (
-                <span
-                  key={index}
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#d5e1df] bg-white text-[#0f766e]"
-                >
-                  <Icon size={15} />
-                </span>
-              ))}
-            </div>
-          </div>
-          <div className="grid gap-8 sm:grid-cols-3">
-            <div>
-              <p className="text-sm font-bold text-[#14201e]">Platform</p>
-              <ul className="mt-3 space-y-2 text-sm text-[#61706d]">
-                <li><Link href="/how-it-works" className="hover:text-[#00433d]">How it Works</Link></li>
-                <li><Link href="/faqs" className="hover:text-[#00433d]">About Us</Link></li>
-                <li><Link href="/trust-safety" className="hover:text-[#00433d]">Safety Guidelines</Link></li>
-                <li><Link href="/faqs" className="hover:text-[#00433d]">Help Center</Link></li>
-              </ul>
-            </div>
-            <div>
-              <p className="text-sm font-bold text-[#14201e]">Legal</p>
-              <ul className="mt-3 space-y-2 text-sm text-[#61706d]">
-                <li>Privacy Policy</li>
-                <li>Terms of Service</li>
-                <li><Link href="/support" className="hover:text-[#00433d]">Support</Link></li>
-              </ul>
-            </div>
-            <div>
-              <p className="text-sm font-bold text-[#14201e]">Connect</p>
-              <ul className="mt-3 space-y-2 text-sm text-[#61706d]">
-                <li><Link href="/connect-now" className="hover:text-[#00433d]">Talk Now</Link></li>
-                <li><Link href="/home-visit" className="hover:text-[#00433d]">Home Visit</Link></li>
-                <li><Link href="/partner" className="hover:text-[#00433d]">Become a Partner</Link></li>
-              </ul>
-            </div>
-          </div>
-        </div>
-        <div className="border-t border-[#dce5e3]">
-          <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-5 text-xs text-[#61706d] sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
-            <p>Copyright (c) {new Date().getFullYear()} YoPartner. All rights reserved.</p>
-            <div className="flex gap-5">
-              <span>Safety</span>
-              <span>Privacy</span>
-              <span>Trust</span>
-            </div>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

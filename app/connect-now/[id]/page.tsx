@@ -1,5 +1,4 @@
 import { getCompanionById, type CompanionItem } from "@/lib/api/companions";
-import { ConnectAppHeader } from "@/components/ConnectAppHeader";
 import { ProfileBookingPanel } from "@/components/ProfileBookingPanel";
 import { ProfileGallery } from "@/components/ProfileGallery";
 import { ProfileHeroCard } from "@/components/ProfileHeroCard";
@@ -105,7 +104,6 @@ export default async function ConnectProfilePage({ params, searchParams }: Conne
     const technicalMessage = response.error?.message?.trim();
     return (
       <main className="min-h-screen bg-[#f4f7fb]">
-        <ConnectAppHeader />
         <div className="mx-auto flex min-h-[calc(100vh-72px)] w-full max-w-3xl items-center justify-center px-4 py-8">
           <div className="w-full rounded-2xl border border-amber-200 bg-amber-50 p-6 text-center">
             <p className="text-base font-semibold text-amber-800">
@@ -124,8 +122,6 @@ export default async function ConnectProfilePage({ params, searchParams }: Conne
 
   return (
     <main className="min-h-screen overflow-x-clip bg-[#fbf6ff]">
-      <ConnectAppHeader />
-
       <div className="mx-auto w-full max-w-[1340px] min-w-0 px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
           <div className="space-y-6">

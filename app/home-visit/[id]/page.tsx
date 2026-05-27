@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BadgeCheck, MapPin, ShieldCheck, Star } from "lucide-react";
-import { ConnectAppHeader } from "@/components/ConnectAppHeader";
 import { HomeVisitBookingFlow } from "@/components/HomeVisitBookingFlow";
 import { getCompanionById } from "@/lib/api/companions";
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
@@ -73,7 +72,6 @@ export default async function HomeVisitProfilePage({ params }: HomeVisitProfileP
 
   return (
     <main className="min-h-screen bg-[#fffdf8]">
-      <ConnectAppHeader />
       <div className="mx-auto w-full max-w-5xl px-4 py-5 sm:px-6 lg:px-8">
         <section className="rounded-[28px] border border-[#dceae5] bg-white p-4 shadow-sm shadow-teal-900/5 sm:p-6">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
