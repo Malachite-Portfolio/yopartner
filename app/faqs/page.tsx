@@ -40,9 +40,9 @@ const faqCategories = [
           "YoPartner is a safety-first human connection platform where verified partners offer meaningful conversations, emotional support, and trusted interactions through chat, audio, video, and approved in-person formats.",
       },
       {
-        question: "Is YoPartner a dating platform?",
+        question: "Is YoPartner a dating or escort platform?",
         answer:
-          "No. YoPartner is built for respectful, platonic human connection. Every interaction is guided by clear safety standards, consent, privacy, and platform rules.",
+          "No. Absolutely not.\n\nWe do not offer dating, escorting, intimacy, or sexual services of any kind.\n\nOur services are strictly emotional, conversational, and partner-based.",
       },
       {
         question: "Who can use YoPartner?",
@@ -312,7 +312,7 @@ export default function FAQsPage() {
                             }`}
                           >
                             <div className="overflow-hidden">
-                              <p className="px-5 pb-5 text-sm leading-7 text-[#5f6d6a] sm:px-6">{item.answer}</p>
+                              <p className="whitespace-pre-line px-5 pb-5 text-sm leading-7 text-[#5f6d6a] sm:px-6">{item.answer}</p>
                             </div>
                           </div>
                         </article>
@@ -335,9 +335,9 @@ export default function FAQsPage() {
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Link
                 href="/support"
-                className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-white px-5 text-sm font-semibold text-[#00433d] shadow-lg transition hover:-translate-y-0.5 sm:w-auto"
+                className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-white px-5 text-sm font-semibold !text-[#00433d] shadow-lg transition hover:-translate-y-0.5 sm:w-auto"
               >
-                <HeartHandshake size={17} />
+                <HeartHandshake size={17} className="text-[#00433d]" />
                 Contact Support
               </Link>
               <Link
