@@ -14,12 +14,10 @@ import {
   ReceiptText,
   RefreshCcw,
   ShieldCheck,
-  Upload,
   Wallet,
   X,
 } from "lucide-react";
 import {
-  addWalletRecharge,
   formatINR,
   getWalletSummary,
   subscribeWalletUpdates,
@@ -36,8 +34,7 @@ import { getUserAuthState, getUserAuthTokenWithRestore } from "@/lib/auth/userAu
 import { WALLET_UPDATED_EVENT } from "@/lib/wallet";
 
 type WalletTab = "overview" | "transactions" | "recharge";
-type ModalStep = "amount" | "gateway";
-type PaymentGateway = "razorpay" | "cashfree";
+type ModalStep = "amount" | "checkout";
 
 type RechargePlan = {
   id: string;
@@ -232,7 +229,6 @@ export default function WalletPage() {
   const [activeTab, setActiveTab] = useState<WalletTab>("overview");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalStep, setModalStep] = useState<ModalStep>("amount");
-  const [selectedGateway, setSelectedGateway] = useState<PaymentGateway>("razorpay");
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [customAmount, setCustomAmount] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -240,12 +236,6 @@ export default function WalletPage() {
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [apiError, setApiError] = useState("");
   const [authReady, setAuthReady] = useState(!IS_PRODUCTION_READY_MODE);
-  const [qrImageAvailable, setQrImageAvailable] = useState(true);
-  const [qrMarkedPaid, setQrMarkedPaid] = useState(false);
-  const [qrUtrNumber, setQrUtrNumber] = useState("");
-  const [qrScreenshotFileName, setQrScreenshotFileName] = useState("");
-  const [qrSubmitError, setQrSubmitError] = useState("");
-  const [qrSubmitMessage, setQrSubmitMessage] = useState("");
 
   const [balance, setBalance] = useState(0);
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
@@ -353,8 +343,6 @@ export default function WalletPage() {
   const validCustom = Number.isFinite(parsedCustom) && Number.isInteger(parsedCustom) && parsedCustom >= 1 && parsedCustom <= 50000;
   const canProceed = Boolean(selectedPlan || validCustom);
   const rechargeSummary = canProceed ? buildRechargeSummary(selectedPlan, validCustom ? parsedCustom : 0) : null;
-  const proceedCreditAmount = rechargeSummary?.walletCredit ?? null;
-  const selectedRechargeAmount = rechargeSummary?.payAmount ?? null;
 
   const totalRecharged = transactions
     .filter((tx) => tx.type === "recharge")
@@ -363,7 +351,6 @@ export default function WalletPage() {
   const openModal = () => {
     setIsModalOpen(true);
     setModalStep("amount");
-    setSelectedGateway("razorpay");
     setSuccessMessage("");
     setRechargeError("");
   };
@@ -371,54 +358,19 @@ export default function WalletPage() {
   const closeModal = () => {
     setIsModalOpen(false);
     setModalStep("amount");
-    setSelectedGateway("razorpay");
     setIsProcessingPayment(false);
     setSelectedPlanId(null);
     setCustomAmount("");
     setRechargeError("");
-    setQrMarkedPaid(false);
-    setQrUtrNumber("");
-    setQrScreenshotFileName("");
-    setQrSubmitError("");
-    setQrSubmitMessage("");
   };
 
-  const handleProceed = () => {
-    if (IS_PRODUCTION_READY_MODE) {
-      if (!canProceed) {
-        setRechargeError("Select a recharge plan or enter a custom amount between ₹1 and ₹50,000.");
-        return;
-      }
-      setModalStep("gateway");
-      setRechargeError("");
-      return;
-    }
-
+  const moveToCheckoutStep = () => {
     if (!canProceed) {
       setRechargeError("Select a recharge plan or enter a custom amount between ₹1 and ₹50,000.");
       return;
     }
-
-    if (selectedPlan) {
-      const summary = buildRechargeSummary(selectedPlan, 0);
-      addWalletRecharge({
-        amountAdded: summary.walletCredit,
-        paidAmount: summary.payAmount,
-        bonus: summary.bonusAmount,
-        description: `Wallet recharge plan ${formatINR(summary.rechargeAmount)} added ${formatINR(summary.walletCredit)}`,
-      });
-    } else if (validCustom) {
-      const summary = buildRechargeSummary(null, parsedCustom);
-      addWalletRecharge({
-        amountAdded: summary.walletCredit,
-        paidAmount: summary.payAmount,
-        bonus: summary.bonusAmount,
-        description: `Wallet recharge added ${formatINR(summary.walletCredit)}`,
-      });
-    }
-
-    closeModal();
-    setSuccessMessage("Demo money added successfully.");
+    setModalStep("checkout");
+    setRechargeError("");
   };
 
   const handleRazorpayCheckout = () => {
@@ -516,24 +468,6 @@ export default function WalletPage() {
 
       instance.open();
     })();
-  };
-
-  const handleQrVerificationSubmit = () => {
-    if (!qrMarkedPaid) {
-      setQrSubmitError("Please complete payment first and tap “I have paid”.");
-      setQrSubmitMessage("");
-      return;
-    }
-    if (qrUtrNumber.trim().length < 6) {
-      setQrSubmitError("Enter a valid UPI Reference / UTR Number.");
-      setQrSubmitMessage("");
-      return;
-    }
-
-    setQrSubmitError("");
-    setQrSubmitMessage(
-      "Your payment details have been submitted. Our team will verify and update your wallet manually.",
-    );
   };
 
   const recentTransactions = transactions.slice(0, 5);
@@ -729,6 +663,9 @@ export default function WalletPage() {
                       onSelect={() => {
                         setSelectedPlanId(plan.id);
                         setCustomAmount("");
+                        setRechargeError("");
+                        openModal();
+                        setModalStep("checkout");
                       }}
                     />
                   ))}
@@ -761,11 +698,6 @@ export default function WalletPage() {
               </button>
             </div>
 
-            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Current Balance</p>
-              <p className="mt-1 text-3xl font-semibold text-slate-900">{formatINR(balance)}</p>
-            </div>
-
             {modalStep === "amount" ? (
               <>
                 <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
@@ -783,6 +715,7 @@ export default function WalletPage() {
                         setSelectedPlanId(plan.id);
                         setCustomAmount("");
                         setRechargeError("");
+                        setModalStep("checkout");
                       }}
                     />
                   ))}
@@ -807,13 +740,13 @@ export default function WalletPage() {
 
                 <button
                   type="button"
-                  onClick={handleProceed}
+                  onClick={moveToCheckoutStep}
                   disabled={!canProceed}
                   className={`mt-5 h-12 w-full rounded-xl text-sm font-semibold text-white ${
                     canProceed ? "bg-[#0f766e] hover:opacity-95" : "bg-slate-300"
                   }`}
                 >
-                  {proceedCreditAmount ? `Continue with ${formatINR(proceedCreditAmount)}` : "Continue"}
+                  Continue to Payment
                 </button>
               </>
             ) : (
@@ -828,7 +761,6 @@ export default function WalletPage() {
                     <ChevronLeft size={16} />
                     Back
                   </button>
-                  <p className="text-sm font-semibold text-slate-700">Choose Payment Gateway</p>
                 </div>
 
                 {rechargeSummary ? (
@@ -844,38 +776,17 @@ export default function WalletPage() {
                   </div>
                 ) : null}
 
-                <div className="mt-4 space-y-3">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedGateway("razorpay")}
-                    className={`w-full rounded-2xl border p-4 text-left transition ${
-                      selectedGateway === "razorpay" ? "border-[#0f766e] bg-[#eef8f5]" : "border-slate-200 bg-white"
-                    }`}
-                    disabled={isProcessingPayment}
-                  >
-                    <p className="text-sm font-semibold text-slate-900">Razorpay <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] text-emerald-700">Recommended</span></p>
-                    <p className="mt-1 text-xs text-slate-500">Fast UPI, cards, netbanking, and wallets.</p>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setSelectedGateway("cashfree")}
-                    className={`w-full rounded-2xl border p-4 text-left transition ${
-                      selectedGateway === "cashfree" ? "border-[#0f766e] bg-[#eef8f5]" : "border-slate-200 bg-white"
-                    }`}
-                    disabled
-                  >
-                    <p className="text-sm font-semibold text-slate-900">Cashfree <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">Coming soon</span></p>
-                    <p className="mt-1 text-xs text-slate-500">Not active yet for wallet recharge.</p>
-                  </button>
+                <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                  <p className="font-semibold">Razorpay</p>
+                  <p className="mt-1">Fast UPI, cards, netbanking, and wallets.</p>
                 </div>
 
                 <button
                   type="button"
                   onClick={handleRazorpayCheckout}
-                  disabled={isProcessingPayment || selectedGateway !== "razorpay"}
+                  disabled={isProcessingPayment}
                   className={`mt-5 h-12 w-full rounded-xl text-sm font-semibold text-white ${
-                    isProcessingPayment || selectedGateway !== "razorpay" ? "bg-slate-300" : "bg-[#0f766e] hover:opacity-95"
+                    isProcessingPayment ? "bg-slate-300" : "bg-[#0f766e] hover:opacity-95"
                   }`}
                 >
                   {isProcessingPayment ? "Processing..." : "Continue with Razorpay"}
@@ -885,114 +796,9 @@ export default function WalletPage() {
 
             {rechargeError ? <p className="mt-2 text-xs font-medium text-rose-600">{rechargeError}</p> : null}
 
-            {modalStep === "gateway" ? (
-            <div className="mt-6 rounded-2xl border border-[#d7e6df] bg-[#f8fcfa] p-4 sm:p-5">
-              <div className="flex flex-wrap items-center gap-2">
-                <h3 className="text-base font-semibold text-slate-900">Pay via QR Code</h3>
-                <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
-                  Temporary payment option
-                </span>
-              </div>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
-                Scan this QR code using any UPI app to add money to your YoPartner wallet.
-              </p>
-              {selectedRechargeAmount ? (
-                <p className="mt-2 text-sm font-semibold text-slate-800">
-                  Selected amount: {formatINR(selectedRechargeAmount)}
-                </p>
-              ) : (
-                <p className="mt-2 text-xs text-slate-500">Select a plan or custom amount to match your payment.</p>
-              )}
-
-              <div className="mt-4 flex justify-center">
-                {qrImageAvailable ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src="/images/payment-qr.png"
-                    alt="YoPartner payment QR"
-                    className="h-56 w-56 rounded-2xl border border-slate-200 bg-white object-contain p-2"
-                    onError={() => setQrImageAvailable(false)}
-                  />
-                ) : (
-                  <div className="w-full rounded-xl border border-dashed border-slate-300 bg-white px-4 py-5 text-center text-sm text-slate-600">
-                    QR image not found. Place your company QR at `public/images/payment-qr.png`.
-                  </div>
-                )}
-              </div>
-
-              <p className="mt-4 text-xs leading-5 text-slate-600">
-                After payment, please share the payment screenshot/UTR for manual verification.
-              </p>
-              <p className="mt-1 text-xs font-medium text-amber-700">
-                Wallet will be updated after manual verification.
-              </p>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setQrMarkedPaid(true);
-                  setQrSubmitError("");
-                }}
-                className="mt-4 inline-flex h-10 items-center justify-center rounded-full bg-[#0f766e] px-4 text-sm font-semibold text-white"
-              >
-                I have paid
-              </button>
-
-              <div className="mt-4 space-y-3">
-                <label className="block">
-                  <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Upload payment screenshot (optional)
-                  </span>
-                  <label className="inline-flex h-11 w-full cursor-pointer items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-700">
-                    <Upload size={15} />
-                    <span className="truncate">
-                      {qrScreenshotFileName || "Choose screenshot"}
-                    </span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(event) => {
-                        const file = event.target.files?.[0];
-                        setQrScreenshotFileName(file?.name ?? "");
-                      }}
-                    />
-                  </label>
-                </label>
-
-                <label className="block">
-                  <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Enter UPI Reference / UTR Number
-                  </span>
-                  <input
-                    type="text"
-                    value={qrUtrNumber}
-                    onChange={(event) => {
-                      setQrUtrNumber(event.target.value);
-                      setQrSubmitError("");
-                    }}
-                    placeholder="e.g. 413256789012"
-                    className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-[#2563EB]"
-                  />
-                </label>
-
-                <button
-                  type="button"
-                  onClick={handleQrVerificationSubmit}
-                  className="h-11 w-full rounded-xl bg-[#0f766e] text-sm font-semibold text-white"
-                >
-                  Submit for Verification
-                </button>
-              </div>
-
-              {qrSubmitError ? <p className="mt-2 text-xs font-medium text-rose-600">{qrSubmitError}</p> : null}
-              {qrSubmitMessage ? <p className="mt-2 text-xs font-medium text-emerald-700">{qrSubmitMessage}</p> : null}
-            </div>
-            ) : null}
-
             <p className="mt-4 inline-flex w-full items-center justify-center gap-2 text-xs font-medium text-slate-500">
               <ShieldCheck size={14} className="text-emerald-600" />
-              Razorpay &amp; Cashfree • Bank-level security
+              Razorpay • Bank-level security
             </p>
           </div>
         </div>
