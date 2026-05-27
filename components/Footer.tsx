@@ -51,8 +51,9 @@ export function Footer() {
         title: "Platform",
         links: [
           { label: "How it Works", href: "/how-it-works" },
+          { label: "About Us", href: "/about" },
           { label: "Safety Guidelines", href: "/trust-safety" },
-          { label: "Help Center", href: "/support" },
+          { label: "Help Center", href: "/faqs" },
         ],
       },
       {
