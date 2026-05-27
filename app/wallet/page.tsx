@@ -243,16 +243,18 @@ export default function WalletPage() {
   const [bellMessage, setBellMessage] = useState("");
 
   const mapApiTransactions = useCallback((input: Awaited<ReturnType<typeof getWalletTransactionsFromApi>>["data"]) =>
-    (input ?? []).map((tx) => ({
-      id: tx.id,
-      type: tx.type === "Booking" ? "booking" : "recharge",
-      amountAdded: tx.amount,
-      paidAmount: Math.abs(tx.amount),
-      bonus: 0,
-      createdAt: tx.createdAt,
-      description: tx.description ?? tx.type,
-      status: tx.status === "Success" ? "success" : "success",
-    })) as WalletTransaction[], []);
+    (input ?? [])
+      .filter((tx) => tx.status === "SUCCESS")
+      .map((tx) => ({
+        id: tx.id,
+        type: tx.type === "BOOKING" ? "booking" : "recharge",
+        amountAdded: tx.amount,
+        paidAmount: Math.abs(tx.amount),
+        bonus: 0,
+        createdAt: tx.createdAt,
+        description: tx.description ?? tx.type,
+        status: "success",
+      })) as WalletTransaction[], []);
 
   const refreshWalletDataFromApi = useCallback(async () => {
     const [walletResponse, transactionResponse] = await Promise.all([

@@ -15,11 +15,31 @@ export type WalletTransaction = {
 };
 
 export async function getWallet() {
-  const result = await apiRequest<WalletData & { message?: string }>("/api/wallet");
+  const result = await apiRequest<(WalletData & { message?: string; wallet?: WalletData }) | { wallet: WalletData; message?: string }>("/api/wallet");
   if (result.error) {
     return { data: null, error: { ...result.error, message: "We couldn't load wallet details right now. Please retry." } };
   }
-  return { data: result.data, error: null };
+
+  const payload = result.data;
+  let normalizedWallet: WalletData | null = null;
+
+  if (payload && typeof (payload as WalletData).balance === "number") {
+    normalizedWallet = {
+      balance: (payload as WalletData).balance,
+      currency: "INR",
+    };
+  } else if (payload && "wallet" in payload && payload.wallet && typeof payload.wallet.balance === "number") {
+    normalizedWallet = {
+      balance: payload.wallet.balance,
+      currency: "INR",
+    };
+  }
+
+  if (!normalizedWallet) {
+    return { data: null, error: { message: "We couldn't load wallet details right now. Please retry." } };
+  }
+
+  return { data: normalizedWallet, error: null };
 }
 
 export async function getWalletTransactions() {
