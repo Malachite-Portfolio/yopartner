@@ -18,8 +18,6 @@ const navItems = [
   { label: "Become a Companion", href: "/partner" },
 ];
 
-const homeNavItems = navItems;
-
 function isActive(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
   return pathname === href || pathname.startsWith(`${href}/`);
@@ -27,8 +25,6 @@ function isActive(pathname: string, href: string) {
 
 export function AppHeader() {
   const pathname = usePathname();
-  const isHome = pathname === "/";
-  const activeNavItems = isHome ? homeNavItems : navItems;
   const [open, setOpen] = useState(false);
   const [loggedIn, setLoggedIn] = useState(() => (typeof window !== "undefined" ? getUserAuthState().loggedIn : false));
   const [authReady, setAuthReady] = useState(false);
@@ -62,31 +58,23 @@ export function AppHeader() {
   }
 
   return (
-    <header
-      className={
-        isHome
-          ? "fixed inset-x-0 top-0 z-50 h-16 border-b border-[#d8e5df] bg-[#eff8f4]/96 backdrop-blur"
-          : "sticky top-0 z-50 h-16 border-b border-[#d8e5df] bg-[#eff8f4]/96 backdrop-blur"
-      }
-    >
+    <header className="sticky top-0 z-50 h-16 border-b border-[#d8e5df] bg-[#eff8f4]/96 backdrop-blur">
       <div className="mx-auto flex h-full w-full max-w-[1180px] items-center justify-between px-4 lg:px-8">
         <Link href="/" className="inline-flex min-w-0 items-center gap-2" onClick={() => setOpen(false)}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/images/logo.png" alt="YoPartner" className="h-10 w-auto object-contain sm:h-11 lg:h-[52px]" />
         </Link>
 
-        <nav className={`hidden items-center lg:flex ${isHome ? "gap-6 text-[13px] text-[#203934]" : "gap-7 text-[15px] text-slate-600"}`}>
-          {activeNavItems.map((item) => {
+        <nav className="hidden items-center gap-7 text-[15px] text-slate-600 lg:flex">
+          {navItems.map((item) => {
             const active = isActive(pathname, item.href);
-            const showActive = active;
             return (
               <Link
                 key={item.label}
                 href={item.href}
-                className={`relative pb-1 transition hover:text-[#0f766e] ${showActive ? `font-semibold ${isHome ? "text-[#123f30]" : "text-slate-900"}` : ""}`}
+                className={`pb-1 transition hover:text-[#0f766e] ${active ? "font-semibold text-slate-900" : ""}`}
               >
                 {item.label}
-                {showActive && isHome ? <span className="absolute inset-x-0 -bottom-[2px] h-[1.5px] rounded-full bg-[#123f30]" /> : null}
               </Link>
             );
           })}
@@ -147,9 +135,9 @@ export function AppHeader() {
       </div>
 
       {open && (
-        <div className={`border-t px-4 py-4 lg:hidden ${isHome ? "mt-2 rounded-3xl border-white/70 bg-white/90 shadow-xl backdrop-blur" : "border-slate-200 bg-white"}`}>
+        <div className="border-t border-slate-200 bg-white px-4 py-4 lg:hidden">
           <nav className="space-y-2 text-sm">
-            {activeNavItems.map((item) => {
+            {navItems.map((item) => {
               const active = isActive(pathname, item.href);
               return (
                 <Link
