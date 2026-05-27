@@ -42,7 +42,43 @@ export const listSessions = () => adminGet<Record<string, unknown>>("/api/admin/
 export const updateSession = (payload: Record<string, unknown>) => adminUpdate("/api/admin/sessions", payload);
 export const listBookings = () => adminGet<Record<string, unknown>>("/api/admin/bookings");
 export const updateBooking = (payload: Record<string, unknown>) => adminUpdate("/api/admin/bookings", payload);
-export const listWalletTransactions = () => adminGet<Record<string, unknown>>("/api/admin/wallet");
+export const listWalletTransactions = () => adminGet<Record<string, unknown>>("/api/admin/wallet/transactions");
+export type AdminWalletSummaryTransaction = {
+  id: string;
+  transactionId: string;
+  userPhone: string;
+  userName?: string | null;
+  type: "RECHARGE" | "BOOKING" | "REFUND" | "ADMIN_CREDIT";
+  amount: number;
+  status: "SUCCESS" | "PENDING" | "FAILED";
+  gateway?: string | null;
+  createdAt: string;
+  paidAmount: number;
+  walletCredit: number;
+};
+
+export type AdminWalletSummaryResponse = {
+  totalRecharged: number;
+  totalSpent: number;
+  totalRefunds: number;
+  totalTransactions: number;
+  averageRecharge: number;
+  transactions: AdminWalletSummaryTransaction[];
+};
+
+export async function getAdminWalletSummary(filters?: {
+  search?: string;
+  type?: "ALL" | "RECHARGE" | "BOOKING" | "REFUND" | "ADMIN_CREDIT";
+  status?: "ALL" | "SUCCESS" | "PENDING" | "FAILED";
+}) {
+  const params = new URLSearchParams();
+  if (filters?.search?.trim()) params.set("search", filters.search.trim());
+  if (filters?.type && filters.type !== "ALL") params.set("type", filters.type);
+  if (filters?.status && filters.status !== "ALL") params.set("status", filters.status);
+  const query = params.toString();
+  return adminGet<AdminWalletSummaryResponse>(query ? `/api/admin/wallet/summary?${query}` : "/api/admin/wallet/summary");
+}
+
 export const listPayouts = () => adminGet<Record<string, unknown>>("/api/admin/payouts");
 export const updatePayout = (payload: Record<string, unknown>) => adminUpdate("/api/admin/payouts", payload);
 export const listVerifications = () => adminGet<Record<string, unknown>>("/api/admin/verification");

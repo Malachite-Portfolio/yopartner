@@ -71,6 +71,7 @@ export default function ChatPage() {
   const [companion, setCompanion] = useState<CompanionRouteProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+  const [showAddMoneyPrompt, setShowAddMoneyPrompt] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [messageInput, setMessageInput] = useState("");
   const [messages, setMessages] = useState<SessionMessageRecord[]>([]);
@@ -101,6 +102,7 @@ export default function ChatPage() {
     const load = async () => {
       setIsLoading(true);
       setErrorMessage("");
+      setShowAddMoneyPrompt(false);
 
       const token = await getUserAuthTokenWithRestore();
       if (!token) {
@@ -151,7 +153,13 @@ export default function ChatPage() {
         return;
       }
       if (created.error) {
-        setErrorMessage(created.error.message || "Unable to create chat session.");
+        if (created.error.code === "INSUFFICIENT_WALLET_BALANCE") {
+          setErrorMessage("Minimum ₹50 wallet balance is required to start a chat.");
+          setShowAddMoneyPrompt(true);
+        } else {
+          setErrorMessage(created.error.message || "Unable to create chat session.");
+          setShowAddMoneyPrompt(false);
+        }
         setCompanion(resolvedCompanion);
         setIsLoading(false);
         return;
@@ -362,10 +370,19 @@ export default function ChatPage() {
       <main className="flex h-[100dvh] min-h-[100dvh] items-center justify-center bg-[#eef3f8] p-4">
         <div className="w-full max-w-md rounded-2xl border border-amber-200 bg-amber-50 p-6 text-center">
           <p className="text-sm font-semibold text-amber-800">{errorMessage}</p>
+          {showAddMoneyPrompt ? (
+            <button
+              type="button"
+              onClick={() => router.push("/wallet?addMoney=1")}
+              className="mt-4 rounded-xl bg-[#c8191e] px-4 py-2 text-sm font-semibold text-white"
+            >
+              Add Money
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => router.push("/connect-now")}
-            className="mt-4 rounded-xl bg-[#0f766e] px-4 py-2 text-sm font-semibold text-white"
+            className={`${showAddMoneyPrompt ? "mt-2" : "mt-4"} rounded-xl bg-[#0f766e] px-4 py-2 text-sm font-semibold text-white`}
           >
             Back to Connect
           </button>

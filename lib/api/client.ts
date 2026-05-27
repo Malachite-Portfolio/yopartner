@@ -9,6 +9,7 @@ import { PARTNER_LOGGED_IN_KEY, PARTNER_PHONE_KEY } from "@/lib/partnerAuth";
 import { clearUserAuthSession, getUserAuthState, saveUserAuthSession } from "@/lib/auth/userAuth";
 
 export type ApiClientError = {
+  code?: string;
   message: string;
   status?: number;
 };
@@ -265,6 +266,7 @@ async function fetchJson<T>(input: string, init: RequestInit | undefined, token:
 
 function toApiError(status: number, payload: { message?: string; error?: string }): ApiClientError {
   return {
+    code: payload.error,
     status,
     message:
       payload.message ||

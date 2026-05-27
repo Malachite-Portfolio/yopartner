@@ -30,6 +30,8 @@ type SessionOption = {
   badge: "CHAT" | "AUDIO" | "VIDEO" | "HOME VISIT";
 };
 
+const MIN_CHAT_WALLET_BALANCE = 50;
+
 function SessionCard({
   option,
   selected,
@@ -89,6 +91,7 @@ export function ProfileBookingPanel({ companion, initialType }: ProfileBookingPa
   const [selectedType, setSelectedType] = useState<SessionType>(initialType ?? "chat");
   const [walletBalance, setWalletBalance] = useState(0);
   const [actionMessage, setActionMessage] = useState("");
+  const [showAddMoneyPrompt, setShowAddMoneyPrompt] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
 
@@ -125,13 +128,17 @@ export function ProfileBookingPanel({ companion, initialType }: ProfileBookingPa
 
   const selectedOption = options.find((option) => option.type === selectedType) ?? options[0];
   const multiplier = selectedOption?.type === "visit" ? 1 : 5;
-  const requiredAmount = (selectedOption?.price ?? 0) * multiplier;
+  const requiredAmount =
+    selectedOption?.type === "chat"
+      ? MIN_CHAT_WALLET_BALANCE
+      : (selectedOption?.price ?? 0) * multiplier;
   const shortfall = Math.max(requiredAmount - walletBalance, 0);
   const hasSufficientBalance = loggedIn && walletBalance >= requiredAmount;
   const returnPath = `/connect-now/${companion.id}?type=${selectedOption?.type ?? "chat"}`;
 
   const handlePrimaryAction = () => {
     if (!selectedOption) return;
+    setShowAddMoneyPrompt(false);
     if (!loggedIn) {
       router.push(`/login?returnUrl=${encodeURIComponent(returnPath)}`);
       return;
@@ -141,19 +148,20 @@ export function ProfileBookingPanel({ companion, initialType }: ProfileBookingPa
       router.push(`/home-visit/${companion.id}?booking=1`);
       return;
     }
-    if (!hasSufficientBalance) return;
+    if (!hasSufficientBalance) {
+      if (selectedType === "chat") {
+        setActionMessage("Minimum ₹50 wallet balance is required to start a chat.");
+        setShowAddMoneyPrompt(true);
+      }
+      return;
+    }
 
     void (async () => {
       const token = await getUserAuthTokenWithRestore();
-      const currentPath =
-        selectedType === "chat"
-          ? `/chat/${companion.id}`
-          : selectedType === "audio"
-            ? `/call/audio/${companion.id}`
-            : `/call/video/${companion.id}`;
+      const loginReturnPath = `/connect-now/${companion.id}?type=${selectedType}`;
 
       if (!token) {
-        router.push(`/login?returnUrl=${encodeURIComponent(currentPath)}`);
+        router.push(`/login?returnUrl=${encodeURIComponent(loginReturnPath)}`);
         return;
       }
 
@@ -190,10 +198,15 @@ export function ProfileBookingPanel({ companion, initialType }: ProfileBookingPa
       });
 
       if (sessionResponse.error?.status === 401) {
-        router.push(`/login?returnUrl=${encodeURIComponent(currentPath)}`);
+        router.push(`/login?returnUrl=${encodeURIComponent(loginReturnPath)}`);
         return;
       }
       if (sessionResponse.error) {
+        if (sessionResponse.error.code === "INSUFFICIENT_WALLET_BALANCE") {
+          setActionMessage("Minimum ₹50 wallet balance is required to start a chat.");
+          setShowAddMoneyPrompt(true);
+          return;
+        }
         setActionMessage(sessionResponse.error.message || "Unable to create a new session. Please try again.");
         return;
       }
@@ -305,15 +318,21 @@ export function ProfileBookingPanel({ companion, initialType }: ProfileBookingPa
               {!hasSufficientBalance ? (
                 <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4">
                   <p className="font-semibold text-red-700">Insufficient Balance</p>
-                  <p className="mt-1 text-sm font-medium text-red-600">
-                    Required: {formatINR(requiredAmount)} ({multiplier}x service price)
-                  </p>
+                  {selectedType === "chat" ? (
+                    <p className="mt-1 text-sm font-medium text-red-600">
+                      Minimum ₹50 wallet balance is required to start a chat.
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-sm font-medium text-red-600">
+                      Required: {formatINR(requiredAmount)} ({multiplier}x service price)
+                    </p>
+                  )}
                   <p className="text-sm font-medium text-red-600">Shortfall: {formatINR(shortfall)}</p>
                   <Link
-                    href="/wallet"
+                    href="/wallet?addMoney=1"
                     className="mt-4 flex h-12 w-full items-center justify-center rounded-lg bg-[#c8191e] text-sm font-semibold text-white"
                   >
-                    Go to Wallet
+                    Add Money
                   </Link>
                 </div>
               ) : (
@@ -326,6 +345,14 @@ export function ProfileBookingPanel({ companion, initialType }: ProfileBookingPa
         </div>
 
         {actionMessage ? <p className="mt-4 rounded-xl bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">{actionMessage}</p> : null}
+        {showAddMoneyPrompt ? (
+          <Link
+            href="/wallet?addMoney=1"
+            className="mt-3 inline-flex h-11 w-full items-center justify-center rounded-xl bg-[#c8191e] text-sm font-semibold text-white"
+          >
+            Add Money
+          </Link>
+        ) : null}
 
         <button
           type="button"

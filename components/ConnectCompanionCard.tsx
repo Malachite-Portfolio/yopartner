@@ -4,6 +4,7 @@ import { MessageSquareText, Mic, Star, Video } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { createSession } from "@/lib/api/sessions";
+import { getWallet } from "@/lib/api/wallet";
 import type { ConnectCompanion } from "@/lib/data";
 import { requestAudioPermission, requestVideoPermission } from "@/lib/agora";
 import { formatINRPrice } from "@/lib/priceFormat";
@@ -12,6 +13,8 @@ import { getUserAuthTokenWithRestore } from "@/lib/auth/userAuth";
 type ConnectCompanionCardProps = {
   companion: ConnectCompanion;
 };
+
+const MIN_CHAT_WALLET_BALANCE = 50;
 
 function Initials({ name }: { name: string }) {
   const text = (name || "Verified Companion")
@@ -76,6 +79,7 @@ function ActionPriceButton({
 export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
   const router = useRouter();
   const [actionError, setActionError] = useState("");
+  const [showAddMoneyPrompt, setShowAddMoneyPrompt] = useState(false);
   const name = companion.name || "Verified Companion";
   const tagline = companion.tagline || "Calm, respectful conversations";
   const rating = safeNumber(companion.rating) ?? 0;
@@ -103,21 +107,32 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
     event.stopPropagation();
     if (isBusy) {
       setActionError("Partner is currently busy. Please try again shortly.");
+      setShowAddMoneyPrompt(false);
       return;
     }
     setActionError("");
+    setShowAddMoneyPrompt(false);
 
-    const returnUrl =
-      serviceType === "chat"
-        ? `/chat/${companion.id}`
-        : serviceType === "audio"
-          ? `/call/audio/${companion.id}`
-          : `/call/video/${companion.id}`;
+    const returnUrl = `/connect-now/${companion.id}?type=${serviceType}`;
 
     const token = await getUserAuthTokenWithRestore();
     if (!token) {
       router.push(`/login?returnUrl=${encodeURIComponent(returnUrl)}`);
       return;
+    }
+
+    if (serviceType === "chat") {
+      const walletResponse = await getWallet();
+      if (walletResponse.error) {
+        setActionError(walletResponse.error.message || "Unable to verify wallet balance right now.");
+        return;
+      }
+      const walletBalance = walletResponse.data?.balance ?? 0;
+      if (walletBalance < MIN_CHAT_WALLET_BALANCE) {
+        setActionError("Minimum ₹50 wallet balance is required to start a chat.");
+        setShowAddMoneyPrompt(true);
+        return;
+      }
     }
 
     if (serviceType === "audio") {
@@ -145,6 +160,12 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
 
     if (sessionResponse.error?.status === 401) {
       router.push(`/login?returnUrl=${encodeURIComponent(returnUrl)}`);
+      return;
+    }
+
+    if (sessionResponse.error?.code === "INSUFFICIENT_WALLET_BALANCE") {
+      setActionError("Minimum ₹50 wallet balance is required to start a chat.");
+      setShowAddMoneyPrompt(true);
       return;
     }
 
@@ -259,6 +280,18 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
 
       {isBusy ? <p className="mt-2 text-xs font-medium text-amber-700">Currently busy in another session.</p> : null}
       {actionError ? <p className="mt-2 text-xs font-medium text-rose-600">{actionError}</p> : null}
+      {showAddMoneyPrompt ? (
+        <button
+          type="button"
+          className="mt-2 inline-flex h-9 items-center justify-center rounded-lg bg-[#c8191e] px-3 text-xs font-semibold text-white"
+          onClick={(event) => {
+            event.stopPropagation();
+            router.push("/wallet?addMoney=1");
+          }}
+        >
+          Add Money
+        </button>
+      ) : null}
     </article>
   );
 }
