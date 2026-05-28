@@ -23,7 +23,7 @@ export function WalletPill({ className, iconSize = 15, iconClassName, onClick }:
 
   useEffect(() => {
     if (IS_PRODUCTION_READY_MODE) {
-      return subscribeUserAuthState((state) => {
+      const unsubscribeAuth = subscribeUserAuthState((state) => {
         setLoggedIn(state.loggedIn);
         if (!state.loggedIn) {
           setBalance(0);
@@ -36,6 +36,23 @@ export function WalletPill({ className, iconSize = 15, iconClassName, onClick }:
           }
         })();
       });
+
+      const syncWallet = () => {
+        if (!getUserAuthState().loggedIn) return;
+        void (async () => {
+          const response = await getWallet();
+          if (response.data) {
+            setBalance(response.data.balance);
+          }
+        })();
+      };
+
+      syncWallet();
+      const unsubscribeWallet = subscribeWalletUpdates(syncWallet);
+      return () => {
+        unsubscribeAuth();
+        unsubscribeWallet();
+      };
     }
 
     const sync = () => {

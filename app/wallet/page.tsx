@@ -124,7 +124,7 @@ function TransactionList({ transactions }: { transactions: WalletTransaction[] }
         >
           <div>
             <p className="text-sm font-semibold text-slate-900">
-              {tx.type === "booking" ? "Conversation payment" : "Balance recharge"}
+              {tx.type === "booking" ? "Conversation payment" : tx.type === "gift" ? "Gift sent" : "Balance recharge"}
             </p>
             <p className="text-xs text-slate-500">{tx.description}</p>
             <p className="mt-1 text-xs text-slate-500">{new Date(tx.createdAt).toLocaleString("en-IN")}</p>
@@ -134,7 +134,7 @@ function TransactionList({ transactions }: { transactions: WalletTransaction[] }
               {tx.amountAdded >= 0 ? "+" : ""}{formatINR(tx.amountAdded)}
             </p>
             <p className="text-xs text-slate-500">
-              {tx.type === "booking" ? "Charged" : "Paid"} {formatINR(tx.paidAmount)}
+              {tx.type === "booking" || tx.type === "gift" ? "Debited" : "Paid"} {formatINR(tx.paidAmount)}
             </p>
             <p className="text-xs font-semibold text-emerald-600">Success</p>
           </div>
@@ -247,12 +247,12 @@ export default function WalletPage() {
       .filter((tx) => tx.status === "SUCCESS")
       .map((tx) => ({
         id: tx.id,
-        type: tx.type === "BOOKING" ? "booking" : "recharge",
+        type: tx.type === "BOOKING" ? "booking" : tx.type === "GIFT" ? "gift" : "recharge",
         amountAdded: tx.amount,
         paidAmount: Math.abs(tx.amount),
         bonus: 0,
         createdAt: tx.createdAt,
-        description: tx.description ?? tx.type,
+        description: tx.description ?? tx.reason ?? tx.type,
         status: "success",
       })) as WalletTransaction[], []);
 
@@ -271,7 +271,7 @@ export default function WalletPage() {
       setTransactions(mapped);
       setTotalSpent(
         mapped
-          .filter((tx) => tx.type === "booking")
+          .filter((tx) => tx.type === "booking" || tx.type === "gift")
           .reduce((sum, tx) => sum + Math.abs(tx.amountAdded), 0),
       );
     }

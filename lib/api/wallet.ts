@@ -12,6 +12,7 @@ export type WalletTransaction = {
   status: string;
   createdAt: string;
   description?: string;
+  reason?: string;
 };
 
 export async function getWallet() {

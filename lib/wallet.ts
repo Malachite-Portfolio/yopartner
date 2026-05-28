@@ -6,7 +6,7 @@ export type SessionServiceType = "chat" | "audio" | "video" | "visit";
 
 export type WalletTransaction = {
   id: string;
-  type: "recharge" | "booking";
+  type: "recharge" | "booking" | "gift";
   amountAdded: number;
   paidAmount: number;
   bonus: number;
@@ -30,7 +30,9 @@ function notifyWalletUpdate() {
 }
 
 function normalizeTransactionType(value: unknown): WalletTransaction["type"] {
-  return value === "booking" ? "booking" : "recharge";
+  if (value === "booking") return "booking";
+  if (value === "gift") return "gift";
+  return "recharge";
 }
 
 export function formatINR(value: number) {
@@ -109,7 +111,7 @@ export function addWalletTransaction(params: {
   const amountAdded = sanitizeNumber(params.amountAdded, 0);
   const paidAmount = sanitizeNumber(params.paidAmount, 0);
   const bonus = sanitizeNumber(params.bonus, 0);
-  const type = params.type === "booking" ? "booking" : "recharge";
+  const type = params.type === "booking" ? "booking" : params.type === "gift" ? "gift" : "recharge";
 
   if (!canUseStorage()) {
     return { balance: getWalletBalance(), transactions: getWalletTransactions() };
@@ -143,7 +145,7 @@ export function getWalletSummary() {
     .filter((tx) => tx.type === "recharge")
     .reduce((sum, tx) => sum + Math.max(sanitizeNumber(tx.amountAdded, 0), 0), 0);
   const totalSpent = transactions
-    .filter((tx) => tx.type === "booking")
+    .filter((tx) => tx.type === "booking" || tx.type === "gift")
     .reduce((sum, tx) => sum + Math.abs(sanitizeNumber(tx.amountAdded, 0)), 0);
 
   return {

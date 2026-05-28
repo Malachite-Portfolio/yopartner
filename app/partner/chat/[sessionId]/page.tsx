@@ -29,6 +29,8 @@ function toScreenMessages(messages: SessionMessageRecord[]): ChatScreenMessage[]
     id: message.id,
     sender: message.isMine ? "self" : "other",
     text: message.text ?? message.body,
+    messageType: message.messageType,
+    gift: message.gift,
     timestamp: new Date(message.createdAt).toLocaleTimeString("en-IN", {
       hour: "2-digit",
       minute: "2-digit",

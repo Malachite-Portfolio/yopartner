@@ -11,10 +11,13 @@ import {
   endSession,
   getSessionById,
   getSessionMessages,
+  sendSessionGift,
   sendSessionMessage,
+  type GiftKey,
   type SessionRecord,
   type SessionMessageRecord,
 } from "@/lib/api/sessions";
+import { getWallet } from "@/lib/api/wallet";
 import {
   resolveCompanionRouteProfile,
   type CompanionRouteProfile,
@@ -22,6 +25,21 @@ import {
 import { requestAudioPermission, requestVideoPermission } from "@/lib/agora";
 import { isActiveSessionStatus, isTerminalSessionStatus } from "@/lib/sessionStatus";
 import { getUserAuthTokenWithRestore } from "@/lib/auth/userAuth";
+import { WALLET_UPDATED_EVENT } from "@/lib/wallet";
+
+const chatGiftCatalog: Array<{
+  key: GiftKey;
+  name: string;
+  emoji: string;
+  amount: number;
+}> = [
+  { key: "rose", name: "Rose", emoji: "🌹", amount: 10 },
+  { key: "coffee", name: "Coffee", emoji: "☕", amount: 25 },
+  { key: "star", name: "Star", emoji: "⭐", amount: 50 },
+  { key: "heart", name: "Heart", emoji: "💖", amount: 100 },
+  { key: "crown", name: "Crown", emoji: "👑", amount: 250 },
+  { key: "diamond", name: "Diamond", emoji: "💎", amount: 500 },
+];
 
 function toLoginUrl(returnUrl: string) {
   return `/login?returnUrl=${encodeURIComponent(returnUrl)}`;
@@ -44,6 +62,8 @@ function toScreenMessages(messages: SessionMessageRecord[]): ChatScreenMessage[]
     id: message.id,
     sender: message.isMine ? "self" : "other",
     text: message.text ?? message.body,
+    messageType: message.messageType,
+    gift: message.gift,
     timestamp: new Date(message.createdAt).toLocaleTimeString("en-IN", {
       hour: "2-digit",
       minute: "2-digit",
@@ -78,12 +98,25 @@ export default function ChatPage() {
   const [messageError, setMessageError] = useState("");
   const [isEndingSession, setIsEndingSession] = useState(false);
   const [clockNow, setClockNow] = useState(() => Date.now());
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [isGiftModalOpen, setIsGiftModalOpen] = useState(false);
+  const [selectedGiftKey, setSelectedGiftKey] = useState<GiftKey>("rose");
+  const [giftError, setGiftError] = useState("");
+  const [isSendingGift, setIsSendingGift] = useState(false);
+  const [giftAnimationEmoji, setGiftAnimationEmoji] = useState<string | null>(null);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const [giftToast, setGiftToast] = useState("");
   const reviewRedirectUrlRef = useRef<string | null>(null);
 
   const currentPath = useMemo(() => {
     const query = searchParams.toString();
     return query ? `/chat/${routeId}?${query}` : `/chat/${routeId}`;
   }, [routeId, searchParams]);
+  const selectedGift = useMemo(
+    () => chatGiftCatalog.find((gift) => gift.key === selectedGiftKey) ?? chatGiftCatalog[0],
+    [selectedGiftKey],
+  );
+  const hasGiftBalance = walletBalance >= selectedGift.amount;
 
   const refreshMessages = useCallback(async (sessionId: string) => {
     const response = await getSessionMessages(sessionId);
@@ -93,6 +126,13 @@ export default function ChatPage() {
     }
     setMessages(response.data);
     setMessageError("");
+  }, []);
+
+  const refreshWalletBalance = useCallback(async () => {
+    const walletResponse = await getWallet();
+    if (walletResponse.data) {
+      setWalletBalance(walletResponse.data.balance);
+    }
   }, []);
 
   useEffect(() => {
@@ -129,6 +169,7 @@ export default function ChatPage() {
           return;
         }
         setCompanion(resolvedCompanion);
+        void refreshWalletBalance();
         setIsLoading(false);
         return;
       }
@@ -176,6 +217,7 @@ export default function ChatPage() {
       }
       setSession(created.data);
       setCompanion(resolvedCompanion);
+      void refreshWalletBalance();
       setIsLoading(false);
     };
 
@@ -183,7 +225,7 @@ export default function ChatPage() {
     return () => {
       active = false;
     };
-  }, [currentPath, preferredCompanionId, routeId, router]);
+  }, [currentPath, preferredCompanionId, refreshWalletBalance, routeId, router]);
 
   useEffect(() => {
     if (!session?.id) return;
@@ -216,6 +258,31 @@ export default function ChatPage() {
     }, 1000);
     return () => window.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const applyPreference = () => setPrefersReducedMotion(mediaQuery.matches);
+    applyPreference();
+    mediaQuery.addEventListener("change", applyPreference);
+    return () => mediaQuery.removeEventListener("change", applyPreference);
+  }, []);
+
+  useEffect(() => {
+    if (!giftAnimationEmoji) return;
+    const timer = window.setTimeout(() => {
+      setGiftAnimationEmoji(null);
+    }, 1800);
+    return () => window.clearTimeout(timer);
+  }, [giftAnimationEmoji]);
+
+  useEffect(() => {
+    if (!giftToast) return;
+    const timer = window.setTimeout(() => {
+      setGiftToast("");
+    }, 1800);
+    return () => window.clearTimeout(timer);
+  }, [giftToast]);
 
   useEffect(() => {
     if (!isTerminalSessionStatus(session?.status)) return;
@@ -355,6 +422,44 @@ export default function ChatPage() {
     setMessages((current) => [...current.filter((item) => item.id !== optimistic.id), createdMessage]);
   };
 
+  const handleSendGift = async () => {
+    if (!session?.id || session.status !== "LIVE" || isSendingGift) return;
+    if (!hasGiftBalance) {
+      setGiftError("Insufficient balance for this gift.");
+      return;
+    }
+
+    setIsSendingGift(true);
+    setGiftError("");
+    const response = await sendSessionGift(session.id, selectedGift.key);
+    setIsSendingGift(false);
+
+    if (!response.data) {
+      if (response.error?.code === "INSUFFICIENT_WALLET_BALANCE") {
+        setGiftError("Insufficient balance for this gift.");
+        await refreshWalletBalance();
+        return;
+      }
+      setGiftError(response.error?.message || "Could not send gift. Please try again.");
+      return;
+    }
+
+    const giftResult = response.data;
+    if (!giftResult) return;
+
+    setMessages((current) => [...current, giftResult.message]);
+    setWalletBalance(giftResult.walletBalance);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent(WALLET_UPDATED_EVENT));
+    }
+    if (prefersReducedMotion) {
+      setGiftToast(`Gift sent: ${giftResult.gift.giftEmoji} ${giftResult.gift.giftName}`);
+    } else {
+      setGiftAnimationEmoji(giftResult.gift.giftEmoji);
+    }
+    setIsGiftModalOpen(false);
+  };
+
   if (isLoading) {
     return (
       <main className="flex h-[100dvh] min-h-[100dvh] items-center justify-center bg-[#eef3f8] p-4">
@@ -471,6 +576,11 @@ export default function ChatPage() {
           {messageError}
         </div>
       ) : null}
+      {giftToast ? (
+        <div className="absolute left-1/2 top-12 z-50 -translate-x-1/2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+          {giftToast}
+        </div>
+      ) : null}
       <ChatScreen
         companion={companion}
         messages={screenMessages}
@@ -492,7 +602,97 @@ export default function ChatPage() {
         endingSession={isEndingSession}
         onBackRequest={exitGuard.requestExit}
         sessionTimerLabel={timerLabel}
+        showGiftAction
+        onGiftClick={() => {
+          setGiftError("");
+          void refreshWalletBalance();
+          setIsGiftModalOpen(true);
+        }}
+        giftActionDisabled={isSendingGift}
       />
+      {giftAnimationEmoji ? (
+        <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center">
+          <span className="animate-[giftFloat_1.8s_ease-out_forwards] text-6xl">{giftAnimationEmoji}</span>
+        </div>
+      ) : null}
+      {isGiftModalOpen ? (
+        <div className="absolute inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
+          <div className="w-full max-w-md rounded-2xl border border-amber-200 bg-white p-4 shadow-xl">
+            <h3 className="text-lg font-semibold text-slate-900">Send a gift</h3>
+            <p className="mt-1 text-sm text-slate-600">Appreciate your partner with a small gift.</p>
+            <p className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700">
+              Wallet Balance: ₹{walletBalance}
+            </p>
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              {chatGiftCatalog.map((gift) => {
+                const selected = gift.key === selectedGift.key;
+                return (
+                  <button
+                    key={gift.key}
+                    type="button"
+                    onClick={() => setSelectedGiftKey(gift.key)}
+                    className={`rounded-xl border px-2 py-2 text-center transition ${
+                      selected ? "border-amber-400 bg-amber-50" : "border-slate-200 hover:border-amber-300"
+                    }`}
+                  >
+                    <p className="text-xl">{gift.emoji}</p>
+                    <p className="text-xs font-semibold text-slate-800">{gift.name}</p>
+                    <p className="text-[11px] text-slate-500">₹{gift.amount}</p>
+                  </button>
+                );
+              })}
+            </div>
+
+            {!hasGiftBalance ? (
+              <p className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+                Insufficient balance. Add money to send this gift.
+              </p>
+            ) : null}
+            {giftError ? (
+              <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                {giftError}
+              </p>
+            ) : null}
+
+            <div className="mt-4 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsGiftModalOpen(false)}
+                className="h-10 flex-1 rounded-xl border border-slate-300 text-sm font-semibold text-slate-700"
+              >
+                Back
+              </button>
+              {!hasGiftBalance ? (
+                <button
+                  type="button"
+                  onClick={() => router.push("/wallet?addMoney=1")}
+                  className="h-10 flex-1 rounded-xl bg-[#c8191e] text-sm font-semibold text-white"
+                >
+                  Add Money
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    void handleSendGift();
+                  }}
+                  disabled={isSendingGift}
+                  className="h-10 flex-1 rounded-xl bg-[#0f766e] text-sm font-semibold text-white disabled:opacity-60"
+                >
+                  {isSendingGift ? "Sending..." : "Send Gift"}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
+      <style jsx global>{`
+        @keyframes giftFloat {
+          0% { transform: translateY(40px) scale(0.7); opacity: 0; }
+          20% { opacity: 1; }
+          100% { transform: translateY(-180px) scale(1.2); opacity: 0; }
+        }
+      `}</style>
     </main>
   );
 }

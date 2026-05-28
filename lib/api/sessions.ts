@@ -55,8 +55,15 @@ export type SessionMessageRecord = {
   senderId?: string;
   senderUserId: string;
   senderRole?: "USER" | "PARTNER" | "UNKNOWN";
+  messageType?: "TEXT" | "GIFT";
   text?: string;
   body: string;
+  gift?: {
+    giftKey: "rose" | "coffee" | "star" | "heart" | "crown" | "diamond";
+    giftName: string;
+    giftEmoji: string;
+    amount: number;
+  } | null;
   createdAt: string;
   isMine?: boolean;
   senderUser?: {
@@ -65,6 +72,8 @@ export type SessionMessageRecord = {
     name?: string | null;
   };
 };
+
+export type GiftKey = "rose" | "coffee" | "star" | "heart" | "crown" | "diamond";
 
 export async function createSession(payload: {
   companionId: string;
@@ -122,6 +131,33 @@ export async function sendSessionMessage(sessionId: string, body: string) {
   });
   if (result.error) return { data: null, error: result.error };
   return { data: result.data?.message ?? null, error: null };
+}
+
+export async function sendSessionGift(sessionId: string, giftKey: GiftKey) {
+  const result = await apiRequest<{
+    walletBalance: number;
+    gift: {
+      giftKey: GiftKey;
+      giftName: string;
+      giftEmoji: string;
+      amount: number;
+    };
+    message: SessionMessageRecord;
+  }>(`/api/sessions/${sessionId}/gifts`, {
+    method: "POST",
+    body: JSON.stringify({ giftKey }),
+  });
+  if (result.error) return { data: null, error: result.error };
+  return {
+    data: result.data
+      ? {
+          walletBalance: result.data.walletBalance,
+          gift: result.data.gift,
+          message: result.data.message,
+        }
+      : null,
+    error: null,
+  };
 }
 
 export async function getSessionAgoraToken(sessionId: string) {

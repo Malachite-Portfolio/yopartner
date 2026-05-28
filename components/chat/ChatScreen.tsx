@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, CheckCheck, CirclePlus, EllipsisVertical, Phone, SendHorizontal, Smile, Video } from "lucide-react";
+import { ArrowLeft, CheckCheck, CirclePlus, EllipsisVertical, Gift, Phone, SendHorizontal, Smile, Video } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { CompanionRouteProfile } from "@/lib/companionRoutes";
@@ -10,6 +10,13 @@ export type ChatScreenMessage = {
   sender: "self" | "other";
   text: string;
   timestamp: string;
+  messageType?: "TEXT" | "GIFT";
+  gift?: {
+    giftKey: "rose" | "coffee" | "star" | "heart" | "crown" | "diamond";
+    giftName: string;
+    giftEmoji: string;
+    amount: number;
+  } | null;
 };
 
 type ChatScreenProps = {
@@ -30,6 +37,9 @@ type ChatScreenProps = {
   onBackRequest?: () => void;
   showCallActions?: boolean;
   sessionTimerLabel?: string;
+  showGiftAction?: boolean;
+  onGiftClick?: () => void;
+  giftActionDisabled?: boolean;
 };
 
 const COMMON_EMOJIS = ["😀", "😊", "❤️", "🙏", "👍", "😄", "😢"];
@@ -61,6 +71,9 @@ export function ChatScreen({
   onBackRequest,
   showCallActions = true,
   sessionTimerLabel,
+  showGiftAction = false,
+  onGiftClick,
+  giftActionDisabled = false,
 }: ChatScreenProps) {
   const router = useRouter();
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -184,6 +197,8 @@ export function ChatScreen({
         <div className="space-y-3">
           {messages.map((message) => {
             const own = message.sender === "self";
+            const gift = message.messageType === "GIFT" ? message.gift : null;
+            const isGift = Boolean(gift);
             return (
               <div key={message.id} className={`flex items-end gap-2 ${own ? "justify-end" : "justify-start"}`}>
                 {!own ? (
@@ -198,13 +213,26 @@ export function ChatScreen({
                 ) : null}
                 <div
                   className={`max-w-[78%] rounded-2xl px-3.5 py-2.5 shadow-sm ${
-                    own
+                    isGift
+                      ? own
+                        ? "rounded-br-md border border-amber-200 bg-amber-100 text-amber-950"
+                        : "rounded-bl-md border border-amber-200 bg-amber-50 text-amber-950"
+                      : own
                       ? "rounded-br-md bg-[#0f172a] text-white"
                       : "rounded-bl-md bg-[#7de1d6] text-[#0f172a]"
                   }`}
                 >
-                  <p className="text-[14.5px] leading-relaxed">{message.text}</p>
-                  <div className={`mt-1.5 flex items-center gap-1 text-[11px] ${own ? "justify-end text-white/80" : "text-[#0f172a]/75"}`}>
+                  {isGift ? (
+                    <>
+                      <p className="text-[14.5px] font-semibold leading-relaxed">
+                        {own ? "You sent" : "You received"} {gift?.giftEmoji} {gift?.giftName}
+                      </p>
+                      <p className="mt-1 text-[12px] text-amber-800">Gift amount ₹{gift?.amount}</p>
+                    </>
+                  ) : (
+                    <p className="text-[14.5px] leading-relaxed">{message.text}</p>
+                  )}
+                  <div className={`mt-1.5 flex items-center gap-1 text-[11px] ${own && !isGift ? "justify-end text-white/80" : "text-[#0f172a]/75"}`}>
                     <span>{message.timestamp}</span>
                     {own ? <CheckCheck size={12} /> : null}
                   </div>
@@ -259,6 +287,17 @@ export function ChatScreen({
           >
             <Smile size={18} />
           </button>
+          {showGiftAction ? (
+            <button
+              type="button"
+              aria-label="Send gift"
+              onClick={onGiftClick}
+              disabled={composerDisabled || giftActionDisabled}
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[#b45309] transition hover:bg-amber-100 disabled:opacity-60"
+            >
+              <Gift size={18} />
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={onSend}
