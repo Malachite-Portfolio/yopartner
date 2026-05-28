@@ -11,7 +11,7 @@ import {
   type AdminApplicationUpdateStatus,
   updateAdminApplicationStatus,
 } from "@/lib/api/admin";
-import { formatDateTime } from "@/lib/adminStore";
+import { formatDateTime } from "@/lib/adminFormat";
 
 type AdminApplicationStatus = "Draft" | "Under Review" | "Approved" | "Rejected" | "Needs Info";
 

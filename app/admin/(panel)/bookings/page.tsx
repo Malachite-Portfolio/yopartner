@@ -1,179 +1,186 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AdminActionMenu } from "@/components/admin/AdminActionMenu";
 import { AdminDetailDrawer } from "@/components/admin/AdminDetailDrawer";
 import { AdminStatusBadge } from "@/components/admin/AdminStatusBadge";
 import { AdminTableToolbar } from "@/components/admin/AdminTableToolbar";
-import {
-  formatDateTime,
-  formatINR,
-  generateId,
-  getAdminBookings,
-  getAdminTransactions,
-  setAdminBookings,
-  setAdminTransactions,
-} from "@/lib/adminStore";
-import type { AdminBooking, AdminBookingStatus, AdminTransaction } from "@/lib/adminData";
+import { listBookings } from "@/lib/api/admin";
+import { clearAdminAuthSession } from "@/lib/adminAuth";
+import { formatDateTime, formatINR } from "@/lib/adminFormat";
 
-type BookingFilter = "All" | AdminBookingStatus;
+type BookingStatus = "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELLED";
 
-function mapExternalBookings(raw: Array<Record<string, unknown>>): AdminBooking[] {
-  return raw.map((item, index) => ({
-    id: String(item.id ?? `ext-${index}`),
-    bookingId: String(item.bookingId ?? generateId("YP")),
-    user: String(item.user ?? item.phone ?? "+919900000000"),
-    companion: String(item.companionName ?? item.companion ?? "Unassigned"),
-    serviceType:
-      item.serviceType === "audio" || item.serviceType === "video" || item.serviceType === "visit" || item.serviceType === "chat"
-        ? item.serviceType
-        : "chat",
-    amount: Number(item.amount ?? item.price ?? 0),
-    status:
-      item.status === "Confirmed" || item.status === "Pending" || item.status === "Completed" || item.status === "Cancelled"
-        ? item.status
-        : "Pending",
-    createdAt: String(item.createdAt ?? new Date().toISOString()),
-    scheduledAt: String(item.scheduledAt ?? item.createdAt ?? new Date().toISOString()),
-  }));
+type BookingRow = {
+  id: string;
+  bookingCode: string;
+  user: string;
+  companion: string;
+  serviceType: string;
+  amount: number;
+  status: BookingStatus;
+  createdAt: string;
+  scheduledAt: string;
+};
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+}
+
+function asArray(value: unknown) {
+  return Array.isArray(value) ? value.map((item) => asRecord(item)) : [];
+}
+
+function asString(value: unknown, fallback = "-") {
+  const text = String(value ?? "").trim();
+  return text.length > 0 ? text : fallback;
+}
+
+function asNumber(value: unknown, fallback = 0) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function asBookingStatus(value: unknown): BookingStatus {
+  const normalized = String(value ?? "").toUpperCase();
+  if (normalized === "PENDING" || normalized === "CONFIRMED" || normalized === "COMPLETED" || normalized === "CANCELLED") {
+    return normalized;
+  }
+  return "PENDING";
 }
 
 export default function AdminBookingsPage() {
-  const [bookings, setBookings] = useState<AdminBooking[]>(() => {
-    const base = getAdminBookings();
-    let merged = [...base];
-
-    if (typeof window !== "undefined") {
-      const raw = window.localStorage.getItem("yopartner_bookings_cache");
-      if (raw) {
-        try {
-          const parsed = JSON.parse(raw);
-          if (Array.isArray(parsed)) {
-            const external = mapExternalBookings(parsed);
-            const existingIds = new Set(base.map((item) => item.bookingId));
-            merged = [...base, ...external.filter((item) => !existingIds.has(item.bookingId))];
-          }
-        } catch {
-          // Ignore malformed local booking data.
-        }
-      }
-    }
-    return merged;
-  });
-  const [transactions, setTransactions] = useState<AdminTransaction[]>(() => getAdminTransactions());
+  const router = useRouter();
+  const [rows, setRows] = useState<BookingRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<BookingFilter>("All");
-  const [selected, setSelected] = useState<AdminBooking | null>(null);
+  const [filter, setFilter] = useState<"ALL" | BookingStatus>("ALL");
+  const [selected, setSelected] = useState<BookingRow | null>(null);
 
-  const persistBookings = (next: AdminBooking[]) => {
-    setBookings(next);
-    setAdminBookings(next);
-  };
+  const loadBookings = useCallback(async () => {
+    setLoading(true);
+    setErrorMessage("");
+    const response = await listBookings();
 
-  const persistTransactions = (next: AdminTransaction[]) => {
-    setTransactions(next);
-    setAdminTransactions(next);
-  };
+    if (response.error?.status === 401) {
+      clearAdminAuthSession();
+      router.replace("/admin/login");
+      return;
+    }
+
+    if (response.error || !response.data) {
+      setRows([]);
+      setErrorMessage(response.error?.message || "Unable to load bookings.");
+      setLoading(false);
+      return;
+    }
+
+    const root = asRecord(response.data);
+    const bookings = asArray(root.bookings).map((row) => {
+      const user = asRecord(row.user);
+      const companion = asRecord(row.companion);
+      return {
+        id: asString(row.id),
+        bookingCode: asString(row.bookingCode, asString(row.id)),
+        user: asString(user.phoneNumber ?? user.name),
+        companion: asString(companion.displayName ?? companion.name),
+        serviceType: asString(row.serviceType),
+        amount: asNumber(row.amount),
+        status: asBookingStatus(row.status),
+        createdAt: asString(row.createdAt, new Date().toISOString()),
+        scheduledAt: asString(row.scheduledAt ?? row.createdAt, new Date().toISOString()),
+      } satisfies BookingRow;
+    });
+
+    setRows(bookings.sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)));
+    setLoading(false);
+  }, [router]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void loadBookings();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [loadBookings]);
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return bookings.filter((item) => {
-      if (filter !== "All" && item.status !== filter) return false;
+    return rows.filter((item) => {
+      if (filter !== "ALL" && item.status !== filter) return false;
       if (!term) return true;
-      return `${item.bookingId} ${item.user} ${item.companion}`.toLowerCase().includes(term);
+      return `${item.bookingCode} ${item.user} ${item.companion}`.toLowerCase().includes(term);
     });
-  }, [bookings, search, filter]);
-
-  const updateBookingStatus = (target: AdminBooking, status: AdminBookingStatus) => {
-    const next = bookings.map((item) => (item.id === target.id ? { ...item, status } : item));
-    persistBookings(next);
-    setSelected((item) => (item?.id === target.id ? { ...item, status } : item));
-  };
-
-  const refundBooking = (target: AdminBooking) => {
-    const tx: AdminTransaction = {
-      id: generateId("txn"),
-      transactionId: generateId("TRX"),
-      user: target.user,
-      type: "Refund",
-      amount: target.amount,
-      status: "Success",
-      gateway: "Wallet",
-      date: new Date().toISOString(),
-      reason: `Refund for ${target.bookingId}`,
-    };
-    persistTransactions([tx, ...transactions]);
-    alert(`Refund transaction created for ${target.bookingId}.`);
-  };
-
-  const assignCompanion = (target: AdminBooking) => {
-    const companion = window.prompt("Assign companion name:", target.companion);
-    if (!companion) return;
-    const next = bookings.map((item) => (item.id === target.id ? { ...item, companion } : item));
-    persistBookings(next);
-    setSelected((item) => (item?.id === target.id ? { ...item, companion } : item));
-  };
+  }, [rows, search, filter]);
 
   return (
     <section className="space-y-4">
       <h2 className="text-xl font-semibold text-slate-900">Bookings</h2>
+
+      {errorMessage ? (
+        <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">{errorMessage}</p>
+      ) : null}
+
       <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <AdminTableToolbar
           searchValue={search}
           onSearchChange={setSearch}
           searchPlaceholder="Search by booking ID, user or companion..."
           filterValue={filter}
-          onFilterChange={(value) => setFilter(value as BookingFilter)}
-          filterOptions={["All", "Confirmed", "Pending", "Completed", "Cancelled"]}
+          onFilterChange={(value) => setFilter(value as "ALL" | BookingStatus)}
+          filterOptions={["ALL", "PENDING", "CONFIRMED", "COMPLETED", "CANCELLED"]}
         />
 
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead className="text-xs uppercase text-slate-500">
-              <tr>
-                <th className="px-2 py-2">Booking ID</th>
-                <th className="px-2 py-2">User</th>
-                <th className="px-2 py-2">Companion</th>
-                <th className="px-2 py-2">Service Type</th>
-                <th className="px-2 py-2">Amount</th>
-                <th className="px-2 py-2">Status</th>
-                <th className="px-2 py-2">Created At</th>
-                <th className="px-2 py-2">Scheduled At</th>
-                <th className="px-2 py-2">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((item) => (
-                <tr key={item.id} className="border-t border-slate-100">
-                  <td className="px-2 py-2 font-medium text-slate-800">{item.bookingId}</td>
-                  <td className="px-2 py-2 text-slate-700">{item.user}</td>
-                  <td className="px-2 py-2 text-slate-700">{item.companion}</td>
-                  <td className="px-2 py-2 text-slate-700">{item.serviceType}</td>
-                  <td className="px-2 py-2 text-slate-700">{formatINR(item.amount)}</td>
-                  <td className="px-2 py-2"><AdminStatusBadge status={item.status} /></td>
-                  <td className="px-2 py-2 text-slate-700">{formatDateTime(item.createdAt)}</td>
-                  <td className="px-2 py-2 text-slate-700">{formatDateTime(item.scheduledAt)}</td>
-                  <td className="px-2 py-2">
-                    <AdminActionMenu
-                      actions={[
-                        { label: "View Details", onClick: () => setSelected(item) },
-                        { label: "Mark Completed", tone: "success", onClick: () => updateBookingStatus(item, "Completed") },
-                        { label: "Cancel", tone: "danger", onClick: () => updateBookingStatus(item, "Cancelled") },
-                        { label: "Refund", tone: "warning", onClick: () => refundBooking(item) },
-                        { label: "Assign Companion", onClick: () => assignCompanion(item) },
-                      ]}
-                    />
-                  </td>
+        {loading ? (
+          <p className="py-4 text-sm text-slate-600">Loading bookings...</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-left text-sm">
+              <thead className="text-xs uppercase text-slate-500">
+                <tr>
+                  <th className="px-2 py-2">Booking ID</th>
+                  <th className="px-2 py-2">User</th>
+                  <th className="px-2 py-2">Companion</th>
+                  <th className="px-2 py-2">Service Type</th>
+                  <th className="px-2 py-2">Amount</th>
+                  <th className="px-2 py-2">Status</th>
+                  <th className="px-2 py-2">Created At</th>
+                  <th className="px-2 py-2">Scheduled At</th>
+                  <th className="px-2 py-2">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="px-2 py-3 text-slate-500">No bookings found.</td>
+                  </tr>
+                ) : (
+                  filtered.map((item) => (
+                    <tr key={item.id} className="border-t border-slate-100">
+                      <td className="px-2 py-2 font-medium text-slate-800">{item.bookingCode}</td>
+                      <td className="px-2 py-2 text-slate-700">{item.user}</td>
+                      <td className="px-2 py-2 text-slate-700">{item.companion}</td>
+                      <td className="px-2 py-2 text-slate-700">{item.serviceType}</td>
+                      <td className="px-2 py-2 text-slate-700">{formatINR(item.amount)}</td>
+                      <td className="px-2 py-2"><AdminStatusBadge status={item.status} /></td>
+                      <td className="px-2 py-2 text-slate-700">{formatDateTime(item.createdAt)}</td>
+                      <td className="px-2 py-2 text-slate-700">{formatDateTime(item.scheduledAt)}</td>
+                      <td className="px-2 py-2">
+                        <AdminActionMenu actions={[{ label: "View Details", onClick: () => setSelected(item) }]} />
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </article>
 
       <AdminDetailDrawer
         open={Boolean(selected)}
-        title={selected ? `Booking ${selected.bookingId}` : "Booking Details"}
+        title={selected ? `Booking ${selected.bookingCode}` : "Booking Details"}
         onClose={() => setSelected(null)}
       >
         {selected ? (

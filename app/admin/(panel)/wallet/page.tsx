@@ -10,9 +10,9 @@ import {
   type AdminWalletSummaryTransaction,
   getAdminWalletSummary,
 } from "@/lib/api/admin";
-import { formatDateTime, formatINR } from "@/lib/adminStore";
+import { formatDateTime, formatINR } from "@/lib/adminFormat";
 
-type TypeFilter = "ALL" | "RECHARGE" | "BOOKING" | "REFUND" | "ADMIN_CREDIT";
+type TypeFilter = "ALL" | "RECHARGE" | "BOOKING" | "GIFT" | "REFUND" | "ADMIN_CREDIT";
 type StatusFilter = "ALL" | "SUCCESS" | "PENDING" | "FAILED";
 
 function formatType(type: AdminWalletSummaryTransaction["type"]) {
@@ -23,6 +23,8 @@ function formatType(type: AdminWalletSummaryTransaction["type"]) {
       return "Recharge";
     case "BOOKING":
       return "Booking";
+    case "GIFT":
+      return "Gift";
     case "REFUND":
       return "Refund";
     default:
@@ -102,6 +104,7 @@ export default function AdminWalletPage() {
             <option value="ALL">All Types</option>
             <option value="RECHARGE">Recharge</option>
             <option value="BOOKING">Booking</option>
+            <option value="GIFT">Gift</option>
             <option value="REFUND">Refund</option>
             <option value="ADMIN_CREDIT">Admin Credit</option>
           </select>

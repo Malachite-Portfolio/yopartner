@@ -12,7 +12,7 @@ import {
   updateAdminApplicationStatus,
 } from "@/lib/api/admin";
 import { clearAdminAuthSession } from "@/lib/adminAuth";
-import { formatDateTime } from "@/lib/adminStore";
+import { formatDateTime } from "@/lib/adminFormat";
 
 type RowAction = "approve" | "reject" | "needs_info";
 

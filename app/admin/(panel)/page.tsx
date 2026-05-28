@@ -18,7 +18,7 @@ import { clearAdminAuthSession } from "@/lib/adminAuth";
 import {
   formatDateTime,
   formatINR,
-} from "@/lib/adminStore";
+} from "@/lib/adminFormat";
 import { useRouter } from "next/navigation";
 
 type DashboardStats = {

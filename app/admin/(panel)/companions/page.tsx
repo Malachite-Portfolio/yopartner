@@ -6,7 +6,7 @@ import { AdminStatusBadge } from "@/components/admin/AdminStatusBadge";
 import { AdminTableToolbar } from "@/components/admin/AdminTableToolbar";
 import { listCompanions } from "@/lib/api/admin";
 import { clearAdminAuthSession } from "@/lib/adminAuth";
-import { formatDateTime } from "@/lib/adminStore";
+import { formatDateTime } from "@/lib/adminFormat";
 
 type ActivePartnerRow = {
   id: string;

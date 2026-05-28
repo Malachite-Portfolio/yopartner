@@ -48,7 +48,7 @@ export type AdminWalletSummaryTransaction = {
   transactionId: string;
   userPhone: string;
   userName?: string | null;
-  type: "RECHARGE" | "BOOKING" | "REFUND" | "ADMIN_CREDIT";
+  type: "RECHARGE" | "BOOKING" | "GIFT" | "REFUND" | "ADMIN_CREDIT";
   amount: number;
   status: "SUCCESS" | "PENDING" | "FAILED";
   gateway?: string | null;
@@ -68,7 +68,7 @@ export type AdminWalletSummaryResponse = {
 
 export async function getAdminWalletSummary(filters?: {
   search?: string;
-  type?: "ALL" | "RECHARGE" | "BOOKING" | "REFUND" | "ADMIN_CREDIT";
+  type?: "ALL" | "RECHARGE" | "BOOKING" | "GIFT" | "REFUND" | "ADMIN_CREDIT";
   status?: "ALL" | "SUCCESS" | "PENDING" | "FAILED";
 }) {
   const params = new URLSearchParams();
@@ -91,5 +91,13 @@ export const listMedia = () => adminGet<Record<string, unknown>>("/api/admin/med
 export const updateMedia = (payload: Record<string, unknown>) => adminUpdate("/api/admin/media", payload);
 export const listClientDiaries = () => adminGet<Record<string, unknown>>("/api/admin/client-diaries");
 export const updateClientDiary = (payload: Record<string, unknown>) => adminUpdate("/api/admin/client-diaries", payload);
-export const getSettings = () => adminGet<Record<string, unknown>>("/api/admin/settings");
-export const updateSettings = (payload: Record<string, unknown>) => adminUpdate("/api/admin/settings", payload);
+export async function getAdminSetting(key: string) {
+  return adminGet<{ setting: { key: string; value: Record<string, unknown> } | null }>(`/api/admin/settings/${key}`);
+}
+
+export async function updateAdminSetting(key: string, value: Record<string, unknown>) {
+  return apiRequest<{ setting: { key: string; value: Record<string, unknown> } }>(`/api/admin/settings/${key}`, {
+    method: "PUT",
+    body: JSON.stringify(value),
+  });
+}

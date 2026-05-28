@@ -1,96 +1,210 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AdminActionMenu } from "@/components/admin/AdminActionMenu";
 import { AdminDetailDrawer } from "@/components/admin/AdminDetailDrawer";
 import { AdminStatusBadge } from "@/components/admin/AdminStatusBadge";
 import { AdminTableToolbar } from "@/components/admin/AdminTableToolbar";
-import {
-  formatDateTime,
-  formatINR,
-  generateId,
-  getAdminSessions,
-  getAdminTransactions,
-  getAdminUsers,
-  setAdminTransactions,
-  setAdminUsers,
-} from "@/lib/adminStore";
-import type { AdminSession, AdminTransaction, AdminUser } from "@/lib/adminData";
+import { listSessions, listUsers, listWalletTransactions } from "@/lib/api/admin";
+import { clearAdminAuthSession } from "@/lib/adminAuth";
+import { formatDateTime, formatINR } from "@/lib/adminFormat";
 
-type UserFilter = "All" | AdminUser["status"];
+type MemberStatus = "Active" | "Blocked" | "New" | "High Value";
+
+type MemberRow = {
+  id: string;
+  name: string;
+  phone: string;
+  walletBalance: number;
+  totalBookings: number;
+  totalSessions: number;
+  totalSpent: number;
+  status: MemberStatus;
+  joinedDate: string;
+  lastLogin: string;
+};
+
+type SessionSnippet = {
+  id: string;
+  type: string;
+  status: string;
+  createdAt: string;
+  companionName: string;
+};
+
+type TxSnippet = {
+  id: string;
+  type: string;
+  amount: number;
+  status: string;
+  createdAt: string;
+};
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+}
+
+function asArray(value: unknown) {
+  return Array.isArray(value) ? value.map((item) => asRecord(item)) : [];
+}
+
+function asNumber(value: unknown, fallback = 0) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function asString(value: unknown, fallback = "-") {
+  const text = String(value ?? "").trim();
+  return text.length > 0 ? text : fallback;
+}
+
+function toMemberStatus(isBlocked: boolean, totalSpent: number, createdAt: string): MemberStatus {
+  if (isBlocked) return "Blocked";
+  if (totalSpent >= 5000) return "High Value";
+  const ageMs = Date.now() - new Date(createdAt).getTime();
+  if (Number.isFinite(ageMs) && ageMs <= 7 * 24 * 60 * 60 * 1000) return "New";
+  return "Active";
+}
 
 export default function AdminUsersPage() {
-  const [users, setUsers] = useState<AdminUser[]>(() => getAdminUsers());
-  const [sessions] = useState<AdminSession[]>(() => getAdminSessions());
-  const [transactions, setTransactions] = useState<AdminTransaction[]>(() => getAdminTransactions());
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [infoMessage, setInfoMessage] = useState("");
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<UserFilter>("All");
-  const [selected, setSelected] = useState<AdminUser | null>(null);
-  const [creditTarget, setCreditTarget] = useState<AdminUser | null>(null);
-  const [creditAmount, setCreditAmount] = useState("500");
-  const [creditReason, setCreditReason] = useState("Admin goodwill credit");
+  const [filter, setFilter] = useState<"All" | MemberStatus>("All");
+  const [rows, setRows] = useState<MemberRow[]>([]);
+  const [sessionsByUser, setSessionsByUser] = useState<Record<string, SessionSnippet[]>>({});
+  const [transactionsByUser, setTransactionsByUser] = useState<Record<string, TxSnippet[]>>({});
+  const [selected, setSelected] = useState<MemberRow | null>(null);
 
-  const persistUsers = (next: AdminUser[]) => {
-    setUsers(next);
-    setAdminUsers(next);
-  };
+  const loadMembers = useCallback(async () => {
+    setLoading(true);
+    setErrorMessage("");
+    const [usersResponse, sessionsResponse, walletResponse] = await Promise.all([
+      listUsers(),
+      listSessions(),
+      listWalletTransactions(),
+    ]);
 
-  const persistTransactions = (next: AdminTransaction[]) => {
-    setTransactions(next);
-    setAdminTransactions(next);
-  };
+    const responses = [usersResponse, sessionsResponse, walletResponse];
+    if (responses.some((response) => response.error?.status === 401)) {
+      clearAdminAuthSession();
+      router.replace("/admin/login");
+      return;
+    }
+
+    if (!usersResponse.data) {
+      setRows([]);
+      setErrorMessage(usersResponse.error?.message || "Unable to load members right now.");
+      setLoading(false);
+      return;
+    }
+
+    const usersRoot = asRecord(usersResponse.data);
+    const userRows = asArray(usersRoot.users);
+    const sessionRows = asArray(asRecord(sessionsResponse.data).sessions);
+    const txRows = asArray(asRecord(walletResponse.data).transactions);
+
+    const sessionMap: Record<string, SessionSnippet[]> = {};
+    for (const row of sessionRows) {
+      const userId = asString(row.userId, "");
+      if (!userId) continue;
+      const companion = asRecord(row.companion);
+      const entry: SessionSnippet = {
+        id: asString(row.id),
+        type: asString(row.serviceType),
+        status: asString(row.status),
+        createdAt: asString(row.createdAt),
+        companionName: asString(companion.displayName ?? companion.name, "-"),
+      };
+      sessionMap[userId] = [...(sessionMap[userId] ?? []), entry].sort(
+        (a, b) => +new Date(b.createdAt) - +new Date(a.createdAt),
+      );
+    }
+
+    const txMap: Record<string, TxSnippet[]> = {};
+    const spentMap: Record<string, number> = {};
+    for (const row of txRows) {
+      const wallet = asRecord(row.walletAccount);
+      const user = asRecord(wallet.user);
+      const userId = asString(user.id, "");
+      if (!userId) continue;
+      const type = asString(row.type, "");
+      const amount = asNumber(row.amount);
+      const status = asString(row.status, "");
+      const entry: TxSnippet = {
+        id: asString(row.id),
+        type,
+        amount,
+        status,
+        createdAt: asString(row.createdAt),
+      };
+      txMap[userId] = [...(txMap[userId] ?? []), entry].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
+      if ((type === "BOOKING" || type === "GIFT") && status === "SUCCESS") {
+        spentMap[userId] = (spentMap[userId] ?? 0) + Math.abs(amount);
+      }
+    }
+
+    const mapped = userRows.map((row) => {
+      const userId = asString(row.id);
+      const wallet = asRecord(row.walletAccount);
+      const bookings = asArray(row.bookings);
+      const createdAt = asString(row.createdAt, new Date().toISOString());
+      const totalSpent = spentMap[userId] ?? 0;
+      const isBlocked = Boolean(row.isBlocked);
+      return {
+        id: userId,
+        name: asString(row.name, "Member"),
+        phone: asString(row.phoneNumber),
+        walletBalance: asNumber(wallet.balance),
+        totalBookings: bookings.length,
+        totalSessions: (sessionMap[userId] ?? []).length,
+        totalSpent,
+        status: toMemberStatus(isBlocked, totalSpent, createdAt),
+        joinedDate: createdAt,
+        lastLogin: asString(row.updatedAt, createdAt),
+      } satisfies MemberRow;
+    });
+
+    setSessionsByUser(sessionMap);
+    setTransactionsByUser(txMap);
+    setRows(mapped.sort((a, b) => +new Date(b.joinedDate) - +new Date(a.joinedDate)));
+    setLoading(false);
+  }, [router]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void loadMembers();
+    }, 0);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [loadMembers]);
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return users.filter((item) => {
+    return rows.filter((item) => {
       if (filter !== "All" && item.status !== filter) return false;
       if (!term) return true;
       return `${item.name} ${item.phone}`.toLowerCase().includes(term);
     });
-  }, [users, search, filter]);
+  }, [rows, search, filter]);
 
-  const addCredit = () => {
-    if (!creditTarget) return;
-    const amount = Number(creditAmount);
-    if (!amount || amount <= 0) {
-      alert("Please enter a valid credit amount.");
-      return;
-    }
-    const nextUsers = users.map((item) =>
-      item.id === creditTarget.id
-        ? { ...item, walletBalance: item.walletBalance + amount }
-        : item,
-    );
-    persistUsers(nextUsers);
-
-    const newTx: AdminTransaction = {
-      id: generateId("txn"),
-      transactionId: generateId("TRX"),
-      user: creditTarget.phone,
-      type: "Admin Credit",
-      amount,
-      status: "Success",
-      gateway: "Wallet",
-      date: new Date().toISOString(),
-      reason: creditReason,
-    };
-    persistTransactions([newTx, ...transactions]);
-    setCreditTarget(null);
-    alert("Wallet credit added successfully.");
-  };
-
-  const selectedSessions = useMemo(
-    () => (selected ? sessions.filter((item) => item.user === selected.phone).slice(0, 5) : []),
-    [selected, sessions],
-  );
-  const selectedTransactions = useMemo(
-    () => (selected ? transactions.filter((item) => item.user === selected.phone).slice(0, 8) : []),
-    [selected, transactions],
-  );
+  const selectedSessions = selected ? (sessionsByUser[selected.id] ?? []).slice(0, 5) : [];
+  const selectedTransactions = selected ? (transactionsByUser[selected.id] ?? []).slice(0, 8) : [];
 
   return (
     <section className="space-y-4">
       <h2 className="text-xl font-semibold text-slate-900">Members</h2>
+
+      {errorMessage ? (
+        <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">{errorMessage}</p>
+      ) : null}
+      {infoMessage ? (
+        <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-700">{infoMessage}</p>
+      ) : null}
 
       <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <AdminTableToolbar
@@ -98,70 +212,78 @@ export default function AdminUsersPage() {
           onSearchChange={setSearch}
           searchPlaceholder="Search by name or phone..."
           filterValue={filter}
-          onFilterChange={(value) => setFilter(value as UserFilter)}
+          onFilterChange={(value) => setFilter(value as "All" | MemberStatus)}
           filterOptions={["All", "Active", "Blocked", "New", "High Value"]}
         />
 
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead className="text-xs uppercase text-slate-500">
-              <tr>
-                <th className="px-2 py-2">Name</th>
-                <th className="px-2 py-2">Phone</th>
-                <th className="px-2 py-2">Wallet Balance</th>
-                <th className="px-2 py-2">Total Bookings</th>
-                <th className="px-2 py-2">Total Spent</th>
-                <th className="px-2 py-2">Status</th>
-                <th className="px-2 py-2">Joined Date</th>
-                <th className="px-2 py-2">Last Login</th>
-                <th className="px-2 py-2">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((item) => (
-                <tr key={item.id} className="border-t border-slate-100">
-                  <td className="px-2 py-2 font-medium text-slate-800">{item.name}</td>
-                  <td className="px-2 py-2 text-slate-700">{item.phone}</td>
-                  <td className="px-2 py-2 text-slate-700">{formatINR(item.walletBalance)}</td>
-                  <td className="px-2 py-2 text-slate-700">{item.totalBookings}</td>
-                  <td className="px-2 py-2 text-slate-700">{formatINR(item.totalSpent)}</td>
-                  <td className="px-2 py-2"><AdminStatusBadge status={item.status} /></td>
-                  <td className="px-2 py-2 text-slate-700">{formatDateTime(item.joinedDate)}</td>
-                  <td className="px-2 py-2 text-slate-700">{formatDateTime(item.lastLogin)}</td>
-                  <td className="px-2 py-2">
-                    <AdminActionMenu
-                      actions={[
-                        { label: "View", onClick: () => setSelected(item) },
-                        {
-                          label: item.status === "Blocked" ? "Unblock" : "Block",
-                          tone: item.status === "Blocked" ? "success" : "danger",
-                          onClick: () => {
-                            const next = users.map((entry) => {
-                              if (entry.id !== item.id) return entry;
-                              const status: AdminUser["status"] =
-                                entry.status === "Blocked" ? "Active" : "Blocked";
-                              return { ...entry, status };
-                            });
-                            persistUsers(next);
-                          },
-                        },
-                        {
-                          label: "Add Wallet Credit",
-                          tone: "warning",
-                          onClick: () => {
-                            setCreditTarget(item);
-                            setCreditAmount("500");
-                            setCreditReason("Admin goodwill credit");
-                          },
-                        },
-                      ]}
-                    />
-                  </td>
+        {loading ? (
+          <p className="py-4 text-sm text-slate-600">Loading members...</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-left text-sm">
+              <thead className="text-xs uppercase text-slate-500">
+                <tr>
+                  <th className="px-2 py-2">Name</th>
+                  <th className="px-2 py-2">Phone</th>
+                  <th className="px-2 py-2">Wallet Balance</th>
+                  <th className="px-2 py-2">Total Bookings</th>
+                  <th className="px-2 py-2">Total Sessions</th>
+                  <th className="px-2 py-2">Total Spent</th>
+                  <th className="px-2 py-2">Status</th>
+                  <th className="px-2 py-2">Joined Date</th>
+                  <th className="px-2 py-2">Last Login</th>
+                  <th className="px-2 py-2">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={10} className="px-2 py-3 text-slate-500">No members found.</td>
+                  </tr>
+                ) : (
+                  filtered.map((item) => (
+                    <tr key={item.id} className="border-t border-slate-100">
+                      <td className="px-2 py-2 font-medium text-slate-800">{item.name}</td>
+                      <td className="px-2 py-2 text-slate-700">{item.phone}</td>
+                      <td className="px-2 py-2 text-slate-700">{formatINR(item.walletBalance)}</td>
+                      <td className="px-2 py-2 text-slate-700">{item.totalBookings}</td>
+                      <td className="px-2 py-2 text-slate-700">{item.totalSessions}</td>
+                      <td className="px-2 py-2 text-slate-700">{formatINR(item.totalSpent)}</td>
+                      <td className="px-2 py-2"><AdminStatusBadge status={item.status} /></td>
+                      <td className="px-2 py-2 text-slate-700">{formatDateTime(item.joinedDate)}</td>
+                      <td className="px-2 py-2 text-slate-700">{formatDateTime(item.lastLogin)}</td>
+                      <td className="px-2 py-2">
+                        <AdminActionMenu
+                          actions={[
+                            { label: "View", onClick: () => setSelected(item) },
+                            {
+                              label: item.status === "Blocked" ? "Unblock" : "Block",
+                              tone: item.status === "Blocked" ? "success" : "danger",
+                              disabled: true,
+                              title: "Coming soon",
+                              onClick: () => {
+                                setInfoMessage("Block/Unblock action is coming soon.");
+                              },
+                            },
+                            {
+                              label: "Add Wallet Credit",
+                              tone: "warning",
+                              disabled: true,
+                              title: "Coming soon",
+                              onClick: () => {
+                                setInfoMessage("Wallet credit action is coming soon.");
+                              },
+                            },
+                          ]}
+                        />
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </article>
 
       <AdminDetailDrawer open={Boolean(selected)} title={selected ? `${selected.name} Details` : "Member Details"} onClose={() => setSelected(null)}>
@@ -171,6 +293,7 @@ export default function AdminUsersPage() {
               <p><span className="font-semibold text-slate-900">Phone:</span> {selected.phone}</p>
               <p><span className="font-semibold text-slate-900">Wallet balance:</span> {formatINR(selected.walletBalance)}</p>
               <p><span className="font-semibold text-slate-900">Total bookings:</span> {selected.totalBookings}</p>
+              <p><span className="font-semibold text-slate-900">Total sessions:</span> {selected.totalSessions}</p>
               <p><span className="font-semibold text-slate-900">Total spent:</span> {formatINR(selected.totalSpent)}</p>
               <p><span className="font-semibold text-slate-900">Last login:</span> {formatDateTime(selected.lastLogin)}</p>
               <p><span className="font-semibold text-slate-900">Joined date:</span> {formatDateTime(selected.joinedDate)}</p>
@@ -182,7 +305,7 @@ export default function AdminUsersPage() {
                 {selectedSessions.length > 0 ? (
                   selectedSessions.map((entry) => (
                     <div key={entry.id} className="rounded-lg border border-slate-200 p-2">
-                      {entry.type} with {entry.companion} ({entry.duration})
+                      {entry.type} with {entry.companionName} ({entry.status})
                     </div>
                   ))
                 ) : (
@@ -208,23 +331,6 @@ export default function AdminUsersPage() {
           </div>
         ) : null}
       </AdminDetailDrawer>
-
-      {creditTarget ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4">
-          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-lg">
-            <h3 className="text-lg font-semibold text-slate-900">Add Wallet Credit</h3>
-            <p className="mt-1 text-sm text-slate-600">{creditTarget.name} ({creditTarget.phone})</p>
-            <div className="mt-4 space-y-3">
-              <input value={creditAmount} onChange={(e) => setCreditAmount(e.target.value)} placeholder="Amount" className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm" />
-              <input value={creditReason} onChange={(e) => setCreditReason(e.target.value)} placeholder="Reason" className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm" />
-            </div>
-            <div className="mt-5 flex justify-end gap-2">
-              <button type="button" onClick={() => setCreditTarget(null)} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700">Cancel</button>
-              <button type="button" onClick={addCredit} className="rounded-xl bg-gradient-to-r from-[#2563eb] to-[#0ea5a6] px-4 py-2 text-sm font-semibold text-white">Add Credit</button>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </section>
   );
 }

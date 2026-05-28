@@ -1,118 +1,243 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { formatINR, getAdminApplications, getAdminCompanions, getAdminSessions, getAdminTransactions, getAdminUsers } from "@/lib/adminStore";
-import type { AdminApplication, AdminCompanion, AdminSession, AdminTransaction, AdminUser } from "@/lib/adminData";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { getAdminDashboard, getAdminWalletSummary, listApplications, listCompanions, listSessions, listUsers } from "@/lib/api/admin";
+import { clearAdminAuthSession } from "@/lib/adminAuth";
+import { formatINR } from "@/lib/adminFormat";
+
+type ReportState = {
+  totalRecharge: number;
+  bookingRevenue: number;
+  commission: number;
+  refunds: number;
+  chatSessions: number;
+  audioSessions: number;
+  videoSessions: number;
+  visitSessions: number;
+  activeCompanions: number;
+  suspendedCompanions: number;
+  pendingApplications: number;
+  averageRating: string;
+  activeUsers: number;
+  blockedUsers: number;
+  highValueUsers: number;
+  newUsers: number;
+};
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+}
+
+function asArray(value: unknown) {
+  return Array.isArray(value) ? value.map((item) => asRecord(item)) : [];
+}
+
+function asNumber(value: unknown, fallback = 0) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function asString(value: unknown, fallback = "") {
+  const text = String(value ?? "").trim();
+  return text.length > 0 ? text : fallback;
+}
+
+const emptyStats: ReportState = {
+  totalRecharge: 0,
+  bookingRevenue: 0,
+  commission: 0,
+  refunds: 0,
+  chatSessions: 0,
+  audioSessions: 0,
+  videoSessions: 0,
+  visitSessions: 0,
+  activeCompanions: 0,
+  suspendedCompanions: 0,
+  pendingApplications: 0,
+  averageRating: "0.0",
+  activeUsers: 0,
+  blockedUsers: 0,
+  highValueUsers: 0,
+  newUsers: 0,
+};
 
 export default function AdminReportsPage() {
-  const [users] = useState<AdminUser[]>(() => getAdminUsers());
-  const [companions] = useState<AdminCompanion[]>(() => getAdminCompanions());
-  const [applications] = useState<AdminApplication[]>(() => getAdminApplications());
-  const [sessions] = useState<AdminSession[]>(() => getAdminSessions());
-  const [transactions] = useState<AdminTransaction[]>(() => getAdminTransactions());
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [stats, setStats] = useState<ReportState>(emptyStats);
 
-  const revenue = useMemo(() => {
-    const totalRecharge = transactions.filter((item) => item.type === "Recharge").reduce((acc, item) => acc + Math.max(item.amount, 0), 0);
-    const bookingRevenue = transactions.filter((item) => item.type === "Booking").reduce((acc, item) => acc + Math.abs(item.amount), 0);
-    const refunds = transactions.filter((item) => item.type === "Refund").reduce((acc, item) => acc + Math.max(item.amount, 0), 0);
-    const commission = Math.round(bookingRevenue * 0.2);
-    return { totalRecharge, bookingRevenue, commission, refunds };
-  }, [transactions]);
+  const loadReports = useCallback(async () => {
+    setLoading(true);
+    setErrorMessage("");
 
-  const sessionReport = useMemo(() => {
-    const chat = sessions.filter((item) => item.type === "Chat").length;
-    const audio = sessions.filter((item) => item.type === "Audio").length;
-    const video = sessions.filter((item) => item.type === "Video").length;
-    const visit = sessions.filter((item) => item.type === "Visit").length;
-    const max = Math.max(chat, audio, video, visit, 1);
-    return { chat, audio, video, visit, max };
-  }, [sessions]);
+    const [dashboardResponse, walletResponse, sessionsResponse, companionsResponse, applicationsResponse, usersResponse] = await Promise.all([
+      getAdminDashboard(),
+      getAdminWalletSummary(),
+      listSessions(),
+      listCompanions(),
+      listApplications(),
+      listUsers(),
+    ]);
 
-  const companionReport = useMemo(() => {
-    const active = companions.filter((item) => item.status === "Active").length;
-    const suspended = companions.filter((item) => item.status === "Suspended").length;
-    const pendingApplications = applications.filter((item) => item.status === "Under Review" || item.status === "Needs Info").length;
-    const ratings = companions.map((item) => item.rating);
-    const averageRating = ratings.length > 0 ? (ratings.reduce((acc, item) => acc + item, 0) / ratings.length).toFixed(1) : "0.0";
-    return { active, suspended, pendingApplications, averageRating };
-  }, [applications, companions]);
+    const responses = [dashboardResponse, walletResponse, sessionsResponse, companionsResponse, applicationsResponse, usersResponse];
+    if (responses.some((response) => response.error?.status === 401)) {
+      clearAdminAuthSession();
+      router.replace("/admin/login");
+      return;
+    }
 
-  const userReport = useMemo(() => {
-    const active = users.filter((item) => item.status === "Active").length;
-    const blocked = users.filter((item) => item.status === "Blocked").length;
-    const highValue = users.filter((item) => item.status === "High Value").length;
-    const newUsers = users.filter((item) => item.status === "New").length;
-    return { active, blocked, highValue, newUsers };
-  }, [users]);
+    const hasData = responses.some((response) => Boolean(response.data));
+    if (!hasData) {
+      setStats(emptyStats);
+      setErrorMessage("No report data available right now.");
+      setLoading(false);
+      return;
+    }
 
-  const exportMessage = (name: string) => alert(`${name} export is not available yet.`);
+    const dashboardStats = asRecord(asRecord(dashboardResponse.data).stats);
+    const wallet = walletResponse.data;
+    const sessions = asArray(asRecord(sessionsResponse.data).sessions);
+    const companions = asArray(asRecord(companionsResponse.data).companions);
+    const applications = asArray(asRecord(applicationsResponse.data).applications);
+    const users = asArray(asRecord(usersResponse.data).users);
+
+    const chatSessions = sessions.filter((row) => asString(row.serviceType).toUpperCase() === "CHAT").length;
+    const audioSessions = sessions.filter((row) => asString(row.serviceType).toUpperCase() === "AUDIO").length;
+    const videoSessions = sessions.filter((row) => asString(row.serviceType).toUpperCase() === "VIDEO").length;
+    const visitSessions = sessions.filter((row) => asString(row.serviceType).toUpperCase() === "VISIT").length;
+
+    const activeCompanions = companions.filter((row) => asString(row.status).toUpperCase() === "ACTIVE").length;
+    const suspendedCompanions = companions.filter((row) => asString(row.status).toUpperCase() === "SUSPENDED").length;
+    const ratings = companions.map((row) => asNumber(row.rating)).filter((item) => item > 0);
+    const averageRating = ratings.length ? (ratings.reduce((sum, item) => sum + item, 0) / ratings.length).toFixed(1) : "0.0";
+
+    const pendingApplications = applications.filter((row) => {
+      const status = asString(row.status).toUpperCase();
+      return status === "UNDER_REVIEW" || status === "NEEDS_INFO";
+    }).length;
+
+    const activeUsers = users.filter((row) => !Boolean(row.isBlocked)).length;
+    const blockedUsers = users.filter((row) => Boolean(row.isBlocked)).length;
+    const newUsers = users.filter((row) => {
+      const createdAt = new Date(asString(row.createdAt, new Date().toISOString())).getTime();
+      return Number.isFinite(createdAt) && Date.now() - createdAt <= 7 * 24 * 60 * 60 * 1000;
+    }).length;
+
+    setStats({
+      totalRecharge: wallet?.totalRecharged ?? asNumber(dashboardStats.rechargeTotal),
+      bookingRevenue: wallet?.totalSpent ?? 0,
+      commission: Math.round((wallet?.totalSpent ?? 0) * 0.2),
+      refunds: wallet?.totalRefunds ?? 0,
+      chatSessions,
+      audioSessions,
+      videoSessions,
+      visitSessions,
+      activeCompanions: asNumber(dashboardStats.companionsCount) || activeCompanions,
+      suspendedCompanions,
+      pendingApplications: asNumber(dashboardStats.pendingApplicationsCount) || pendingApplications,
+      averageRating,
+      activeUsers: asNumber(dashboardStats.usersCount) || activeUsers,
+      blockedUsers,
+      highValueUsers: 0,
+      newUsers,
+    });
+    setLoading(false);
+  }, [router]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void loadReports();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [loadReports]);
+
+  const sessionMax = useMemo(
+    () => Math.max(stats.chatSessions, stats.audioSessions, stats.videoSessions, stats.visitSessions, 1),
+    [stats.audioSessions, stats.chatSessions, stats.videoSessions, stats.visitSessions],
+  );
+
+  const exportMessage = (name: string) => alert(`${name} export is coming soon.`);
 
   return (
     <section className="space-y-6">
       <h2 className="text-xl font-semibold text-slate-900">Reports</h2>
 
-      <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-base font-semibold text-slate-900">Revenue Report</h3>
-          <button type="button" onClick={() => exportMessage("Revenue CSV")} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700">Export Revenue CSV</button>
-        </div>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          <div className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">Total Recharge</p><p className="mt-1 font-semibold text-slate-900">{formatINR(revenue.totalRecharge)}</p></div>
-          <div className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">Booking Revenue</p><p className="mt-1 font-semibold text-slate-900">{formatINR(revenue.bookingRevenue)}</p></div>
-          <div className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">Platform Commission</p><p className="mt-1 font-semibold text-slate-900">{formatINR(revenue.commission)}</p></div>
-          <div className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">Refunds</p><p className="mt-1 font-semibold text-slate-900">{formatINR(revenue.refunds)}</p></div>
-        </div>
-      </article>
+      {errorMessage ? (
+        <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-700">{errorMessage}</p>
+      ) : null}
 
-      <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-base font-semibold text-slate-900">Session Report</h3>
-          <button type="button" onClick={() => exportMessage("Sessions CSV")} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700">Export Sessions CSV</button>
-        </div>
-        <div className="space-y-3">
-          {([
-            { label: "Chat", value: sessionReport.chat },
-            { label: "Audio", value: sessionReport.audio },
-            { label: "Video", value: sessionReport.video },
-            { label: "Visit", value: sessionReport.visit },
-          ] as const).map((item) => (
-            <div key={item.label}>
-              <div className="mb-1 flex items-center justify-between text-sm"><span>{item.label}</span><span className="font-semibold">{item.value}</span></div>
-              <div className="h-2 rounded-full bg-slate-100">
-                <div className="h-2 rounded-full bg-gradient-to-r from-[#2563eb] to-[#0ea5a6]" style={{ width: `${(item.value / sessionReport.max) * 100}%` }} />
-              </div>
+      {loading ? (
+        <article className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600 shadow-sm">
+          Loading reports...
+        </article>
+      ) : (
+        <>
+          <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-base font-semibold text-slate-900">Revenue Report</h3>
+              <button type="button" onClick={() => exportMessage("Revenue CSV")} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700">Export Revenue CSV</button>
             </div>
-          ))}
-        </div>
-      </article>
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+              <div className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">Total Recharge</p><p className="mt-1 font-semibold text-slate-900">{formatINR(stats.totalRecharge)}</p></div>
+              <div className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">Booking Revenue</p><p className="mt-1 font-semibold text-slate-900">{formatINR(stats.bookingRevenue)}</p></div>
+              <div className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">Platform Commission</p><p className="mt-1 font-semibold text-slate-900">{formatINR(stats.commission)}</p></div>
+              <div className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">Refunds</p><p className="mt-1 font-semibold text-slate-900">{formatINR(stats.refunds)}</p></div>
+            </div>
+          </article>
 
-      <div className="grid gap-6 xl:grid-cols-2">
-        <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-base font-semibold text-slate-900">Companion Report</h3>
-            <button type="button" onClick={() => exportMessage("Companions CSV")} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700">Export Companions CSV</button>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">Active Companions</p><p className="mt-1 font-semibold text-slate-900">{companionReport.active}</p></div>
-            <div className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">Suspended Companions</p><p className="mt-1 font-semibold text-slate-900">{companionReport.suspended}</p></div>
-            <div className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">Pending Applications</p><p className="mt-1 font-semibold text-slate-900">{companionReport.pendingApplications}</p></div>
-            <div className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">Average Rating</p><p className="mt-1 font-semibold text-slate-900">{companionReport.averageRating}</p></div>
-          </div>
-        </article>
+          <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-base font-semibold text-slate-900">Session Report</h3>
+              <button type="button" onClick={() => exportMessage("Sessions CSV")} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700">Export Sessions CSV</button>
+            </div>
+            <div className="space-y-3">
+              {([
+                { label: "Chat", value: stats.chatSessions },
+                { label: "Audio", value: stats.audioSessions },
+                { label: "Video", value: stats.videoSessions },
+                { label: "Visit", value: stats.visitSessions },
+              ] as const).map((item) => (
+                <div key={item.label}>
+                  <div className="mb-1 flex items-center justify-between text-sm"><span>{item.label}</span><span className="font-semibold">{item.value}</span></div>
+                  <div className="h-2 rounded-full bg-slate-100">
+                    <div className="h-2 rounded-full bg-gradient-to-r from-[#2563eb] to-[#0ea5a6]" style={{ width: `${(item.value / sessionMax) * 100}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </article>
 
-        <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-base font-semibold text-slate-900">User Report</h3>
-            <button type="button" onClick={() => exportMessage("Users CSV")} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700">Export Users CSV</button>
+          <div className="grid gap-6 xl:grid-cols-2">
+            <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-base font-semibold text-slate-900">Companion Report</h3>
+                <button type="button" onClick={() => exportMessage("Companions CSV")} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700">Export Companions CSV</button>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">Active Companions</p><p className="mt-1 font-semibold text-slate-900">{stats.activeCompanions}</p></div>
+                <div className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">Suspended Companions</p><p className="mt-1 font-semibold text-slate-900">{stats.suspendedCompanions}</p></div>
+                <div className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">Pending Applications</p><p className="mt-1 font-semibold text-slate-900">{stats.pendingApplications}</p></div>
+                <div className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">Average Rating</p><p className="mt-1 font-semibold text-slate-900">{stats.averageRating}</p></div>
+              </div>
+            </article>
+
+            <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-base font-semibold text-slate-900">User Report</h3>
+                <button type="button" onClick={() => exportMessage("Users CSV")} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700">Export Users CSV</button>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">Active Users</p><p className="mt-1 font-semibold text-slate-900">{stats.activeUsers}</p></div>
+                <div className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">New Users</p><p className="mt-1 font-semibold text-slate-900">{stats.newUsers}</p></div>
+                <div className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">Blocked Users</p><p className="mt-1 font-semibold text-slate-900">{stats.blockedUsers}</p></div>
+                <div className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">High-value Users</p><p className="mt-1 font-semibold text-slate-900">{stats.highValueUsers}</p></div>
+              </div>
+            </article>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">Active Users</p><p className="mt-1 font-semibold text-slate-900">{userReport.active}</p></div>
-            <div className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">New Users</p><p className="mt-1 font-semibold text-slate-900">{userReport.newUsers}</p></div>
-            <div className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">Blocked Users</p><p className="mt-1 font-semibold text-slate-900">{userReport.blocked}</p></div>
-            <div className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">High-value Users</p><p className="mt-1 font-semibold text-slate-900">{userReport.highValue}</p></div>
-          </div>
-        </article>
-      </div>
+        </>
+      )}
     </section>
   );
 }
