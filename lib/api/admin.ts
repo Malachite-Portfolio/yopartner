@@ -38,6 +38,39 @@ export const listCompanions = () => adminGet<Record<string, unknown>>("/api/admi
 export const updateCompanion = (payload: Record<string, unknown>) => adminUpdate("/api/admin/companions", payload);
 export const listUsers = () => adminGet<Record<string, unknown>>("/api/admin/users");
 export const updateUser = (payload: Record<string, unknown>) => adminUpdate("/api/admin/users", payload);
+
+export type AdminWalletCreditResponse = {
+  user: {
+    id: string;
+    name?: string | null;
+    phoneNumber: string;
+  };
+  creditedAmount: number;
+  updatedBalance: number;
+  transaction: {
+    id: string;
+    transactionCode: string;
+    walletAccountId: string;
+    type: "ADMIN_CREDIT";
+    amount: number;
+    status: "SUCCESS";
+    gateway?: string | null;
+    referenceId?: string | null;
+    reason?: string | null;
+    createdAt: string;
+  };
+};
+
+export async function creditUserWallet(
+  userId: string,
+  payload: { amount: number; reason?: string },
+) {
+  return apiRequest<AdminWalletCreditResponse>(`/api/admin/users/${userId}/wallet/credit`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export const listSessions = () => adminGet<Record<string, unknown>>("/api/admin/sessions");
 export const updateSession = (payload: Record<string, unknown>) => adminUpdate("/api/admin/sessions", payload);
 export const listBookings = () => adminGet<Record<string, unknown>>("/api/admin/bookings");

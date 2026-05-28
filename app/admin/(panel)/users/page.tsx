@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AdminActionMenu } from "@/components/admin/AdminActionMenu";
 import { AdminDetailDrawer } from "@/components/admin/AdminDetailDrawer";
 import { AdminStatusBadge } from "@/components/admin/AdminStatusBadge";
 import { AdminTableToolbar } from "@/components/admin/AdminTableToolbar";
-import { listSessions, listUsers, listWalletTransactions } from "@/lib/api/admin";
+import { creditUserWallet, listSessions, listUsers, listWalletTransactions } from "@/lib/api/admin";
 import { clearAdminAuthSession } from "@/lib/adminAuth";
 import { formatDateTime, formatINR } from "@/lib/adminFormat";
 
@@ -78,6 +78,11 @@ export default function AdminUsersPage() {
   const [sessionsByUser, setSessionsByUser] = useState<Record<string, SessionSnippet[]>>({});
   const [transactionsByUser, setTransactionsByUser] = useState<Record<string, TxSnippet[]>>({});
   const [selected, setSelected] = useState<MemberRow | null>(null);
+  const [creditTarget, setCreditTarget] = useState<MemberRow | null>(null);
+  const [creditAmount, setCreditAmount] = useState("");
+  const [creditReason, setCreditReason] = useState("");
+  const [creditSubmitting, setCreditSubmitting] = useState(false);
+  const [creditError, setCreditError] = useState("");
 
   const loadMembers = useCallback(async () => {
     setLoading(true);
@@ -195,6 +200,48 @@ export default function AdminUsersPage() {
   const selectedSessions = selected ? (sessionsByUser[selected.id] ?? []).slice(0, 5) : [];
   const selectedTransactions = selected ? (transactionsByUser[selected.id] ?? []).slice(0, 8) : [];
 
+  async function handleSubmitWalletCredit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!creditTarget || creditSubmitting) return;
+
+    const parsedAmount = Number(creditAmount);
+    if (!Number.isFinite(parsedAmount) || !Number.isInteger(parsedAmount) || parsedAmount <= 0) {
+      setCreditError("Enter a valid amount greater than zero in whole rupees.");
+      return;
+    }
+    if (parsedAmount > 10000) {
+      setCreditError("Amount cannot exceed ₹10,000 per manual credit.");
+      return;
+    }
+
+    setCreditSubmitting(true);
+    setCreditError("");
+
+    const response = await creditUserWallet(creditTarget.id, {
+      amount: parsedAmount,
+      ...(creditReason.trim() ? { reason: creditReason.trim() } : {}),
+    });
+
+    if (response.error?.status === 401) {
+      clearAdminAuthSession();
+      router.replace("/admin/login");
+      return;
+    }
+
+    if (response.error || !response.data) {
+      setCreditSubmitting(false);
+      setCreditError(response.error?.message ?? "Could not add wallet credit. Please try again.");
+      return;
+    }
+
+    setCreditSubmitting(false);
+    setCreditTarget(null);
+    setCreditAmount("");
+    setCreditReason("");
+    setInfoMessage(`${formatINR(parsedAmount)} added to user wallet.`);
+    await loadMembers();
+  }
+
   return (
     <section className="space-y-4">
       <h2 className="text-xl font-semibold text-slate-900">Members</h2>
@@ -268,10 +315,11 @@ export default function AdminUsersPage() {
                             {
                               label: "Add Wallet Credit",
                               tone: "warning",
-                              disabled: true,
-                              title: "Coming soon",
                               onClick: () => {
-                                setInfoMessage("Wallet credit action is coming soon.");
+                                setCreditTarget(item);
+                                setCreditAmount("");
+                                setCreditReason("");
+                                setCreditError("");
                               },
                             },
                           ]}
@@ -329,6 +377,87 @@ export default function AdminUsersPage() {
               </div>
             </div>
           </div>
+        ) : null}
+      </AdminDetailDrawer>
+
+      <AdminDetailDrawer
+        open={Boolean(creditTarget)}
+        title="Add Wallet Credit"
+        onClose={() => {
+          if (creditSubmitting) return;
+          setCreditTarget(null);
+          setCreditAmount("");
+          setCreditReason("");
+          setCreditError("");
+        }}
+        footer={(
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+              onClick={() => {
+                setCreditTarget(null);
+                setCreditAmount("");
+                setCreditReason("");
+                setCreditError("");
+              }}
+              disabled={creditSubmitting}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="wallet-credit-form"
+              className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={creditSubmitting}
+            >
+              {creditSubmitting ? "Adding..." : "Add Credit"}
+            </button>
+          </div>
+        )}
+      >
+        {creditTarget ? (
+          <form id="wallet-credit-form" className="space-y-4" onSubmit={handleSubmitWalletCredit}>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+              <p><span className="font-semibold text-slate-900">Member:</span> {creditTarget.name}</p>
+              <p><span className="font-semibold text-slate-900">Phone:</span> {creditTarget.phone}</p>
+              <p><span className="font-semibold text-slate-900">Current Wallet Balance:</span> {formatINR(creditTarget.walletBalance)}</p>
+            </div>
+
+            <label className="block space-y-1">
+              <span className="text-sm font-medium text-slate-800">Amount</span>
+              <input
+                type="number"
+                min={1}
+                max={10000}
+                step={1}
+                required
+                value={creditAmount}
+                onChange={(event) => setCreditAmount(event.target.value)}
+                className="h-11 w-full rounded-lg border border-slate-300 px-3 text-sm text-slate-900 outline-none ring-0 transition focus:border-slate-500"
+                placeholder="Enter amount in ₹"
+                disabled={creditSubmitting}
+              />
+            </label>
+
+            <label className="block space-y-1">
+              <span className="text-sm font-medium text-slate-800">Reason / Note (optional)</span>
+              <textarea
+                value={creditReason}
+                onChange={(event) => setCreditReason(event.target.value)}
+                className="min-h-24 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none ring-0 transition focus:border-slate-500"
+                placeholder="e.g. goodwill credit, support resolution"
+                maxLength={240}
+                disabled={creditSubmitting}
+              />
+            </label>
+
+            {creditError ? (
+              <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">
+                {creditError}
+              </p>
+            ) : null}
+          </form>
         ) : null}
       </AdminDetailDrawer>
     </section>
