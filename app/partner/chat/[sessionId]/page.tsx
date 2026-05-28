@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { PartnerGuard } from "@/components/partner/PartnerGuard";
+import { GiftBurstOverlay, type GiftBurstEffect } from "@/components/chat/GiftBurstOverlay";
 import { ChatScreen, type ChatScreenMessage } from "@/components/chat/ChatScreen";
 import { EndSessionConfirmModal } from "@/components/session/EndSessionConfirmModal";
 import { useSessionExitGuard } from "@/hooks/useSessionExitGuard";
@@ -15,6 +16,7 @@ import {
   type SessionRecord,
 } from "@/lib/api/sessions";
 import { requestAudioPermission, requestVideoPermission } from "@/lib/agora";
+import { playGiftSound } from "@/lib/chat/giftEffects";
 import type { CompanionRouteProfile } from "@/lib/companionRoutes";
 import { isActiveSessionStatus, isTerminalSessionStatus } from "@/lib/sessionStatus";
 
@@ -49,6 +51,11 @@ export default function PartnerChatSessionPage() {
   const [input, setInput] = useState("");
   const [isEndingSession, setIsEndingSession] = useState(false);
   const [clockNow, setClockNow] = useState(() => Date.now());
+  const [activeGiftEffect, setActiveGiftEffect] = useState<GiftBurstEffect | null>(null);
+  const [giftToast, setGiftToast] = useState("");
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const lastSeenGiftMessageIdRef = useRef("");
+  const hasHydratedGiftFeedRef = useRef(false);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -78,14 +85,44 @@ export default function PartnerChatSessionPage() {
     if (!sessionId || session?.status !== "LIVE") return;
     const refresh = async () => {
       const response = await getSessionMessages(sessionId);
-      if (response.data) setMessages(response.data);
+      if (!response.data) return;
+
+      const nextMessages = response.data;
+      setMessages(nextMessages);
+
+      const latestGiftMessage = [...nextMessages]
+        .reverse()
+        .find(
+          (message): message is SessionMessageRecord & { gift: NonNullable<SessionMessageRecord["gift"]> } =>
+            message.messageType === "GIFT" && Boolean(message.gift),
+        );
+      if (!latestGiftMessage) return;
+
+      if (!hasHydratedGiftFeedRef.current) {
+        hasHydratedGiftFeedRef.current = true;
+        lastSeenGiftMessageIdRef.current = latestGiftMessage.id;
+        return;
+      }
+      if (!latestGiftMessage.id || latestGiftMessage.id === lastSeenGiftMessageIdRef.current) return;
+
+      lastSeenGiftMessageIdRef.current = latestGiftMessage.id;
+      void playGiftSound(latestGiftMessage.gift.giftKey, 0.08);
+      if (prefersReducedMotion) {
+        setGiftToast(`Gift received: ${latestGiftMessage.gift.giftEmoji} ${latestGiftMessage.gift.giftName}`);
+        return;
+      }
+      setActiveGiftEffect({
+        id: `${latestGiftMessage.gift.giftKey}-${Date.now()}`,
+        giftKey: latestGiftMessage.gift.giftKey,
+        giftEmoji: latestGiftMessage.gift.giftEmoji,
+      });
     };
     void refresh();
     const timer = window.setInterval(() => {
       void refresh();
     }, 2000);
     return () => window.clearInterval(timer);
-  }, [session?.status, sessionId]);
+  }, [prefersReducedMotion, session?.status, sessionId]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -93,6 +130,36 @@ export default function PartnerChatSessionPage() {
     }, 1000);
     return () => window.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const applyPreference = () => setPrefersReducedMotion(mediaQuery.matches);
+    applyPreference();
+    mediaQuery.addEventListener("change", applyPreference);
+    return () => mediaQuery.removeEventListener("change", applyPreference);
+  }, []);
+
+  useEffect(() => {
+    if (!activeGiftEffect) return;
+    const timer = window.setTimeout(() => {
+      setActiveGiftEffect(null);
+    }, 1800);
+    return () => window.clearTimeout(timer);
+  }, [activeGiftEffect]);
+
+  useEffect(() => {
+    if (!giftToast) return;
+    const timer = window.setTimeout(() => {
+      setGiftToast("");
+    }, 1800);
+    return () => window.clearTimeout(timer);
+  }, [giftToast]);
+
+  useEffect(() => {
+    hasHydratedGiftFeedRef.current = false;
+    lastSeenGiftMessageIdRef.current = "";
+  }, [sessionId]);
 
   useEffect(() => {
     if (!isTerminalSessionStatus(session?.status)) return;
@@ -232,6 +299,11 @@ export default function PartnerChatSessionPage() {
                 {error}
               </div>
             ) : null}
+            {giftToast ? (
+              <div className="absolute left-1/2 top-12 z-50 -translate-x-1/2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+                {giftToast}
+              </div>
+            ) : null}
             <ChatScreen
               companion={memberProfile}
               messages={toScreenMessages(messages)}
@@ -258,6 +330,7 @@ export default function PartnerChatSessionPage() {
               showCallActions={false}
               sessionTimerLabel={timerLabel}
             />
+            <GiftBurstOverlay effect={activeGiftEffect} />
           </>
         )}
       </main>

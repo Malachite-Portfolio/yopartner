@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ChatScreen, type ChatScreenMessage } from "@/components/chat/ChatScreen";
+import { GiftBurstOverlay, type GiftBurstEffect } from "@/components/chat/GiftBurstOverlay";
 import { EndSessionConfirmModal } from "@/components/session/EndSessionConfirmModal";
 import { useSessionExitGuard } from "@/hooks/useSessionExitGuard";
 import {
@@ -23,6 +24,7 @@ import {
   type CompanionRouteProfile,
 } from "@/lib/companionRoutes";
 import { requestAudioPermission, requestVideoPermission } from "@/lib/agora";
+import { playGiftSound } from "@/lib/chat/giftEffects";
 import { isActiveSessionStatus, isTerminalSessionStatus } from "@/lib/sessionStatus";
 import { getUserAuthTokenWithRestore } from "@/lib/auth/userAuth";
 import { WALLET_UPDATED_EVENT } from "@/lib/wallet";
@@ -103,10 +105,12 @@ export default function ChatPage() {
   const [selectedGiftKey, setSelectedGiftKey] = useState<GiftKey>("rose");
   const [giftError, setGiftError] = useState("");
   const [isSendingGift, setIsSendingGift] = useState(false);
-  const [giftAnimationEmoji, setGiftAnimationEmoji] = useState<string | null>(null);
+  const [activeGiftEffect, setActiveGiftEffect] = useState<GiftBurstEffect | null>(null);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const [giftToast, setGiftToast] = useState("");
   const reviewRedirectUrlRef = useRef<string | null>(null);
+  const seenGiftMessageIdsRef = useRef<Set<string>>(new Set());
+  const hasHydratedGiftFeedRef = useRef(false);
 
   const currentPath = useMemo(() => {
     const query = searchParams.toString();
@@ -118,11 +122,37 @@ export default function ChatPage() {
   );
   const hasGiftBalance = walletBalance >= selectedGift.amount;
 
+  const triggerGiftCelebration = useCallback(
+    async (gift: NonNullable<SessionMessageRecord["gift"]>, isMine: boolean) => {
+      await playGiftSound(gift.giftKey, isMine ? 0.1 : 0.08);
+      if (prefersReducedMotion) {
+        setGiftToast(`${isMine ? "Gift sent" : "Gift received"}: ${gift.giftEmoji} ${gift.giftName}`);
+        return;
+      }
+      setActiveGiftEffect({
+        id: `${gift.giftKey}-${Date.now()}`,
+        giftKey: gift.giftKey,
+        giftEmoji: gift.giftEmoji,
+      });
+    },
+    [prefersReducedMotion],
+  );
+
   const refreshMessages = useCallback(async (sessionId: string) => {
     const response = await getSessionMessages(sessionId);
     if (response.error) {
       setMessageError(response.error.message || "Unable to load messages right now.");
       return;
+    }
+    if (!hasHydratedGiftFeedRef.current) {
+      const seedIds = new Set<string>();
+      for (const message of response.data) {
+        if (message.messageType === "GIFT") {
+          seedIds.add(message.id);
+        }
+      }
+      seenGiftMessageIdsRef.current = seedIds;
+      hasHydratedGiftFeedRef.current = true;
     }
     setMessages(response.data);
     setMessageError("");
@@ -269,12 +299,12 @@ export default function ChatPage() {
   }, []);
 
   useEffect(() => {
-    if (!giftAnimationEmoji) return;
+    if (!activeGiftEffect) return;
     const timer = window.setTimeout(() => {
-      setGiftAnimationEmoji(null);
+      setActiveGiftEffect(null);
     }, 1800);
     return () => window.clearTimeout(timer);
-  }, [giftAnimationEmoji]);
+  }, [activeGiftEffect]);
 
   useEffect(() => {
     if (!giftToast) return;
@@ -283,6 +313,28 @@ export default function ChatPage() {
     }, 1800);
     return () => window.clearTimeout(timer);
   }, [giftToast]);
+
+  useEffect(() => {
+    seenGiftMessageIdsRef.current = new Set();
+    hasHydratedGiftFeedRef.current = false;
+  }, [session?.id]);
+
+  useEffect(() => {
+    if (!hasHydratedGiftFeedRef.current || messages.length === 0) return;
+
+    const unseenGiftMessages = messages
+      .filter(
+        (message): message is SessionMessageRecord & { gift: NonNullable<SessionMessageRecord["gift"]> } =>
+          message.messageType === "GIFT" && Boolean(message.gift) && !seenGiftMessageIdsRef.current.has(message.id),
+      )
+      .sort((first, second) => +new Date(first.createdAt) - +new Date(second.createdAt));
+
+    if (unseenGiftMessages.length === 0) return;
+
+    unseenGiftMessages.forEach((message) => seenGiftMessageIdsRef.current.add(message.id));
+    const latestGiftMessage = unseenGiftMessages[unseenGiftMessages.length - 1];
+    void triggerGiftCelebration(latestGiftMessage.gift, Boolean(latestGiftMessage.isMine));
+  }, [messages, triggerGiftCelebration]);
 
   useEffect(() => {
     if (!isTerminalSessionStatus(session?.status)) return;
@@ -452,11 +504,6 @@ export default function ChatPage() {
     if (typeof window !== "undefined") {
       window.dispatchEvent(new CustomEvent(WALLET_UPDATED_EVENT));
     }
-    if (prefersReducedMotion) {
-      setGiftToast(`Gift sent: ${giftResult.gift.giftEmoji} ${giftResult.gift.giftName}`);
-    } else {
-      setGiftAnimationEmoji(giftResult.gift.giftEmoji);
-    }
     setIsGiftModalOpen(false);
   };
 
@@ -610,11 +657,7 @@ export default function ChatPage() {
         }}
         giftActionDisabled={isSendingGift}
       />
-      {giftAnimationEmoji ? (
-        <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center">
-          <span className="animate-[giftFloat_1.8s_ease-out_forwards] text-6xl">{giftAnimationEmoji}</span>
-        </div>
-      ) : null}
+      <GiftBurstOverlay effect={activeGiftEffect} />
       {isGiftModalOpen ? (
         <div className="absolute inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
           <div className="w-full max-w-md rounded-2xl border border-amber-200 bg-white p-4 shadow-xl">
@@ -686,13 +729,6 @@ export default function ChatPage() {
           </div>
         </div>
       ) : null}
-      <style jsx global>{`
-        @keyframes giftFloat {
-          0% { transform: translateY(40px) scale(0.7); opacity: 0; }
-          20% { opacity: 1; }
-          100% { transform: translateY(-180px) scale(1.2); opacity: 0; }
-        }
-      `}</style>
     </main>
   );
 }
