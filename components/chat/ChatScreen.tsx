@@ -3,6 +3,7 @@
 import { ArrowLeft, CheckCheck, CirclePlus, EllipsisVertical, Gift, Phone, SendHorizontal, Smile, Video } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { getGiftEffectConfig } from "@/lib/chat/giftEffects";
 import type { CompanionRouteProfile } from "@/lib/companionRoutes";
 
 export type ChatScreenMessage = {
@@ -51,6 +52,23 @@ function getInitials(name: string) {
     .join("")
     .slice(0, 2)
     .toUpperCase();
+}
+
+function getGiftBubbleClass(giftKey: NonNullable<ChatScreenMessage["gift"]>["giftKey"], own: boolean) {
+  const tier = getGiftEffectConfig(giftKey).tier;
+  if (tier === "premium") {
+    return own
+      ? "rounded-br-md border border-amber-300/80 bg-gradient-to-br from-amber-100 via-yellow-50 to-orange-100 text-amber-950 shadow-[0_0_24px_rgba(245,158,11,0.35)]"
+      : "rounded-bl-md border border-sky-300/75 bg-gradient-to-br from-sky-100 via-indigo-50 to-cyan-100 text-slate-900 shadow-[0_0_24px_rgba(59,130,246,0.3)]";
+  }
+  if (tier === "mid") {
+    return own
+      ? "rounded-br-md border border-pink-200/85 bg-pink-100/90 text-pink-950 shadow-[0_0_16px_rgba(236,72,153,0.24)]"
+      : "rounded-bl-md border border-yellow-200/85 bg-yellow-50 text-amber-950 shadow-[0_0_16px_rgba(250,204,21,0.22)]";
+  }
+  return own
+    ? "rounded-br-md border border-rose-200/85 bg-rose-50 text-rose-950"
+    : "rounded-bl-md border border-amber-200/85 bg-amber-50 text-amber-950";
 }
 
 export function ChatScreen({
@@ -199,6 +217,9 @@ export function ChatScreen({
             const own = message.sender === "self";
             const gift = message.messageType === "GIFT" ? message.gift : null;
             const isGift = Boolean(gift);
+            const giftTier = gift ? getGiftEffectConfig(gift.giftKey).tier : null;
+            const isPremiumGift = giftTier === "premium";
+
             return (
               <div key={message.id} className={`flex items-end gap-2 ${own ? "justify-end" : "justify-start"}`}>
                 {!own ? (
@@ -211,23 +232,30 @@ export function ChatScreen({
                     </span>
                   )
                 ) : null}
+
                 <div
                   className={`max-w-[78%] rounded-2xl px-3.5 py-2.5 shadow-sm ${
                     isGift
-                      ? own
-                        ? "rounded-br-md border border-amber-200 bg-amber-100 text-amber-950"
-                        : "rounded-bl-md border border-amber-200 bg-amber-50 text-amber-950"
+                      ? getGiftBubbleClass(gift!.giftKey, own)
                       : own
-                      ? "rounded-br-md bg-[#0f172a] text-white"
-                      : "rounded-bl-md bg-[#7de1d6] text-[#0f172a]"
-                  }`}
+                        ? "rounded-br-md bg-[#0f172a] text-white"
+                        : "rounded-bl-md bg-[#7de1d6] text-[#0f172a]"
+                  } ${isPremiumGift ? "relative overflow-hidden" : ""}`}
                 >
                   {isGift ? (
                     <>
+                      {isPremiumGift ? (
+                        <>
+                          <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/45 to-transparent opacity-0 animate-[messageShine_2.2s_ease-out_infinite]" />
+                          <span className="absolute right-2 top-2 rounded-full bg-slate-900 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] text-amber-200">
+                            Premium Gift
+                          </span>
+                        </>
+                      ) : null}
                       <p className="text-[14.5px] font-semibold leading-relaxed">
                         {own ? "You sent" : "You received"} {gift?.giftEmoji} {gift?.giftName}
                       </p>
-                      <p className="mt-1 text-[12px] text-amber-800">Gift amount ₹{gift?.amount}</p>
+                      <p className="mt-1 text-[12px] text-slate-700/90">Gift amount ₹{gift?.amount}</p>
                     </>
                   ) : (
                     <p className="text-[14.5px] leading-relaxed">{message.text}</p>
@@ -325,6 +353,14 @@ export function ChatScreen({
           </div>
         ) : null}
       </div>
+
+      <style jsx global>{`
+        @keyframes messageShine {
+          0% { transform: translateX(-120%); opacity: 0; }
+          22% { opacity: 0.85; }
+          100% { transform: translateX(140%); opacity: 0; }
+        }
+      `}</style>
     </section>
   );
 }

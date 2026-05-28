@@ -24,24 +24,28 @@ import {
   type CompanionRouteProfile,
 } from "@/lib/companionRoutes";
 import { requestAudioPermission, requestVideoPermission } from "@/lib/agora";
-import { playGiftSound } from "@/lib/chat/giftEffects";
+import { getGiftEffectConfig, playGiftSound } from "@/lib/chat/giftEffects";
 import { isActiveSessionStatus, isTerminalSessionStatus } from "@/lib/sessionStatus";
 import { getUserAuthTokenWithRestore } from "@/lib/auth/userAuth";
 import { WALLET_UPDATED_EVENT } from "@/lib/wallet";
 
-const chatGiftCatalog: Array<{
-  key: GiftKey;
-  name: string;
-  emoji: string;
-  amount: number;
-}> = [
-  { key: "rose", name: "Rose", emoji: "🌹", amount: 10 },
-  { key: "coffee", name: "Coffee", emoji: "☕", amount: 25 },
-  { key: "star", name: "Star", emoji: "⭐", amount: 50 },
-  { key: "heart", name: "Heart", emoji: "💖", amount: 100 },
-  { key: "crown", name: "Crown", emoji: "👑", amount: 250 },
-  { key: "diamond", name: "Diamond", emoji: "💎", amount: 500 },
-];
+const chatGiftCatalog = (["rose", "coffee", "star", "heart", "crown", "diamond"] as GiftKey[]).map((key) => {
+  const config = getGiftEffectConfig(key);
+  const amountMap: Record<GiftKey, number> = {
+    rose: 10,
+    coffee: 25,
+    star: 50,
+    heart: 100,
+    crown: 250,
+    diamond: 500,
+  };
+  return {
+    key,
+    name: config.name,
+    emoji: config.emoji,
+    amount: amountMap[key],
+  };
+});
 
 function toLoginUrl(returnUrl: string) {
   return `/login?returnUrl=${encodeURIComponent(returnUrl)}`;
@@ -107,7 +111,6 @@ export default function ChatPage() {
   const [isSendingGift, setIsSendingGift] = useState(false);
   const [activeGiftEffect, setActiveGiftEffect] = useState<GiftBurstEffect | null>(null);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
-  const [giftToast, setGiftToast] = useState("");
   const reviewRedirectUrlRef = useRef<string | null>(null);
   const seenGiftMessageIdsRef = useRef<Set<string>>(new Set());
   const hasHydratedGiftFeedRef = useRef(false);
@@ -124,15 +127,15 @@ export default function ChatPage() {
 
   const triggerGiftCelebration = useCallback(
     async (gift: NonNullable<SessionMessageRecord["gift"]>, isMine: boolean) => {
-      await playGiftSound(gift.giftKey, isMine ? 0.1 : 0.08);
-      if (prefersReducedMotion) {
-        setGiftToast(`${isMine ? "Gift sent" : "Gift received"}: ${gift.giftEmoji} ${gift.giftName}`);
-        return;
-      }
+      const config = getGiftEffectConfig(gift.giftKey);
+      await playGiftSound(gift.giftKey, isMine ? 0.11 : 0.09);
       setActiveGiftEffect({
         id: `${gift.giftKey}-${Date.now()}`,
         giftKey: gift.giftKey,
         giftEmoji: gift.giftEmoji,
+        direction: isMine ? "sent" : "received",
+        reducedMotion: prefersReducedMotion,
+        durationMs: config.sceneDurationMs,
       });
     },
     [prefersReducedMotion],
@@ -302,17 +305,9 @@ export default function ChatPage() {
     if (!activeGiftEffect) return;
     const timer = window.setTimeout(() => {
       setActiveGiftEffect(null);
-    }, 1800);
+    }, activeGiftEffect.durationMs ?? 2200);
     return () => window.clearTimeout(timer);
   }, [activeGiftEffect]);
-
-  useEffect(() => {
-    if (!giftToast) return;
-    const timer = window.setTimeout(() => {
-      setGiftToast("");
-    }, 1800);
-    return () => window.clearTimeout(timer);
-  }, [giftToast]);
 
   useEffect(() => {
     seenGiftMessageIdsRef.current = new Set();
@@ -623,11 +618,6 @@ export default function ChatPage() {
           {messageError}
         </div>
       ) : null}
-      {giftToast ? (
-        <div className="absolute left-1/2 top-12 z-50 -translate-x-1/2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
-          {giftToast}
-        </div>
-      ) : null}
       <ChatScreen
         companion={companion}
         messages={screenMessages}
@@ -664,23 +654,41 @@ export default function ChatPage() {
             <h3 className="text-lg font-semibold text-slate-900">Send a gift</h3>
             <p className="mt-1 text-sm text-slate-600">Appreciate your partner with a small gift.</p>
             <p className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700">
-              Wallet Balance: ₹{walletBalance}
+              Wallet Balance: {"\u20B9"}{walletBalance}
             </p>
             <div className="mt-3 grid grid-cols-3 gap-2">
               {chatGiftCatalog.map((gift) => {
                 const selected = gift.key === selectedGift.key;
+                const config = getGiftEffectConfig(gift.key);
+                const isPremium = config.tier === "premium";
+                const isMidTier = config.tier === "mid";
                 return (
                   <button
                     key={gift.key}
                     type="button"
                     onClick={() => setSelectedGiftKey(gift.key)}
-                    className={`rounded-xl border px-2 py-2 text-center transition ${
-                      selected ? "border-amber-400 bg-amber-50" : "border-slate-200 hover:border-amber-300"
+                    className={`relative rounded-xl border px-2 py-2 text-center transition ${
+                      isPremium
+                        ? selected
+                          ? "border-amber-400 bg-gradient-to-br from-amber-50 to-yellow-100 shadow-[0_0_18px_rgba(245,158,11,0.35)]"
+                          : "border-amber-300/70 bg-gradient-to-br from-amber-50/80 to-yellow-50 hover:border-amber-400"
+                        : isMidTier
+                          ? selected
+                            ? "border-pink-300 bg-gradient-to-br from-pink-50 to-yellow-50 shadow-[0_0_14px_rgba(236,72,153,0.25)]"
+                            : "border-pink-200/70 bg-pink-50/50 hover:border-pink-300"
+                          : selected
+                            ? "border-rose-300 bg-rose-50"
+                            : "border-slate-200 hover:border-rose-300"
                     }`}
                   >
-                    <p className="text-xl">{gift.emoji}</p>
+                    {isPremium ? (
+                      <span className="absolute right-1 top-1 rounded-full bg-slate-900 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] text-amber-200">
+                        Premium
+                      </span>
+                    ) : null}
+                    <p className={`mx-auto ${config.tier === "low" ? "text-lg" : "text-2xl"}`}>{gift.emoji}</p>
                     <p className="text-xs font-semibold text-slate-800">{gift.name}</p>
-                    <p className="text-[11px] text-slate-500">₹{gift.amount}</p>
+                    <p className="text-[11px] text-slate-500">{"\u20B9"}{gift.amount}</p>
                   </button>
                 );
               })}
@@ -732,3 +740,9 @@ export default function ChatPage() {
     </main>
   );
 }
+
+
+
+
+
+

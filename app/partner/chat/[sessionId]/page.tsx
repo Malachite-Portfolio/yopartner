@@ -16,7 +16,7 @@ import {
   type SessionRecord,
 } from "@/lib/api/sessions";
 import { requestAudioPermission, requestVideoPermission } from "@/lib/agora";
-import { playGiftSound } from "@/lib/chat/giftEffects";
+import { getGiftEffectConfig, playGiftSound } from "@/lib/chat/giftEffects";
 import type { CompanionRouteProfile } from "@/lib/companionRoutes";
 import { isActiveSessionStatus, isTerminalSessionStatus } from "@/lib/sessionStatus";
 
@@ -52,7 +52,6 @@ export default function PartnerChatSessionPage() {
   const [isEndingSession, setIsEndingSession] = useState(false);
   const [clockNow, setClockNow] = useState(() => Date.now());
   const [activeGiftEffect, setActiveGiftEffect] = useState<GiftBurstEffect | null>(null);
-  const [giftToast, setGiftToast] = useState("");
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const lastSeenGiftMessageIdRef = useRef("");
   const hasHydratedGiftFeedRef = useRef(false);
@@ -106,15 +105,15 @@ export default function PartnerChatSessionPage() {
       if (!latestGiftMessage.id || latestGiftMessage.id === lastSeenGiftMessageIdRef.current) return;
 
       lastSeenGiftMessageIdRef.current = latestGiftMessage.id;
+      const config = getGiftEffectConfig(latestGiftMessage.gift.giftKey);
       void playGiftSound(latestGiftMessage.gift.giftKey, 0.08);
-      if (prefersReducedMotion) {
-        setGiftToast(`Gift received: ${latestGiftMessage.gift.giftEmoji} ${latestGiftMessage.gift.giftName}`);
-        return;
-      }
       setActiveGiftEffect({
         id: `${latestGiftMessage.gift.giftKey}-${Date.now()}`,
         giftKey: latestGiftMessage.gift.giftKey,
         giftEmoji: latestGiftMessage.gift.giftEmoji,
+        direction: "received",
+        reducedMotion: prefersReducedMotion,
+        durationMs: config.sceneDurationMs,
       });
     };
     void refresh();
@@ -144,17 +143,9 @@ export default function PartnerChatSessionPage() {
     if (!activeGiftEffect) return;
     const timer = window.setTimeout(() => {
       setActiveGiftEffect(null);
-    }, 1800);
+    }, activeGiftEffect.durationMs ?? 2200);
     return () => window.clearTimeout(timer);
   }, [activeGiftEffect]);
-
-  useEffect(() => {
-    if (!giftToast) return;
-    const timer = window.setTimeout(() => {
-      setGiftToast("");
-    }, 1800);
-    return () => window.clearTimeout(timer);
-  }, [giftToast]);
 
   useEffect(() => {
     hasHydratedGiftFeedRef.current = false;
@@ -297,11 +288,6 @@ export default function PartnerChatSessionPage() {
             {error ? (
               <div className="absolute left-1/2 top-3 z-50 -translate-x-1/2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
                 {error}
-              </div>
-            ) : null}
-            {giftToast ? (
-              <div className="absolute left-1/2 top-12 z-50 -translate-x-1/2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
-                {giftToast}
               </div>
             ) : null}
             <ChatScreen
