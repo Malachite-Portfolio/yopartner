@@ -375,10 +375,12 @@ export function ProfileBookingPanel({ companion, initialType }: ProfileBookingPa
               <p className="text-sm font-medium text-[#8490a4]">Sessions Completed</p>
             </div>
           </div>
-        ) : null}
+        ) : (
+          <p className="text-sm font-medium text-[#7d7288]">Completed sessions will appear here once available.</p>
+        )}
 
         {companion.languages.length > 0 ? (
-          <div className={companion.sessions > 0 ? "mt-6 border-t border-[#ece7ef] pt-5" : ""}>
+          <div className={companion.sessions > 0 ? "mt-6 border-t border-[#ece7ef] pt-5" : "mt-4"}>
             <h3 className="text-sm font-semibold text-[#44394f]">Languages</h3>
             <div className="mt-3 flex flex-wrap gap-2">
               {companion.languages.map((language) => (
@@ -388,7 +390,11 @@ export function ProfileBookingPanel({ companion, initialType }: ProfileBookingPa
               ))}
             </div>
           </div>
-        ) : null}
+        ) : (
+          <p className={companion.sessions > 0 ? "mt-6 border-t border-[#ece7ef] pt-5 text-sm text-[#7d7288]" : "mt-4 text-sm text-[#7d7288]"}>
+            Languages will appear once the partner updates profile details.
+          </p>
+        )}
       </section>
     </aside>
   );

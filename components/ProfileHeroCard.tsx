@@ -8,10 +8,11 @@ type ProfileHeroCardProps = {
 const facts: Array<{ label: string; getValue: (companion: ConnectCompanion) => string | number | undefined | null }> = [
   { label: "Age", getValue: (companion) => (companion.age > 0 ? `${companion.age} Years` : "") },
   { label: "Gender", getValue: (companion) => companion.gender },
-  { label: "Religion", getValue: (companion) => companion.religion },
-  { label: "Born City", getValue: (companion) => companion.bornCity || companion.city },
-  { label: "Nationality", getValue: (companion) => companion.nationality },
-  { label: "College", getValue: (companion) => companion.college || companion.qualification },
+  { label: "Location", getValue: (companion) => companion.city },
+  {
+    label: "Languages",
+    getValue: (companion) => (companion.languages.length > 0 ? companion.languages.join(", ") : ""),
+  },
 ];
 
 function getInitials(name: string) {
@@ -69,7 +70,9 @@ export function ProfileHeroCard({ companion }: ProfileHeroCardProps) {
             <Star size={20} fill="currentColor" strokeWidth={0} />
             <span className="text-xl font-semibold">{companion.rating.toFixed(1)}</span>
           </div>
-          <p className="mt-1 text-sm font-medium text-[#8a7e9b]">{companion.reviewsCount} reviews</p>
+          <p className="mt-1 text-sm font-medium text-[#8a7e9b]">
+            {companion.reviewsCount > 0 ? `${companion.reviewsCount} reviews` : "No reviews yet"}
+          </p>
         </div>
       </div>
     </section>

@@ -6,18 +6,21 @@ type ProfileInfoSectionProps = {
 
 export function ProfileInfoSection({ companion }: ProfileInfoSectionProps) {
   const chips = companion.servicesOffered.filter(Boolean);
+  const aboutText = companion.about.trim();
 
   return (
     <>
-      {companion.about ? (
-        <section className="rounded-[22px] border border-[#e6e2eb] bg-white p-5 shadow-[0_10px_35px_rgba(43,31,63,0.06)] sm:p-7">
-          <h2 className="text-2xl font-semibold text-[#201a2f]">About</h2>
-          <p className="mt-3 text-[15px] leading-7 text-[#5f536a]">{companion.about}</p>
-        </section>
-      ) : null}
+      <section className="rounded-[22px] border border-[#e6e2eb] bg-white p-5 shadow-[0_10px_35px_rgba(43,31,63,0.06)] sm:p-7">
+        <h2 className="text-2xl font-semibold text-[#201a2f]">About</h2>
+        {aboutText ? (
+          <p className="mt-3 whitespace-pre-line text-[15px] leading-7 text-[#5f536a]">{aboutText}</p>
+        ) : (
+          <p className="mt-3 text-sm text-[#7d7288]">This partner has not added an about section yet.</p>
+        )}
+      </section>
 
       <section className="rounded-[22px] border border-[#e6e2eb] bg-white p-5 shadow-[0_10px_35px_rgba(43,31,63,0.06)] sm:p-7">
-        <h2 className="text-2xl font-semibold text-[#201a2f]">Services Offered</h2>
+        <h2 className="text-2xl font-semibold text-[#201a2f]">Conversation Areas</h2>
         {chips.length > 0 ? (
           <div className="mt-4 flex flex-wrap gap-2">
             {chips.map((service) => (
@@ -30,7 +33,7 @@ export function ProfileInfoSection({ companion }: ProfileInfoSectionProps) {
             ))}
           </div>
         ) : (
-          <p className="mt-3 text-sm text-[#7d7288]">No services listed yet.</p>
+          <p className="mt-3 text-sm text-[#7d7288]">Services will appear after this partner updates their profile.</p>
         )}
       </section>
     </>

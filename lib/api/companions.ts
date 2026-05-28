@@ -9,10 +9,12 @@ export type CompanionFilters = {
 export type CompanionItem = {
   id: string;
   name: string;
+  headline?: string;
   tagline: string;
   category: string;
   city?: string | null;
   rating: number;
+  reviewCount?: number;
   experience: string;
   image?: string;
   online: boolean;
@@ -20,19 +22,16 @@ export type CompanionItem = {
   effectiveStatus?: "ONLINE" | "BUSY" | "OFFLINE";
   languages: string[];
   galleryImages: string[];
+  interests?: string[];
   about?: string;
   age?: number | null;
   gender?: string | null;
-  religion?: string | null;
-  bornCity?: string | null;
-  nationality?: string | null;
-  school?: string | null;
-  college?: string | null;
-  qualification?: string | null;
   communicationStyle?: string[];
   hobbies?: string[];
   serviceAreas?: string[];
+  verificationBadges?: string[];
   sessions?: number;
+  completedSessions?: number;
   reviewsCount?: number;
   reviews?: Array<{
     rating: number;
@@ -44,7 +43,38 @@ export type CompanionItem = {
   voicePrice: number;
   videoPrice?: number;
   visitPrice?: number;
+  rates?: {
+    chat: number;
+    audio: number;
+    video: number;
+    homeVisit?: number | null;
+  };
   servicesOffered: string[];
+};
+
+type RawPublicProfile = {
+  id?: string;
+  displayName?: string | null;
+  headline?: string | null;
+  bio?: string | null;
+  profileImageUrl?: string | null;
+  galleryUrls?: unknown;
+  services?: unknown;
+  interests?: unknown;
+  languages?: unknown;
+  city?: string | null;
+  serviceArea?: string | null;
+  verificationBadges?: unknown;
+  rating?: number | string | null;
+  reviewCount?: number | string | null;
+  completedSessions?: number | string | null;
+  rates?: {
+    chat?: number | string | null;
+    audio?: number | string | null;
+    video?: number | string | null;
+    homeVisit?: number | string | null;
+  } | null;
+  reviews?: unknown;
 };
 
 type RawCompanionItem = {
@@ -55,13 +85,18 @@ type RawCompanionItem = {
   headline?: string | null;
   category?: string | null;
   city?: string | null;
+  serviceArea?: string | null;
   rating?: number | string | null;
   ratingAverage?: number | string | null;
+  reviewCount?: number | string | null;
   ratingCount?: number | string | null;
   experience?: string | null;
   image?: string | null;
   profileImageUrl?: string | null;
   resolvedProfileImageUrl?: string | null;
+  publicProfile?: RawPublicProfile | null;
+  profile?: RawPublicProfile | null;
+  onboarding?: RawPublicProfile | null;
   about?: string | null;
   bio?: string | null;
   age?: number | string | null;
@@ -74,9 +109,12 @@ type RawCompanionItem = {
   qualification?: string | null;
   communicationStyle?: unknown;
   hobbies?: unknown;
+  interests?: unknown;
   serviceAreas?: unknown;
+  verificationBadges?: unknown;
   sessions?: number | string | null;
   sessionsCompleted?: number | string | null;
+  completedSessions?: number | string | null;
   reviewsCount?: number | string | null;
   reviews?: unknown;
   online?: boolean | null;
@@ -92,10 +130,23 @@ type RawCompanionItem = {
   videoRate?: number | string | null;
   homeVisitPrice?: number | string | null;
   visitPrice?: number | string | null;
+  rates?: {
+    chat?: number | string | null;
+    audio?: number | string | null;
+    video?: number | string | null;
+    homeVisit?: number | string | null;
+  } | null;
   languages?: unknown;
   galleryImages?: unknown;
   galleryImageUrls?: unknown;
   servicesOffered?: string[] | null;
+  services?: unknown;
+};
+
+type RawCompanionResponse = {
+  companion?: unknown;
+  data?: unknown;
+  publicProfile?: unknown;
 };
 
 function toNumber(value: unknown, fallback = 0) {
@@ -103,8 +154,24 @@ function toNumber(value: unknown, fallback = 0) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function hasCompanionIdentity(value: unknown): value is RawCompanionItem {
+  if (!isRecord(value)) return false;
+  const id = value.id;
+  const profile = pickPublicProfile(value);
+  const name = value.name ?? value.displayName ?? profile?.displayName;
+  return typeof id === "string" && id.trim().length > 0 && typeof name === "string" && name.trim().length > 0;
+}
+
 function toSafeText(value: unknown, fallback: string) {
   return typeof value === "string" && value.trim() ? value.trim() : fallback;
+}
+
+function toOptionalText(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : "";
 }
 
 function normalizeStringArray(value: unknown) {
@@ -126,6 +193,37 @@ function normalizeServiceLabel(service: string) {
 
 function normalizeServices(services: unknown) {
   return normalizeStringArray(services).map(normalizeServiceLabel);
+}
+
+function isLikelyPrivatePath(value: string) {
+  const normalized = value.toLowerCase();
+  return (
+    normalized.includes("aadhaar") ||
+    normalized.includes("pan") ||
+    normalized.includes("kyc") ||
+    normalized.includes("storagepath") ||
+    normalized.includes("internal") ||
+    normalized.startsWith("c:\\") ||
+    normalized.startsWith("/var/") ||
+    normalized.startsWith("gs://")
+  );
+}
+
+function normalizePublicImageUrl(value: unknown) {
+  if (typeof value !== "string") return "";
+  const text = value.trim();
+  if (!text) return "";
+  if (isLikelyPrivatePath(text)) return "";
+  if (/^https?:\/\//i.test(text)) return text;
+  if (text.startsWith("/")) return text;
+  return "";
+}
+
+function normalizePublicImageArray(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => normalizePublicImageUrl(item))
+    .filter(Boolean);
 }
 
 function normalizeReviews(value: unknown) {
@@ -152,6 +250,54 @@ function normalizeReviews(value: unknown) {
       };
     })
     .filter((item): item is NonNullable<typeof item> => Boolean(item));
+}
+
+function describeCompanionPayload(value: unknown) {
+  if (!isRecord(value)) return typeof value;
+  return Object.keys(value).slice(0, 12);
+}
+
+function pickPublicProfile(value: unknown) {
+  if (!isRecord(value)) return null;
+  if (isRecord(value.publicProfile)) return value.publicProfile as RawPublicProfile;
+  if (isRecord(value.profile)) return value.profile as RawPublicProfile;
+  if (isRecord(value.onboarding)) return value.onboarding as RawPublicProfile;
+  return null;
+}
+
+function extractRawCompanion(payload: unknown) {
+  if (hasCompanionIdentity(payload)) return payload;
+  if (!isRecord(payload)) return null;
+
+  const response = payload as RawCompanionResponse;
+  if (hasCompanionIdentity(response.companion)) {
+    const publicProfile = pickPublicProfile(response.companion) ?? pickPublicProfile(payload);
+    return publicProfile ? { ...(response.companion as RawCompanionItem), publicProfile } : response.companion;
+  }
+  if (hasCompanionIdentity(response.data)) {
+    const publicProfile = pickPublicProfile(response.data) ?? pickPublicProfile(payload);
+    return publicProfile ? { ...(response.data as RawCompanionItem), publicProfile } : response.data;
+  }
+
+  if (isRecord(response.data) && hasCompanionIdentity(response.data.companion)) {
+    const raw = response.data.companion as RawCompanionItem;
+    const publicProfile =
+      pickPublicProfile(response.data.companion) ??
+      pickPublicProfile(response.data) ??
+      pickPublicProfile(response.companion) ??
+      pickPublicProfile(payload);
+    return publicProfile ? { ...raw, publicProfile } : raw;
+  }
+
+  if (process.env.NODE_ENV !== "production") {
+    console.warn("[companions] Unable to parse companion detail response", {
+      payloadKeys: describeCompanionPayload(payload),
+      dataKeys: describeCompanionPayload(response.data),
+      companionKeys: describeCompanionPayload(response.companion),
+    });
+  }
+
+  return null;
 }
 
 function resolveBackendApiUrl(path: string) {
@@ -199,54 +345,92 @@ async function publicBackendRequest<T>(path: string) {
 }
 
 function toCompanionItem(item: RawCompanionItem): CompanionItem {
-  const name = toSafeText(item.displayName || item.name, "Verified Companion");
-  const rating = toNumber(item.ratingAverage ?? item.rating, 0);
-  const videoPrice = item.videoPrice == null && item.videoRate == null ? undefined : toNumber(item.videoPrice ?? item.videoRate, 0);
-  const visitPrice = item.homeVisitPrice == null && item.visitPrice == null
-    ? undefined
-    : toNumber(item.homeVisitPrice ?? item.visitPrice, 0);
-  const image = toSafeText(item.resolvedProfileImageUrl ?? item.profileImageUrl ?? item.image, "");
-  const galleryImages = normalizeStringArray(item.galleryImages).length > 0
-    ? normalizeStringArray(item.galleryImages)
-    : normalizeStringArray(item.galleryImageUrls);
+  const publicProfile = item.publicProfile ?? item.profile ?? item.onboarding;
+  const name = toSafeText(publicProfile?.displayName ?? item.displayName ?? item.name, "Companion");
+  const headline = toOptionalText(publicProfile?.headline ?? item.headline);
+  const tagline = headline || toOptionalText(item.tagline);
+  const about = toOptionalText(publicProfile?.bio ?? item.bio ?? item.about);
+  const rating = toNumber(publicProfile?.rating ?? item.ratingAverage ?? item.rating, 0);
+  const reviewCount = toNumber(
+    publicProfile?.reviewCount ?? item.reviewCount ?? item.ratingCount ?? item.reviewsCount,
+    0,
+  );
+  const completedSessions = toNumber(
+    publicProfile?.completedSessions ?? item.completedSessions ?? item.sessionsCompleted ?? item.sessions,
+    0,
+  );
+  const rates = publicProfile?.rates ?? item.rates;
+  const chatPrice = toNumber(rates?.chat ?? item.chatPrice ?? item.chatRate, 0);
+  const voicePrice = toNumber(rates?.audio ?? item.audioPrice ?? item.audioRate ?? item.voicePrice, 0);
+  const videoPrice =
+    rates?.video == null && item.videoPrice == null && item.videoRate == null
+      ? undefined
+      : toNumber(rates?.video ?? item.videoPrice ?? item.videoRate, 0);
+  const visitPrice =
+    rates?.homeVisit == null && item.homeVisitPrice == null && item.visitPrice == null
+      ? undefined
+      : toNumber(rates?.homeVisit ?? item.homeVisitPrice ?? item.visitPrice, 0);
+  const image = normalizePublicImageUrl(
+    publicProfile?.profileImageUrl ?? item.resolvedProfileImageUrl ?? item.profileImageUrl ?? item.image,
+  );
+  const galleryFromProfile = normalizePublicImageArray(publicProfile?.galleryUrls);
+  const galleryFromCompanion = normalizePublicImageArray(item.galleryImages);
+  const galleryFromCompanionUrls = normalizePublicImageArray(item.galleryImageUrls);
+  const galleryImages =
+    galleryFromProfile.length > 0
+      ? galleryFromProfile
+      : galleryFromCompanion.length > 0
+        ? galleryFromCompanion
+        : galleryFromCompanionUrls;
+  const services = normalizeServices(publicProfile?.services ?? item.services ?? item.servicesOffered);
+  const interests = normalizeStringArray(publicProfile?.interests ?? item.interests);
+  const languages = normalizeStringArray(publicProfile?.languages ?? item.languages);
+  const city = toOptionalText(publicProfile?.city ?? publicProfile?.serviceArea ?? item.city ?? item.serviceArea);
+  const verificationBadges = normalizeStringArray(publicProfile?.verificationBadges ?? item.verificationBadges);
+  const reviews = normalizeReviews(publicProfile?.reviews ?? item.reviews);
 
   return {
     id: String(item.id || name.toLowerCase().replace(/\s+/g, "-")),
     name,
-    tagline: toSafeText(item.headline ?? item.tagline, ""),
-    category: toSafeText(item.category, "Communication & Emotional Support"),
-    city: toSafeText(item.city, ""),
+    headline,
+    tagline,
+    category: toSafeText(item.category, "Companion"),
+    city: city || null,
     rating,
-    experience: toSafeText(item.experience, "Verified companion"),
+    reviewCount,
+    experience: toOptionalText(item.experience),
     image: image || undefined,
-    about: toSafeText(item.bio ?? item.about, ""),
+    about,
     age: item.age == null ? null : toNumber(item.age, 0),
-    gender: toSafeText(item.gender, ""),
-    religion: toSafeText(item.religion, ""),
-    bornCity: toSafeText(item.bornCity, ""),
-    nationality: toSafeText(item.nationality, ""),
-    school: toSafeText(item.school, ""),
-    college: toSafeText(item.college, ""),
-    qualification: toSafeText(item.qualification, ""),
+    gender: toOptionalText(item.gender),
     communicationStyle: normalizeStringArray(item.communicationStyle),
     hobbies: normalizeStringArray(item.hobbies),
     serviceAreas: normalizeStringArray(item.serviceAreas),
-    sessions: item.sessionsCompleted == null && item.sessions == null ? undefined : toNumber(item.sessionsCompleted ?? item.sessions, 0),
-    reviewsCount: item.ratingCount == null && item.reviewsCount == null ? undefined : toNumber(item.ratingCount ?? item.reviewsCount, 0),
-    reviews: normalizeReviews(item.reviews),
+    verificationBadges,
+    sessions: completedSessions,
+    completedSessions,
+    reviewsCount: reviewCount,
+    reviews,
     online: Boolean(item.isOnline ?? item.online),
     isBusy: Boolean(item.isBusy),
     effectiveStatus:
       item.effectiveStatus === "BUSY" || item.effectiveStatus === "OFFLINE" || item.effectiveStatus === "ONLINE"
         ? item.effectiveStatus
         : undefined,
-    languages: normalizeStringArray(item.languages),
+    languages,
     galleryImages,
-    chatPrice: toNumber(item.chatPrice ?? item.chatRate, 0),
-    voicePrice: toNumber(item.audioPrice ?? item.audioRate ?? item.voicePrice, 0),
+    interests,
+    chatPrice,
+    voicePrice,
     videoPrice,
     visitPrice,
-    servicesOffered: normalizeServices(item.servicesOffered),
+    rates: {
+      chat: chatPrice,
+      audio: voicePrice,
+      video: videoPrice ?? 0,
+      homeVisit: visitPrice ?? null,
+    },
+    servicesOffered: services,
   };
 }
 
@@ -273,8 +457,8 @@ export async function listCompanions(filters?: CompanionFilters) {
 export async function getCompanionById(id: string) {
   const result =
     typeof window === "undefined"
-      ? await publicBackendRequest<{ companion: RawCompanionItem }>(`/api/companions/${id}`)
-      : await apiRequest<{ companion: RawCompanionItem }>(`/api/companions/${id}`);
+      ? await publicBackendRequest<RawCompanionResponse>(`/api/companions/${id}`)
+      : await apiRequest<RawCompanionResponse>(`/api/companions/${id}`);
   if (result.error) {
     const message =
       process.env.NODE_ENV !== "production" && result.error.status === 503
@@ -285,7 +469,8 @@ export async function getCompanionById(id: string) {
       error: { ...result.error, message },
     };
   }
-  return { data: result.data?.companion ? toCompanionItem(result.data.companion) : null, error: null };
+  const companion = extractRawCompanion(result.data);
+  return { data: companion ? toCompanionItem(companion) : null, error: null };
 }
 
 export async function listFeaturedCompanions() {

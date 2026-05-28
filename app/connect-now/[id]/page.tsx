@@ -18,26 +18,30 @@ export const revalidate = 0;
 function toProfileCompanion(item: CompanionItem): ConnectCompanion {
   const primaryImage = item.image;
   const galleryImages = item.galleryImages.filter(Boolean);
-  const normalizedCommunicationStyle = (item.communicationStyle ?? []).filter(Boolean);
-  const normalizedHobbies = (item.hobbies ?? []).filter(Boolean);
+  const normalizedCommunicationStyle = (item.communicationStyle ?? []).map((value) => value.trim()).filter(Boolean);
+  const normalizedInterests = (item.interests ?? []).map((value) => value.trim()).filter(Boolean);
+  const normalizedHobbies = (item.hobbies ?? []).map((value) => value.trim()).filter(Boolean);
   const normalizedLanguages = (item.languages ?? []).filter(Boolean);
-  const normalizedServiceAreas = (item.serviceAreas ?? []).filter(Boolean);
   const normalizedServices = (item.servicesOffered ?? []).filter(Boolean);
   const profileChips = Array.from(
     new Set([
       ...normalizedServices,
-      item.category,
       ...normalizedCommunicationStyle,
+      ...normalizedInterests,
       ...normalizedHobbies,
+      item.category,
     ].filter((value): value is string => Boolean(value && value.trim()))),
   );
 
-  const verificationRows: ConnectCompanion["verification"] = [
-    { label: "ID Verification", status: "Verified" },
-    { label: "Profile Reviewed", status: "Verified" },
-    { label: "Community Guidelines", status: "Cleared" },
-    { label: "Behavioural Review", status: "Cleared" },
-  ];
+  const verificationRows: ConnectCompanion["verification"] =
+    (item.verificationBadges ?? []).length > 0
+      ? (item.verificationBadges ?? []).map((label) => ({ label, status: "Verified" }))
+      : [
+          { label: "Profile Reviewed", status: "Verified" },
+          { label: "ID Verified", status: "Verified" },
+          { label: "Safety Checked", status: "Verified" },
+          { label: "Behaviour Reviewed", status: "Verified" },
+        ];
 
   const normalizedReviews: ConnectCompanion["reviews"] = (item.reviews ?? []).map((review) => {
     const createdAt = review.createdAt ? new Date(review.createdAt) : null;
@@ -54,25 +58,22 @@ function toProfileCompanion(item: CompanionItem): ConnectCompanion {
   return {
     id: item.id,
     name: item.name,
-    tagline: item.tagline,
-    category: item.category || "Communication & Emotional Support",
+    tagline: item.headline || item.tagline || "",
+    category: item.category || "Companion",
     city: item.city,
     age: item.age && item.age > 0 ? item.age : 0,
-    gender: item.gender || "Not specified",
-    religion: item.religion || "Not specified",
-    bornCity: item.bornCity || item.city || "Not specified",
-    nationality: item.nationality || "Not specified",
-    college: item.college || item.school || "Not specified",
-    qualification: item.qualification || item.college || item.school || "Not specified",
-    languages: normalizedLanguages.length > 0 ? normalizedLanguages : ["Not specified"],
-    communicationStyle:
-      normalizedCommunicationStyle.length > 0
-        ? normalizedCommunicationStyle.join(", ")
-        : "Calm, respectful, and supportive",
-    hobbies: normalizedHobbies.length > 0 ? normalizedHobbies : ["Not specified"],
+    gender: item.gender || "",
+    religion: "",
+    bornCity: "",
+    nationality: "",
+    college: "",
+    qualification: "",
+    languages: normalizedLanguages,
+    communicationStyle: normalizedCommunicationStyle.join(", "),
+    hobbies: normalizedHobbies,
     rating: item.rating,
-    reviewsCount: item.reviewsCount ?? normalizedReviews.length,
-    experience: item.experience || "Verified companion",
+    reviewsCount: item.reviewCount ?? item.reviewsCount ?? normalizedReviews.length,
+    experience: item.experience || "",
     online: item.online,
     image: primaryImage,
     galleryImages,
@@ -80,11 +81,11 @@ function toProfileCompanion(item: CompanionItem): ConnectCompanion {
     voicePrice: item.voicePrice,
     videoPrice: item.videoPrice,
     visitPrice: item.visitPrice ?? 0,
-    serviceAreas: normalizedServiceAreas.length > 0 ? normalizedServiceAreas : ["India"],
+    serviceAreas: (item.serviceAreas ?? []).filter(Boolean),
     servicesOffered: profileChips,
-    about: item.about || "",
+    about: item.about?.trim() || "",
     verification: verificationRows,
-    sessions: item.sessions ?? 0,
+    sessions: item.completedSessions ?? item.sessions ?? 0,
     reviews: normalizedReviews,
   };
 }
