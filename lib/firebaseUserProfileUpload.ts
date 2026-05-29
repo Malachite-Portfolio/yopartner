@@ -38,7 +38,7 @@ function validateImage(file: File) {
   }
 }
 
-async function waitForFirebaseUser(timeoutMs = 2500) {
+async function waitForFirebaseUser(timeoutMs = 5000) {
   const existing = getCurrentFirebaseUser();
   if (existing) return existing;
   if (typeof window === "undefined") return null;
@@ -88,7 +88,7 @@ export async function uploadUserProfilePhoto(file: File): Promise<UserProfilePho
 
   const cleanName = sanitizeFileName(file.name || "avatar");
   const timestamp = Date.now();
-  const storagePath = `YoPartner/user-profile/${uid}/avatar/${timestamp}-${cleanName}`;
+  const storagePath = `user-profile-images/${uid}/${timestamp}-${cleanName}`;
   const mediaRef = ref(firebaseStorage, storagePath);
 
   let downloadUrl = "";

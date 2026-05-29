@@ -9,8 +9,9 @@ import { getWallet } from "@/lib/api/wallet";
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { subscribeUserAuthState, type UserAuthState } from "@/lib/auth/userAuth";
 import {
+  type AuthenticatedUserIdentity,
   buildDropdownUserIdentity,
-  fetchAuthenticatedUserProfilePhone,
+  fetchAuthenticatedUserIdentity,
   getDropdownUserIdentityFromAuthState,
   type DropdownUserIdentity,
 } from "@/lib/auth/userIdentity";
@@ -29,6 +30,7 @@ export function ProfileMenu({ triggerClassName, avatarClassName }: ProfileMenuPr
   const [identity, setIdentity] = useState<DropdownUserIdentity>(() =>
     typeof window === "undefined" ? buildDropdownUserIdentity(null) : getDropdownUserIdentityFromAuthState(),
   );
+  const [profileIdentity, setProfileIdentity] = useState<AuthenticatedUserIdentity | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -50,9 +52,10 @@ export function ProfileMenu({ triggerClassName, avatarClassName }: ProfileMenuPr
     const unsubscribe = subscribeUserAuthState(syncFromAuth);
 
     void (async () => {
-      const backendPhone = await fetchAuthenticatedUserProfilePhone();
-      if (!active || !backendPhone) return;
-      setIdentity(buildDropdownUserIdentity(backendPhone));
+      const backendIdentity = await fetchAuthenticatedUserIdentity();
+      if (!active || !backendIdentity) return;
+      setProfileIdentity(backendIdentity);
+      setIdentity(buildDropdownUserIdentity(backendIdentity.normalizedPhone));
     })();
 
     return () => {
@@ -78,17 +81,31 @@ export function ProfileMenu({ triggerClassName, avatarClassName }: ProfileMenuPr
     };
   }, [open]);
 
+  const avatarText = (profileIdentity?.name ?? identity.maskedPhoneLabel).trim().slice(0, 1).toUpperCase() || "*";
+
   return (
     <div className="relative" ref={rootRef}>
       <button type="button" className={triggerClassName} onClick={() => setOpen((prev) => !prev)}>
-        <span
-          className={
-            avatarClassName ??
-            "inline-flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-brand to-brand-purple text-[11px] font-bold text-white"
-          }
-        >
-          *
-        </span>
+        {profileIdentity?.profileImageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={profileIdentity.profileImageUrl}
+            alt="Profile"
+            className={
+              avatarClassName ??
+              "inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 object-cover"
+            }
+          />
+        ) : (
+          <span
+            className={
+              avatarClassName ??
+              "inline-flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-brand to-brand-purple text-[11px] font-bold text-white"
+            }
+          >
+            {avatarText}
+          </span>
+        )}
         <span>{identity.maskedPhoneLabel}</span>
         <ChevronDown size={14} className="text-slate-500" />
       </button>
@@ -96,7 +113,8 @@ export function ProfileMenu({ triggerClassName, avatarClassName }: ProfileMenuPr
       {open && (
         <div className="absolute right-0 top-[calc(100%+10px)] z-50 w-[300px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
           <div className="border-b border-slate-100 px-4 py-3">
-            <p className="text-sm font-semibold text-slate-900">{identity.maskedPhoneLabel}</p>
+            <p className="text-sm font-semibold text-slate-900">{profileIdentity?.name ?? identity.maskedPhoneLabel}</p>
+            {profileIdentity?.email ? <p className="text-xs text-slate-500">{profileIdentity.email}</p> : null}
             {identity.hasPhone ? (
               <p className="text-xs text-slate-500">{identity.fullPhoneText}</p>
             ) : (

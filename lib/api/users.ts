@@ -10,11 +10,26 @@ export type UserProfileRecord = {
   gender: string | null;
   profileImageUrl: string | null;
   onboardingCompletedAt: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  verificationStatus?: string | null;
 };
 
 type UserProfileResponse = {
   user?: Partial<UserProfileRecord> | null;
   profileComplete?: boolean;
+};
+
+export type UserProfileSummaryStats = {
+  activeConversations: number;
+  totalSessions: number;
+  completedSessions: number;
+  memberSince: string | null;
+  lastLogin: string | null;
+};
+
+type UserProfileSummaryResponse = UserProfileResponse & {
+  stats?: Partial<UserProfileSummaryStats> | null;
 };
 
 export type UpdateUserProfileInput = {
@@ -36,6 +51,11 @@ function toNumber(value: unknown) {
   return null;
 }
 
+function toCount(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value) && value >= 0) return Math.floor(value);
+  return 0;
+}
+
 function normalizeUserProfile(input: Partial<UserProfileRecord> | null | undefined): UserProfileRecord | null {
   if (!input) return null;
   const id = toText(input.id);
@@ -53,6 +73,9 @@ function normalizeUserProfile(input: Partial<UserProfileRecord> | null | undefin
     gender: toText(input.gender),
     profileImageUrl: toText(input.profileImageUrl),
     onboardingCompletedAt: toText(input.onboardingCompletedAt),
+    createdAt: toText(input.createdAt),
+    updatedAt: toText(input.updatedAt),
+    verificationStatus: toText(input.verificationStatus),
   };
 }
 
@@ -90,6 +113,26 @@ export async function updateCurrentUserProfile(payload: UpdateUserProfileInput) 
     data: {
       user: profile,
       profileComplete: isUserProfileComplete(profile, result.data?.profileComplete),
+    },
+    error: null,
+  };
+}
+
+export async function getCurrentUserProfileSummary() {
+  const result = await apiRequest<UserProfileSummaryResponse>("/api/users/me/profile-summary");
+  if (result.error) return { data: null, error: result.error };
+  const profile = normalizeUserProfile(result.data?.user);
+  return {
+    data: {
+      user: profile,
+      profileComplete: isUserProfileComplete(profile, result.data?.profileComplete),
+      stats: {
+        activeConversations: toCount(result.data?.stats?.activeConversations),
+        totalSessions: toCount(result.data?.stats?.totalSessions),
+        completedSessions: toCount(result.data?.stats?.completedSessions),
+        memberSince: toText(result.data?.stats?.memberSince) ?? profile?.createdAt ?? null,
+        lastLogin: toText(result.data?.stats?.lastLogin),
+      } satisfies UserProfileSummaryStats,
     },
     error: null,
   };

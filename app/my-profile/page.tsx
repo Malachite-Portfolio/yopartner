@@ -6,14 +6,14 @@ import {
   Clock3,
   Languages,
   LayoutGrid,
-  Monitor,
   ShieldCheck,
   Sparkles,
   UserCheck2,
   Users,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import { getCurrentUserProfileSummary, type UserProfileRecord, type UserProfileSummaryStats } from "@/lib/api/users";
 import { getUserAuthState, restoreUserAuthSessionFromFirebase, subscribeUserAuthState } from "@/lib/auth/userAuth";
 
 type ProfileTab = "overview" | "sessions" | "preferences";
@@ -31,47 +31,60 @@ const tabItems: Array<{ id: ProfileTab; label: string }> = [
   { id: "preferences", label: "Preferences" },
 ];
 
-const statCards = [
-  {
-    title: "Total Logins",
-    value: "2",
-    subtitle: "Last: May 12, 2026, 12:18 PM",
-    icon: Users,
-    iconTint: "from-[#2563eb] to-[#06b6d4]",
-  },
-  {
-    title: "Active Conversations",
-    value: "1",
-    subtitle: "Across all devices",
-    icon: Clock3,
-    iconTint: "from-[#0ea5e9] to-[#8b5cf6]",
-  },
-  {
-    title: "Member Since",
-    value: "2026",
-    subtitle: "May 11, 2026",
-    icon: CalendarClock,
-    iconTint: "from-[#14b8a6] to-[#0ea5e9]",
-  },
-  {
-    title: "Account Status",
-    value: "Active",
-    subtitle: "Fully verified",
-    icon: UserCheck2,
-    iconTint: "from-[#22c55e] to-[#06b6d4]",
-  },
-];
+function formatDateTime(value: string | null | undefined) {
+  if (!value) return "Not tracked";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "Not tracked";
+  return parsed.toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatDateOnly(value: string | null | undefined) {
+  if (!value) return "Not tracked";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "Not tracked";
+  return parsed.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function maskPhone(value: string | null | undefined) {
+  if (!value) return "Not available";
+  const digits = value.replace(/\D/g, "");
+  if (digits.length < 10) return value;
+  return `+${digits.slice(0, digits.length - 10)}${digits.slice(-10)}`;
+}
+
+function initialStats(): UserProfileSummaryStats {
+  return {
+    activeConversations: 0,
+    totalSessions: 0,
+    completedSessions: 0,
+    memberSince: null,
+    lastLogin: null,
+  };
+}
 
 export default function MyProfilePage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<ProfileTab>("overview");
   const [authReady, setAuthReady] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
-  const [phone, setPhone] = useState("+91**********");
+  const [authPhone, setAuthPhone] = useState<string | null>(null);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [profileError, setProfileError] = useState("");
+  const [profile, setProfile] = useState<UserProfileRecord | null>(null);
+  const [stats, setStats] = useState<UserProfileSummaryStats>(initialStats);
+  const [profileComplete, setProfileComplete] = useState(false);
   const [preferences, setPreferences] = useState<PreferenceState>(() => {
-    if (typeof window === "undefined") {
-      return { sms: true, email: true, push: true };
-    }
+    if (typeof window === "undefined") return { sms: true, email: true, push: true };
     try {
       const raw = window.localStorage.getItem(PROFILE_PREFERENCES_KEY);
       if (!raw) return { sms: true, email: true, push: true };
@@ -92,10 +105,9 @@ export default function MyProfilePage() {
       if (!active) return;
       const state = getUserAuthState();
       setLoggedIn(state.loggedIn);
-      setPhone(state.phone || "+91**********");
+      setAuthPhone(state.phone);
       setAuthReady(true);
     };
-
     const unsubscribe = subscribeUserAuthState(sync);
     void restoreUserAuthSessionFromFirebase(false).then(sync);
     return () => {
@@ -103,6 +115,32 @@ export default function MyProfilePage() {
       unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    if (!authReady || !loggedIn) return;
+    let active = true;
+
+    void (async () => {
+      setLoadingProfile(true);
+      setProfileError("");
+      const response = await getCurrentUserProfileSummary();
+      if (!active) return;
+      if (response.error || !response.data) {
+        setProfileError(response.error?.message || "Unable to load profile details right now.");
+        setLoadingProfile(false);
+        return;
+      }
+
+      setProfile(response.data.user);
+      setStats(response.data.stats);
+      setProfileComplete(response.data.profileComplete);
+      setLoadingProfile(false);
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [authReady, loggedIn]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -115,11 +153,34 @@ export default function MyProfilePage() {
     }
   }, [authReady, loggedIn, router]);
 
-  const formattedPhone = useMemo(() => {
-    const digits = phone.replace(/\D/g, "");
-    if (digits.length < 10) return "+919958719363";
-    return `+91${digits.slice(-10)}`;
-  }, [phone]);
+  const phoneLabel = maskPhone(profile?.phoneNumber ?? authPhone);
+  const verificationLabel = profile?.verificationStatus ?? (profileComplete ? "VERIFIED" : "PENDING_PROFILE");
+  const statCards = [
+    {
+      title: "Total Sessions",
+      value: String(stats.totalSessions),
+      subtitle: "Across all chats and calls",
+      icon: Users,
+    },
+    {
+      title: "Active Conversations",
+      value: String(stats.activeConversations),
+      subtitle: "Live sessions right now",
+      icon: Clock3,
+    },
+    {
+      title: "Member Since",
+      value: formatDateOnly(stats.memberSince),
+      subtitle: "Account creation date",
+      icon: CalendarClock,
+    },
+    {
+      title: "Account Status",
+      value: verificationLabel,
+      subtitle: profileComplete ? "Profile completed" : "Complete onboarding profile",
+      icon: UserCheck2,
+    },
+  ];
 
   if (!authReady || !loggedIn) {
     return <section className="min-h-[60vh] bg-[#f8fafc]" />;
@@ -128,6 +189,12 @@ export default function MyProfilePage() {
   return (
     <section className="min-h-screen bg-[#f8fafc]">
       <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        {profileError ? (
+          <p className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">
+            {profileError}
+          </p>
+        ) : null}
+
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {statCards.map((card) => {
             const Icon = card.icon;
@@ -172,59 +239,89 @@ export default function MyProfilePage() {
           {activeTab === "overview" && (
             <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
               <h2 className="text-xl font-semibold text-slate-900">Account Information</h2>
-              <div className="mt-5 grid gap-6 md:grid-cols-2">
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Full Name</p>
-                    <p className="mt-1 text-sm font-medium text-slate-900">Not set</p>
+              {loadingProfile ? (
+                <p className="mt-4 text-sm text-slate-600">Loading your profile...</p>
+              ) : (
+                <div className="mt-5 grid gap-6 md:grid-cols-2">
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Full Name</p>
+                      <p className="mt-1 text-sm font-medium text-slate-900">{profile?.name ?? "Not provided"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Phone Number</p>
+                      <p className="mt-1 text-sm font-medium text-slate-900">{phoneLabel}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Email</p>
+                      <p className="mt-1 text-sm font-medium text-slate-900">{profile?.email ?? "Not provided"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Age</p>
+                      <p className="mt-1 text-sm font-medium text-slate-900">
+                        {typeof profile?.age === "number" ? profile.age : "Not provided"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Gender</p>
+                      <p className="mt-1 text-sm font-medium text-slate-900">{profile?.gender ?? "Not provided"}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Phone Number</p>
-                    <p className="mt-1 text-sm font-medium text-slate-900">{formattedPhone}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Country Code</p>
-                    <p className="mt-1 text-sm font-medium text-slate-900">+91</p>
-                  </div>
-                </div>
 
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Account Created</p>
-                    <p className="mt-1 text-sm font-medium text-slate-900">May 11, 2026</p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Last Updated</p>
-                    <p className="mt-1 text-sm font-medium text-slate-900">May 12, 2026</p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Verification Status</p>
-                    <p className="mt-1 inline-flex items-center gap-1 text-sm font-semibold text-emerald-700">
-                      <ShieldCheck size={15} />
-                      Verified
-                    </p>
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Account Created</p>
+                      <p className="mt-1 text-sm font-medium text-slate-900">{formatDateTime(profile?.createdAt)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Last Updated</p>
+                      <p className="mt-1 text-sm font-medium text-slate-900">{formatDateTime(profile?.updatedAt)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Verification Status</p>
+                      <p className="mt-1 inline-flex items-center gap-1 text-sm font-semibold text-emerald-700">
+                        <ShieldCheck size={15} />
+                        {verificationLabel}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Profile Photo</p>
+                      {profile?.profileImageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={profile.profileImageUrl}
+                          alt="Profile"
+                          className="mt-2 h-20 w-20 rounded-full border border-slate-200 object-cover"
+                        />
+                      ) : (
+                        <p className="mt-1 text-sm font-medium text-slate-900">Not uploaded</p>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
 
           {activeTab === "sessions" && (
             <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-              <h2 className="text-xl font-semibold text-slate-900">Active Conversations</h2>
+              <h2 className="text-xl font-semibold text-slate-900">Conversation Summary</h2>
               <div className="mt-4 inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
-                1 Active
+                {stats.activeConversations} Active
               </div>
 
-              <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <div className="grid gap-2 text-sm sm:grid-cols-4">
-                  <p className="inline-flex items-center gap-2 font-medium text-slate-900">
-                    <Monitor size={14} />
-                    web
-                  </p>
-                  <p className="text-slate-600">May 12, 2026, 12:18 PM</p>
-                  <p className="text-slate-600">Unknown</p>
-                  <p className="font-semibold text-[#2563eb]">Current</p>
+              <div className="mt-5 grid gap-4 sm:grid-cols-3">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Active Conversations</p>
+                  <p className="mt-1 text-lg font-semibold text-slate-900">{stats.activeConversations}</p>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Sessions</p>
+                  <p className="mt-1 text-lg font-semibold text-slate-900">{stats.totalSessions}</p>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Completed Sessions</p>
+                  <p className="mt-1 text-lg font-semibold text-slate-900">{stats.completedSessions}</p>
                 </div>
               </div>
             </div>
@@ -287,18 +384,14 @@ export default function MyProfilePage() {
                   <Sparkles size={18} className="text-[#8b5cf6]" />
                   Login Statistics
                 </h3>
-                <div className="mt-4 grid gap-4 sm:grid-cols-3">
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Last Login</p>
-                    <p className="mt-1 text-sm font-medium text-slate-900">May 12, 2026, 12:18 PM</p>
+                    <p className="mt-1 text-sm font-medium text-slate-900">{formatDateTime(stats.lastLogin)}</p>
                   </div>
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Last Login IP</p>
-                    <p className="mt-1 text-sm font-medium text-slate-900">104.23.160.193</p>
-                  </div>
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Account Created IP</p>
-                    <p className="mt-1 text-sm font-medium text-slate-900">104.23.160.229</p>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Logins</p>
+                    <p className="mt-1 text-sm font-medium text-slate-900">Not tracked</p>
                   </div>
                 </div>
               </div>
@@ -308,7 +401,9 @@ export default function MyProfilePage() {
 
         <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-semibold text-emerald-700">
           <CheckCircle2 size={14} />
-          Your profile is in good standing and fully verified.
+          {profileComplete
+            ? "Your profile is in good standing and fully verified."
+            : "Complete your onboarding profile to unlock full account features."}
         </div>
       </div>
     </section>

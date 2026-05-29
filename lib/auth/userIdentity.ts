@@ -7,7 +7,17 @@ type UserProfileResponse = {
   user?: {
     phoneNumber?: unknown;
     phone?: unknown;
+    name?: unknown;
+    email?: unknown;
+    profileImageUrl?: unknown;
   } | null;
+};
+
+export type AuthenticatedUserIdentity = {
+  normalizedPhone: string | null;
+  name: string | null;
+  email: string | null;
+  profileImageUrl: string | null;
 };
 
 export type DropdownUserIdentity = {
@@ -19,6 +29,11 @@ export type DropdownUserIdentity = {
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
+}
+
+function normalizeText(value: unknown): string | null {
+  if (!isNonEmptyString(value)) return null;
+  return value.trim();
 }
 
 export function normalizeUserPhone(value: unknown): string | null {
@@ -84,4 +99,25 @@ export async function fetchAuthenticatedUserProfilePhone() {
     saveUserAuthSession({ phone: backendPhone });
   }
   return backendPhone;
+}
+
+export async function fetchAuthenticatedUserIdentity(): Promise<AuthenticatedUserIdentity | null> {
+  const authState = getUserAuthState();
+  if (!authState.loggedIn) return null;
+
+  const summaryResult = await apiRequest<UserProfileResponse>("/api/users/me/profile-summary");
+  const fallbackResult = summaryResult.error ? await apiRequest<UserProfileResponse>("/api/users/me") : null;
+  const user = summaryResult.data?.user ?? fallbackResult?.data?.user;
+
+  const normalizedPhone = normalizeUserPhone(user?.phoneNumber ?? user?.phone);
+  if (normalizedPhone) {
+    saveUserAuthSession({ phone: normalizedPhone });
+  }
+
+  return {
+    normalizedPhone,
+    name: normalizeText(user?.name),
+    email: normalizeText(user?.email),
+    profileImageUrl: normalizeText(user?.profileImageUrl),
+  };
 }
