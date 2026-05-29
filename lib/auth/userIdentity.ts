@@ -1,0 +1,86 @@
+"use client";
+
+import { apiRequest } from "@/lib/api/client";
+import { getUserAuthState, saveUserAuthSession, type UserAuthState } from "@/lib/auth/userAuth";
+
+type UserProfileResponse = {
+  user?: {
+    phone?: unknown;
+  } | null;
+};
+
+export type DropdownUserIdentity = {
+  normalizedPhone: string | null;
+  maskedPhoneLabel: string;
+  fullPhoneText: string | null;
+  hasPhone: boolean;
+};
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+export function normalizeUserPhone(value: unknown): string | null {
+  if (!isNonEmptyString(value)) return null;
+  const trimmed = value.trim();
+  const digits = trimmed.replace(/\D/g, "");
+
+  if (trimmed.startsWith("+") && digits.length >= 10) {
+    return `+${digits}`;
+  }
+  if (digits.length === 10) {
+    return `+91${digits}`;
+  }
+  if (digits.length === 12 && digits.startsWith("91")) {
+    return `+${digits}`;
+  }
+  if (digits.length > 10) {
+    return `+${digits}`;
+  }
+  return null;
+}
+
+export function toMaskedPhoneLabel(phone: string | null): string {
+  if (!phone) return "User";
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length < 3) return "User";
+  const tail = digits.slice(-4);
+  return `***${tail.length === 4 ? tail : digits.slice(-3)}`;
+}
+
+export function buildDropdownUserIdentity(phoneValue: unknown): DropdownUserIdentity {
+  const normalizedPhone = normalizeUserPhone(phoneValue);
+  if (!normalizedPhone) {
+    return {
+      normalizedPhone: null,
+      maskedPhoneLabel: "User",
+      fullPhoneText: null,
+      hasPhone: false,
+    };
+  }
+
+  return {
+    normalizedPhone,
+    maskedPhoneLabel: toMaskedPhoneLabel(normalizedPhone),
+    fullPhoneText: normalizedPhone,
+    hasPhone: true,
+  };
+}
+
+export function getDropdownUserIdentityFromAuthState(state?: UserAuthState): DropdownUserIdentity {
+  const authState = state ?? getUserAuthState();
+  if (!authState.loggedIn) return buildDropdownUserIdentity(null);
+  return buildDropdownUserIdentity(authState.phone);
+}
+
+export async function fetchAuthenticatedUserProfilePhone() {
+  const authState = getUserAuthState();
+  if (!authState.loggedIn) return null;
+
+  const result = await apiRequest<UserProfileResponse>("/api/users");
+  const backendPhone = normalizeUserPhone(result.data?.user?.phone);
+  if (backendPhone) {
+    saveUserAuthSession({ phone: backendPhone });
+  }
+  return backendPhone;
+}

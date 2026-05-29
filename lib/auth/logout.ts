@@ -17,6 +17,10 @@ import {
   logoutPartner,
 } from "@/lib/partnerAuth";
 
+const POST_LOGIN_REDIRECT_KEY = "yopartner_post_login_redirect";
+const PENDING_USER_PHONE_KEY = "yopartner_pending_user_phone";
+const OTP_RESEND_AVAILABLE_AT_KEY = "yopartner_otp_resend_available_at";
+
 function removeKeys(keys: string[]) {
   if (typeof window === "undefined") return;
   keys.forEach((key) => window.localStorage.removeItem(key));
@@ -34,6 +38,11 @@ export async function logoutUserAuthSession() {
     setAuthMode("demo");
   }
   clearUserAuthSession();
+  removeKeys([
+    POST_LOGIN_REDIRECT_KEY,
+    PENDING_USER_PHONE_KEY,
+    OTP_RESEND_AVAILABLE_AT_KEY,
+  ]);
 }
 
 export async function logoutPartnerAuthSession() {

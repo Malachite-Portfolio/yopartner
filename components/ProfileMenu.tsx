@@ -7,7 +7,13 @@ import { useEffect, useRef, useState } from "react";
 import { logoutUserAuthSession } from "@/lib/auth/logout";
 import { getWallet } from "@/lib/api/wallet";
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
-import { subscribeUserAuthState, getUserAuthState } from "@/lib/auth/userAuth";
+import { subscribeUserAuthState, type UserAuthState } from "@/lib/auth/userAuth";
+import {
+  buildDropdownUserIdentity,
+  fetchAuthenticatedUserProfilePhone,
+  getDropdownUserIdentityFromAuthState,
+  type DropdownUserIdentity,
+} from "@/lib/auth/userIdentity";
 import { formatINR, getWalletBalance, subscribeWalletUpdates } from "@/lib/wallet";
 
 type ProfileMenuProps = {
@@ -20,10 +26,9 @@ export function ProfileMenu({ triggerClassName, avatarClassName }: ProfileMenuPr
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [balance, setBalance] = useState(() => (typeof window !== "undefined" ? getWalletBalance() : 0));
-  const [phone, setPhone] = useState(() => {
-    if (typeof window === "undefined") return "+91**********";
-    return getUserAuthState().phone || "+91**********";
-  });
+  const [identity, setIdentity] = useState<DropdownUserIdentity>(() =>
+    typeof window === "undefined" ? buildDropdownUserIdentity(null) : getDropdownUserIdentityFromAuthState(),
+  );
   const rootRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -39,7 +44,22 @@ export function ProfileMenu({ triggerClassName, avatarClassName }: ProfileMenuPr
     return subscribeWalletUpdates(() => setBalance(getWalletBalance()));
   }, []);
 
-  useEffect(() => subscribeUserAuthState((state) => setPhone(state.phone || "+91**********")), []);
+  useEffect(() => {
+    let active = true;
+    const syncFromAuth = (state: UserAuthState) => setIdentity(getDropdownUserIdentityFromAuthState(state));
+    const unsubscribe = subscribeUserAuthState(syncFromAuth);
+
+    void (async () => {
+      const backendPhone = await fetchAuthenticatedUserProfilePhone();
+      if (!active || !backendPhone) return;
+      setIdentity(buildDropdownUserIdentity(backendPhone));
+    })();
+
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     const onPointerDown = (event: MouseEvent) => {
@@ -69,15 +89,19 @@ export function ProfileMenu({ triggerClassName, avatarClassName }: ProfileMenuPr
         >
           *
         </span>
-        <span>***363</span>
+        <span>{identity.maskedPhoneLabel}</span>
         <ChevronDown size={14} className="text-slate-500" />
       </button>
 
       {open && (
         <div className="absolute right-0 top-[calc(100%+10px)] z-50 w-[300px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
           <div className="border-b border-slate-100 px-4 py-3">
-            <p className="text-sm font-semibold text-slate-900">***363</p>
-            <p className="text-xs text-slate-500">{phone}</p>
+            <p className="text-sm font-semibold text-slate-900">{identity.maskedPhoneLabel}</p>
+            {identity.hasPhone ? (
+              <p className="text-xs text-slate-500">{identity.fullPhoneText}</p>
+            ) : (
+              <p className="text-xs text-slate-500">Phone not available.</p>
+            )}
           </div>
 
           <div className="p-2">

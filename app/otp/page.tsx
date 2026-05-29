@@ -2,24 +2,29 @@
 
 import { ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   clearPendingConfirmationResult,
   getAuthMode,
   getPendingConfirmationResult,
   isFirebaseOtpEnabled,
   mapFirebaseAuthError,
+  sendOtp,
   setAuthMode,
+  setupRecaptcha,
   verifyOtp,
 } from "@/lib/auth/firebasePhoneAuth";
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { getDemoPhone, setDemoLoggedIn } from "@/lib/demoAuth";
 import { maskIndianPhoneNumber } from "@/lib/phoneMask";
 import { getUserAuthState, saveUserAuthSession } from "@/lib/auth/userAuth";
+import { normalizeUserPhone } from "@/lib/auth/userIdentity";
 
 const OTP_LENGTH = 6;
+const RESEND_SECONDS = 28;
 const POST_LOGIN_REDIRECT_KEY = "yopartner_post_login_redirect";
 const PENDING_USER_PHONE_KEY = "yopartner_pending_user_phone";
+const OTP_RESEND_AVAILABLE_AT_KEY = "yopartner_otp_resend_available_at";
 
 function getPostLoginRedirect() {
   if (typeof window === "undefined") return null;
@@ -46,24 +51,87 @@ function clearPendingPhone() {
   window.localStorage.removeItem(PENDING_USER_PHONE_KEY);
 }
 
+function readResendAvailableAt() {
+  if (typeof window === "undefined") return null;
+  const raw = window.localStorage.getItem(OTP_RESEND_AVAILABLE_AT_KEY);
+  if (!raw) return null;
+  const value = Number(raw);
+  if (!Number.isFinite(value) || value <= 0) return null;
+  return value;
+}
+
+function setResendAvailableAt(timestamp: number) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(OTP_RESEND_AVAILABLE_AT_KEY, String(timestamp));
+}
+
+function clearResendAvailableAt() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(OTP_RESEND_AVAILABLE_AT_KEY);
+}
+
+function createResendAvailableAt() {
+  return Date.now() + RESEND_SECONDS * 1000;
+}
+
 export default function OtpPage() {
   const router = useRouter();
-  const [otp, setOtp] = useState<string[]>(Array.from({ length: OTP_LENGTH }, () => ""));
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const firebaseEnabled = isFirebaseOtpEnabled();
   const pendingConfirmation = getPendingConfirmationResult();
   const mode =
     firebaseEnabled && (getAuthMode() === "firebase" || Boolean(pendingConfirmation))
       ? "firebase"
       : "demo";
+  const [otp, setOtp] = useState<string[]>(Array.from({ length: OTP_LENGTH }, () => ""));
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [resendAvailableAt, setResendAvailableAtState] = useState<number | null>(() => {
+    if (!firebaseEnabled || typeof window === "undefined") return null;
+    const existing = readResendAvailableAt();
+    if (existing && existing > Date.now()) return existing;
+    return createResendAvailableAt();
+  });
+  const [resendSeconds, setResendSeconds] = useState(() => {
+    if (!firebaseEnabled || typeof window === "undefined") return 0;
+    const existing = readResendAvailableAt();
+    const target = existing && existing > Date.now() ? existing : createResendAvailableAt();
+    return Math.max(0, Math.ceil((target - Date.now()) / 1000));
+  });
 
   const phone = useMemo(() => {
     if (typeof window === "undefined") return "";
-    return getUserAuthState().phone || getPendingPhone() || getDemoPhone();
+    const pendingPhone = normalizeUserPhone(getPendingPhone());
+    if (pendingPhone) return pendingPhone;
+    const authPhone = normalizeUserPhone(getUserAuthState().phone);
+    if (authPhone) return authPhone;
+    return normalizeUserPhone(getDemoPhone()) ?? "";
   }, []);
   const isComplete = otp.every((digit) => digit.length === 1);
+  const canResend = resendSeconds <= 0 && !isResending && !isSubmitting;
+
+  useEffect(() => {
+    if (!resendAvailableAt) return;
+    setResendAvailableAt(resendAvailableAt);
+  }, [resendAvailableAt]);
+
+  useEffect(() => {
+    if (!resendAvailableAt) return;
+
+    const tick = () => {
+      const remaining = Math.max(0, Math.ceil((resendAvailableAt - Date.now()) / 1000));
+      setResendSeconds(remaining);
+      if (remaining === 0) {
+        clearResendAvailableAt();
+        setResendAvailableAtState(null);
+      }
+    };
+
+    tick();
+    const interval = window.setInterval(tick, 1000);
+    return () => window.clearInterval(interval);
+  }, [resendAvailableAt]);
 
   const updateDigit = (index: number, value: string) => {
     const sanitized = value.replace(/[^0-9]/g, "").slice(-1);
@@ -109,17 +177,19 @@ export default function OtpPage() {
         const otpValue = otp.join("");
         const user = await verifyOtp(pendingConfirmation, otpValue);
         const idToken = await user.getIdToken(true);
-
-        const normalizedPhone = phone.replace(/\D/g, "").slice(-10);
-        const phoneValue = normalizedPhone.length === 10 ? `+91${normalizedPhone}` : phone;
+        const verifiedPhone =
+          normalizeUserPhone(user.phoneNumber) ||
+          normalizeUserPhone(getPendingPhone()) ||
+          normalizeUserPhone(phone);
         saveUserAuthSession({
           uid: user.uid,
-          phone: phoneValue || user.phoneNumber,
+          phone: verifiedPhone,
           token: idToken,
         });
 
         clearPendingConfirmationResult();
         clearPendingPhone();
+        clearResendAvailableAt();
         setAuthMode("firebase");
         setMessage("Verification successful. Redirecting...");
         setTimeout(() => {
@@ -137,12 +207,55 @@ export default function OtpPage() {
     setDemoLoggedIn(true);
     setAuthMode("demo");
     clearPendingPhone();
+    clearResendAvailableAt();
     setError("");
     setMessage("Verification successful. Redirecting...");
     setTimeout(() => {
       const redirectTo = consumePostLoginRedirect() || "/connect-now";
       router.push(redirectTo);
     }, 400);
+  };
+
+  const handleResendOtp = async () => {
+    if (!canResend) return;
+
+    if (mode !== "firebase") {
+      const nextResendAt = createResendAvailableAt();
+      setResendAvailableAt(nextResendAt);
+      setResendAvailableAtState(nextResendAt);
+      setMessage("A new code has been generated.");
+      setError("");
+      return;
+    }
+
+    const resendPhone = normalizeUserPhone(getPendingPhone()) || normalizeUserPhone(phone);
+    if (!resendPhone) {
+      setError("Phone number is missing. Please login again to request OTP.");
+      return;
+    }
+
+    setIsResending(true);
+    setError("");
+    setMessage("");
+    try {
+      const verifier = setupRecaptcha("otp-recaptcha-container");
+      if (!verifier) {
+        setError("OTP service is not ready. Please try again.");
+        return;
+      }
+
+      await sendOtp(resendPhone, verifier);
+      setAuthMode("firebase");
+      const nextResendAt = createResendAvailableAt();
+      setResendAvailableAt(nextResendAt);
+      setResendAvailableAtState(nextResendAt);
+      setOtp(Array.from({ length: OTP_LENGTH }, () => ""));
+      setMessage("A new OTP has been sent to your phone.");
+    } catch (resendError) {
+      setError(mapFirebaseAuthError(resendError));
+    } finally {
+      setIsResending(false);
+    }
   };
 
   return (
@@ -177,7 +290,20 @@ export default function OtpPage() {
           ))}
         </div>
 
-        <p className="mt-3 text-xs text-slate-500">Resend code in 28s</p>
+        <div className="mt-3">
+          {mode === "firebase" && resendSeconds > 0 ? (
+            <p className="text-xs text-slate-500">Resend code in {resendSeconds}s</p>
+          ) : (
+            <button
+              type="button"
+              onClick={handleResendOtp}
+              disabled={!canResend}
+              className="text-xs font-semibold text-[#2563EB] disabled:cursor-not-allowed disabled:text-slate-400"
+            >
+              {isResending ? "Sending..." : "Resend code"}
+            </button>
+          )}
+        </div>
 
         <div className="mt-5 grid grid-cols-2 gap-3">
           <button
@@ -207,6 +333,7 @@ export default function OtpPage() {
         {IS_PRODUCTION_READY_MODE && firebaseEnabled && !pendingConfirmation ? (
           <p className="mt-1 text-xs font-medium text-rose-600">OTP session expired. Please request a new OTP.</p>
         ) : null}
+        {mode === "firebase" ? <div id="otp-recaptcha-container" className="pt-1" /> : null}
 
         <p className="mt-5 inline-flex items-center gap-2 text-xs text-slate-500">
           <ShieldCheck size={14} className="text-emerald-600" />
