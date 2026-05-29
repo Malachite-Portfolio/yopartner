@@ -70,6 +70,12 @@ export type PartnerProfilePayload = {
   application?: Record<string, unknown> | null;
 };
 
+export type PartnerEarningsPayload = {
+  earnings: Record<string, unknown>[];
+  payouts?: Record<string, unknown>[];
+  summary?: Record<string, unknown>;
+};
+
 export async function submitPartnerApplication(payload: Record<string, unknown>) {
   return apiRequest<{ success: boolean; message?: string }>("/api/partner/applications", {
     method: "POST",
@@ -119,9 +125,16 @@ export async function getPartnerBookings() {
 }
 
 export async function getPartnerEarnings() {
-  const result = await apiRequest<{ earnings: Record<string, unknown>[] }>("/api/partner/earnings");
-  if (result.error) return { data: [], error: result.error };
-  return { data: result.data?.earnings ?? [], error: null };
+  const result = await apiRequest<PartnerEarningsPayload>("/api/partner/earnings");
+  if (result.error) return { data: null, error: result.error };
+  return {
+    data: {
+      earnings: result.data?.earnings ?? [],
+      payouts: result.data?.payouts ?? [],
+      summary: result.data?.summary ?? {},
+    },
+    error: null,
+  };
 }
 
 export async function getPartnerRequests() {
