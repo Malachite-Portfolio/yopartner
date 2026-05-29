@@ -1,6 +1,7 @@
-﻿"use client";
+"use client";
 
-import { ShieldCheck } from "lucide-react";
+import { ArrowLeft, BadgeCheck, Lock, PencilLine, ShieldCheck } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -14,6 +15,12 @@ import {
   setupRecaptcha,
   verifyOtp,
 } from "@/lib/auth/firebasePhoneAuth";
+import {
+  OTP_RESEND_AVAILABLE_AT_KEY,
+  clearPendingUserPhone,
+  getPendingUserPhone,
+  resolvePostAuthDestination,
+} from "@/lib/auth/onboarding";
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { getDemoPhone, setDemoLoggedIn } from "@/lib/demoAuth";
 import { maskIndianPhoneNumber } from "@/lib/phoneMask";
@@ -22,34 +29,6 @@ import { normalizeUserPhone } from "@/lib/auth/userIdentity";
 
 const OTP_LENGTH = 6;
 const RESEND_SECONDS = 28;
-const POST_LOGIN_REDIRECT_KEY = "yopartner_post_login_redirect";
-const PENDING_USER_PHONE_KEY = "yopartner_pending_user_phone";
-const OTP_RESEND_AVAILABLE_AT_KEY = "yopartner_otp_resend_available_at";
-
-function getPostLoginRedirect() {
-  if (typeof window === "undefined") return null;
-  const value = window.localStorage.getItem(POST_LOGIN_REDIRECT_KEY);
-  if (!value || !value.startsWith("/")) return null;
-  return value;
-}
-
-function consumePostLoginRedirect() {
-  const redirect = getPostLoginRedirect();
-  if (typeof window !== "undefined") {
-    window.localStorage.removeItem(POST_LOGIN_REDIRECT_KEY);
-  }
-  return redirect;
-}
-
-function getPendingPhone() {
-  if (typeof window === "undefined") return "";
-  return window.localStorage.getItem(PENDING_USER_PHONE_KEY) ?? "";
-}
-
-function clearPendingPhone() {
-  if (typeof window === "undefined") return;
-  window.localStorage.removeItem(PENDING_USER_PHONE_KEY);
-}
 
 function readResendAvailableAt() {
   if (typeof window === "undefined") return null;
@@ -82,6 +61,7 @@ export default function OtpPage() {
     firebaseEnabled && (getAuthMode() === "firebase" || Boolean(pendingConfirmation))
       ? "firebase"
       : "demo";
+
   const [otp, setOtp] = useState<string[]>(Array.from({ length: OTP_LENGTH }, () => ""));
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -102,12 +82,13 @@ export default function OtpPage() {
 
   const phone = useMemo(() => {
     if (typeof window === "undefined") return "";
-    const pendingPhone = normalizeUserPhone(getPendingPhone());
+    const pendingPhone = normalizeUserPhone(getPendingUserPhone());
     if (pendingPhone) return pendingPhone;
     const authPhone = normalizeUserPhone(getUserAuthState().phone);
     if (authPhone) return authPhone;
     return normalizeUserPhone(getDemoPhone()) ?? "";
   }, []);
+
   const isComplete = otp.every((digit) => digit.length === 1);
   const canResend = resendSeconds <= 0 && !isResending && !isSubmitting;
 
@@ -179,8 +160,9 @@ export default function OtpPage() {
         const idToken = await user.getIdToken(true);
         const verifiedPhone =
           normalizeUserPhone(user.phoneNumber) ||
-          normalizeUserPhone(getPendingPhone()) ||
+          normalizeUserPhone(getPendingUserPhone()) ||
           normalizeUserPhone(phone);
+
         saveUserAuthSession({
           uid: user.uid,
           phone: verifiedPhone,
@@ -188,14 +170,13 @@ export default function OtpPage() {
         });
 
         clearPendingConfirmationResult();
-        clearPendingPhone();
+        clearPendingUserPhone();
         clearResendAvailableAt();
         setAuthMode("firebase");
         setMessage("Verification successful. Redirecting...");
-        setTimeout(() => {
-          const redirectTo = consumePostLoginRedirect() || "/connect-now";
-          router.push(redirectTo);
-        }, 300);
+
+        const destination = await resolvePostAuthDestination("/connect-now");
+        router.push(destination.destination);
       } catch (verifyError) {
         setError(mapFirebaseAuthError(verifyError));
       } finally {
@@ -206,14 +187,13 @@ export default function OtpPage() {
 
     setDemoLoggedIn(true);
     setAuthMode("demo");
-    clearPendingPhone();
+    clearPendingUserPhone();
     clearResendAvailableAt();
     setError("");
     setMessage("Verification successful. Redirecting...");
-    setTimeout(() => {
-      const redirectTo = consumePostLoginRedirect() || "/connect-now";
-      router.push(redirectTo);
-    }, 400);
+
+    const destination = await resolvePostAuthDestination("/connect-now");
+    router.push(destination.destination);
   };
 
   const handleResendOtp = async () => {
@@ -228,7 +208,7 @@ export default function OtpPage() {
       return;
     }
 
-    const resendPhone = normalizeUserPhone(getPendingPhone()) || normalizeUserPhone(phone);
+    const resendPhone = normalizeUserPhone(getPendingUserPhone()) || normalizeUserPhone(phone);
     if (!resendPhone) {
       setError("Phone number is missing. Please login again to request OTP.");
       return;
@@ -259,14 +239,31 @@ export default function OtpPage() {
   };
 
   return (
-    <section className="flex min-h-screen items-center justify-center bg-[#f8fafc] px-4 py-10">
-      <div className="w-full max-w-[420px] rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
-        <div className="text-center">
+    <section className="flex min-h-screen items-center justify-center bg-[#f4fbf7] px-4 py-10">
+      <div className="w-full max-w-[460px] rounded-3xl border border-[#dceee6] bg-[#fffefb] p-6 shadow-[0_20px_65px_-40px_rgba(0,0,0,0.35)] sm:p-8">
+        <button
+          type="button"
+          onClick={() => router.push("/login")}
+          className="inline-flex items-center gap-1 text-sm font-medium text-[#2e6558] hover:text-[#127e6d]"
+        >
+          <ArrowLeft size={15} />
+          Back
+        </button>
+
+        <div className="mt-4 text-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/images/logo.png" alt="YoPartner" className="mx-auto h-auto max-h-11 w-auto object-contain" />
-          <h1 className="mt-4 text-2xl font-semibold text-slate-900">Verify your number</h1>
-          <p className="mt-1 text-sm text-slate-600">Enter the secure 6-digit code sent to your phone.</p>
-          <p className="mt-2 text-sm font-semibold text-slate-900">{maskIndianPhoneNumber(phone)}</p>
+          <div className="mt-5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#267f71]">
+            <span className="rounded-full bg-[#d9f2ea] px-2 py-1">Step 2</span>
+            <div className="h-1 flex-1 rounded-full bg-[#e4f4ee]">
+              <div className="h-1 w-2/3 rounded-full bg-[#1d8a76]" />
+            </div>
+            <span>3</span>
+          </div>
+
+          <h1 className="mt-4 text-3xl font-semibold text-[#16382f]">Verify Your Number</h1>
+          <p className="mt-2 text-sm text-[#5b7269]">Enter the 6-digit code sent to</p>
+          <p className="mt-1 text-sm font-semibold text-[#16382f]">{maskIndianPhoneNumber(phone)}</p>
         </div>
 
         <div className="mt-6 grid grid-cols-6 gap-2">
@@ -285,62 +282,65 @@ export default function OtpPage() {
                   prevInput?.focus();
                 }
               }}
-              className="h-12 rounded-xl border border-slate-300 text-center text-lg font-semibold outline-none focus:border-[#2563EB]"
+              className="h-12 rounded-xl border border-[#cfe4db] bg-[#f8fcfa] text-center text-lg font-semibold outline-none focus:border-[#1d8a76]"
             />
           ))}
         </div>
 
-        <div className="mt-3">
+        <div className="mt-3 flex items-center justify-between text-xs">
           {mode === "firebase" && resendSeconds > 0 ? (
-            <p className="text-xs text-slate-500">Resend code in {resendSeconds}s</p>
+            <p className="text-[#5b7269]">Resend code in {resendSeconds}s</p>
           ) : (
             <button
               type="button"
               onClick={handleResendOtp}
               disabled={!canResend}
-              className="text-xs font-semibold text-[#2563EB] disabled:cursor-not-allowed disabled:text-slate-400"
+              className="font-semibold text-[#127e6d] disabled:cursor-not-allowed disabled:text-slate-400"
             >
               {isResending ? "Sending..." : "Resend code"}
             </button>
           )}
+
+          <Link href="/login" className="inline-flex items-center gap-1 font-semibold text-[#127e6d]">
+            <PencilLine size={12} />
+            Edit phone number
+          </Link>
         </div>
 
-        <div className="mt-5 grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={() => router.push("/login")}
-            className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700"
-          >
-            Back
-          </button>
-          <button
-            type="button"
-            onClick={handleVerify}
-            disabled={!isComplete || isSubmitting}
-            className={`rounded-xl px-4 py-2.5 text-sm font-semibold text-white ${
-              isComplete && !isSubmitting ? "bg-[#2563EB]" : "bg-slate-300"
-            }`}
-          >
-            {isSubmitting ? "Verifying..." : "Verify"}
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={handleVerify}
+          disabled={!isComplete || isSubmitting}
+          className={`mt-5 h-12 w-full rounded-2xl text-sm font-semibold text-white ${
+            isComplete && !isSubmitting ? "bg-[#127e6d] hover:bg-[#0f6e5f]" : "bg-slate-300"
+          }`}
+        >
+          {isSubmitting ? "Verifying..." : "Verify & Continue"}
+        </button>
 
         {message ? <p className="mt-3 text-xs font-medium text-emerald-700">{message}</p> : null}
         {error ? <p className="mt-1 text-xs font-medium text-rose-600">{error}</p> : null}
-        <p className="mt-2 inline-flex rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
-          {mode === "firebase" ? "Firebase OTP" : IS_PRODUCTION_READY_MODE ? "Firebase OTP Required" : "Demo OTP"}
-        </p>
+
         {IS_PRODUCTION_READY_MODE && firebaseEnabled && !pendingConfirmation ? (
-          <p className="mt-1 text-xs font-medium text-rose-600">OTP session expired. Please request a new OTP.</p>
+          <p className="mt-2 text-xs font-medium text-rose-600">OTP session expired. Please request a new OTP.</p>
         ) : null}
         {mode === "firebase" ? <div id="otp-recaptcha-container" className="pt-1" /> : null}
 
-        <p className="mt-5 inline-flex items-center gap-2 text-xs text-slate-500">
-          <ShieldCheck size={14} className="text-emerald-600" />
-          Secure verification powered by Firebase OTP.
-        </p>
+        <div className="mt-5 grid grid-cols-3 gap-2 rounded-2xl border border-[#d8ebe3] bg-[#f7fcfa] p-3 text-[11px] font-medium text-[#3d5e53]">
+          <p className="inline-flex items-center gap-1">
+            <ShieldCheck size={13} className="text-[#1b8d7a]" />
+            Secure
+          </p>
+          <p className="inline-flex items-center gap-1">
+            <Lock size={13} className="text-[#1b8d7a]" />
+            Private
+          </p>
+          <p className="inline-flex items-center gap-1">
+            <BadgeCheck size={13} className="text-[#1b8d7a]" />
+            Trusted
+          </p>
+        </div>
       </div>
     </section>
   );
 }
-

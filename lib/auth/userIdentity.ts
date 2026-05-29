@@ -5,6 +5,7 @@ import { getUserAuthState, saveUserAuthSession, type UserAuthState } from "@/lib
 
 type UserProfileResponse = {
   user?: {
+    phoneNumber?: unknown;
     phone?: unknown;
   } | null;
 };
@@ -77,8 +78,8 @@ export async function fetchAuthenticatedUserProfilePhone() {
   const authState = getUserAuthState();
   if (!authState.loggedIn) return null;
 
-  const result = await apiRequest<UserProfileResponse>("/api/users");
-  const backendPhone = normalizeUserPhone(result.data?.user?.phone);
+  const result = await apiRequest<UserProfileResponse>("/api/users/me");
+  const backendPhone = normalizeUserPhone(result.data?.user?.phoneNumber ?? result.data?.user?.phone);
   if (backendPhone) {
     saveUserAuthSession({ phone: backendPhone });
   }

@@ -1,6 +1,7 @@
-﻿"use client";
+"use client";
 
-import { ShieldCheck } from "lucide-react";
+import { BadgeCheck, Lock, ShieldCheck } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
@@ -12,11 +13,22 @@ import {
   setAuthMode,
   setupRecaptcha,
 } from "@/lib/auth/firebasePhoneAuth";
+import {
+  OTP_RESEND_AVAILABLE_AT_KEY,
+  resolvePostAuthDestination,
+  sanitizeReturnUrl,
+  setPendingUserPhone,
+  setStoredPostLoginRedirect,
+} from "@/lib/auth/onboarding";
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { restoreUserAuthSessionFromFirebase } from "@/lib/auth/userAuth";
 
-const POST_LOGIN_REDIRECT_KEY = "yopartner_post_login_redirect";
-const PENDING_USER_PHONE_KEY = "yopartner_pending_user_phone";
+const OTP_RESEND_SECONDS = 28;
+
+function getReturnUrlFromLocation() {
+  if (typeof window === "undefined") return null;
+  return sanitizeReturnUrl(new URLSearchParams(window.location.search).get("returnUrl"));
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -37,12 +49,16 @@ export default function LoginPage() {
     void (async () => {
       const restored = await restoreUserAuthSessionFromFirebase(false);
       if (!active || !restored.loggedIn) return;
-      const returnUrl =
-        typeof window !== "undefined"
-          ? new URLSearchParams(window.location.search).get("returnUrl")
-          : null;
-      router.replace(returnUrl && returnUrl.startsWith("/") ? returnUrl : "/connect-now");
+
+      const safeReturnUrl = getReturnUrlFromLocation();
+      if (safeReturnUrl) {
+        setStoredPostLoginRedirect(safeReturnUrl);
+      }
+
+      const destination = await resolvePostAuthDestination("/connect-now");
+      router.replace(destination.destination);
     })();
+
     return () => {
       active = false;
     };
@@ -64,18 +80,8 @@ export default function LoginPage() {
     }
 
     const normalized = `+91${digits}`;
-    const returnUrl =
-      typeof window !== "undefined"
-        ? new URLSearchParams(window.location.search).get("returnUrl")
-        : null;
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(PENDING_USER_PHONE_KEY, normalized);
-      if (returnUrl && returnUrl.startsWith("/")) {
-        window.localStorage.setItem(POST_LOGIN_REDIRECT_KEY, returnUrl);
-      } else {
-        window.localStorage.removeItem(POST_LOGIN_REDIRECT_KEY);
-      }
-    }
+    setPendingUserPhone(normalized);
+    setStoredPostLoginRedirect(getReturnUrlFromLocation());
 
     if (IS_PRODUCTION_READY_MODE && !firebaseEnabled) {
       setMessage("Firebase OTP is not configured. Please check Vercel environment variables.");
@@ -103,6 +109,10 @@ export default function LoginPage() {
 
       await sendOtp(normalized, verifier);
       setAuthMode("firebase");
+      if (typeof window !== "undefined") {
+        const nextResendAt = Date.now() + OTP_RESEND_SECONDS * 1000;
+        window.localStorage.setItem(OTP_RESEND_AVAILABLE_AT_KEY, String(nextResendAt));
+      }
       router.push("/otp");
     } catch (error) {
       setMessage(mapFirebaseAuthError(error));
@@ -115,20 +125,27 @@ export default function LoginPage() {
   };
 
   return (
-    <section className="flex min-h-screen items-center justify-center bg-[#f8fafc] px-4 py-10">
-      <div className="w-full max-w-[420px] rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
+    <section className="flex min-h-screen items-center justify-center bg-[#f4fbf7] px-4 py-10">
+      <div className="w-full max-w-[460px] rounded-3xl border border-[#dceee6] bg-[#fffefb] p-6 shadow-[0_20px_65px_-40px_rgba(0,0,0,0.35)] sm:p-8">
         <div className="text-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/images/logo.png" alt="YoPartner" className="mx-auto h-auto max-h-11 w-auto object-contain" />
-          <h1 className="mt-4 text-2xl font-semibold text-slate-900">Welcome to YoPartner</h1>
-          <p className="mt-1 text-sm text-slate-600">Sign in securely to continue.</p>
+          <div className="mt-5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#267f71]">
+            <span className="rounded-full bg-[#d9f2ea] px-2 py-1">Step 1</span>
+            <div className="h-1 flex-1 rounded-full bg-[#e4f4ee]">
+              <div className="h-1 w-1/3 rounded-full bg-[#1d8a76]" />
+            </div>
+            <span>3</span>
+          </div>
+          <h1 className="mt-4 text-3xl font-semibold text-[#16382f]">Welcome to YoPartner</h1>
+          <p className="mt-2 text-sm text-[#5b7269]">Enter your number to receive a secure verification code.</p>
         </div>
 
-        <div className="mt-6 space-y-4">
+        <div className="mt-7 space-y-4">
           <label className="block">
-            <p className="mb-1.5 text-sm font-medium text-slate-700">Phone Number</p>
-            <div className="flex h-11 overflow-hidden rounded-xl border border-slate-200 bg-white">
-              <span className="inline-flex items-center border-r border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-slate-700">
+            <p className="mb-1.5 text-sm font-medium text-[#305247]">Phone Number</p>
+            <div className="flex h-12 overflow-hidden rounded-2xl border border-[#d2e7de] bg-[#f8fcfa]">
+              <span className="inline-flex items-center border-r border-[#d2e7de] bg-[#eef8f4] px-3 text-sm font-semibold text-[#2d6758]">
                 +91
               </span>
               <input
@@ -136,12 +153,12 @@ export default function LoginPage() {
                 value={phone}
                 onChange={(event) => setPhone(event.target.value.replace(/[^0-9]/g, "").slice(0, 10))}
                 placeholder="Enter mobile number"
-                className="w-full px-3 text-sm text-slate-800 outline-none"
+                className="w-full bg-transparent px-3 text-sm text-slate-800 outline-none placeholder:text-slate-400"
               />
             </div>
           </label>
 
-          <label className="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+          <label className="flex items-start gap-2 rounded-2xl border border-[#d8ebe3] bg-[#f4faf7] px-3 py-3">
             <input
               type="checkbox"
               checked={accepted}
@@ -153,19 +170,21 @@ export default function LoginPage() {
               }}
               className="mt-0.5"
             />
-            <span className="text-xs text-slate-700">I accept the Terms &amp; Conditions and Privacy Policy.</span>
+            <span className="text-xs text-[#46665b]">
+              I agree to the Terms of Use and Privacy Policy for secure account access.
+            </span>
           </label>
 
           <button
             type="button"
             onClick={handleContinue}
             disabled={isSubmitting}
-            className="h-11 w-full rounded-xl bg-[#2563eb] text-sm font-semibold text-white transition hover:bg-[#1d4ed8] disabled:cursor-not-allowed disabled:bg-slate-400"
+            className="h-12 w-full rounded-2xl bg-[#127e6d] text-sm font-semibold text-white transition hover:bg-[#0f6e5f] disabled:cursor-not-allowed disabled:bg-slate-400"
           >
-            {isSubmitting ? "Sending OTP..." : "Continue"}
+            {isSubmitting ? "Sending Verification Code..." : "Send Verification Code"}
           </button>
 
-          <p className="text-xs text-slate-500">Your number is used only for account verification.</p>
+          <p className="text-xs text-[#587568]">We only use your number for OTP authentication and account security.</p>
 
           {message ? <p className="text-xs font-medium text-rose-600">{message}</p> : null}
           {showDebugDetails && debugError ? (
@@ -187,7 +206,7 @@ export default function LoginPage() {
 
           {firebaseEnabled ? (
             <>
-              <p className="text-xs text-slate-500">Complete the verification to receive OTP.</p>
+              <p className="text-xs text-[#587568]">Complete verification to receive OTP.</p>
               <div id="user-recaptcha-container" className="pt-1" />
             </>
           ) : null}
@@ -198,13 +217,28 @@ export default function LoginPage() {
             </p>
           ) : null}
 
-          <p className="inline-flex items-center gap-2 text-xs text-slate-500">
-            <ShieldCheck size={14} className="text-emerald-600" />
-            Secure login powered by Firebase OTP.
-          </p>
+          <div className="grid grid-cols-3 gap-2 rounded-2xl border border-[#d8ebe3] bg-[#f7fcfa] p-3 text-[11px] font-medium text-[#3d5e53]">
+            <p className="inline-flex items-center gap-1">
+              <ShieldCheck size={13} className="text-[#1b8d7a]" />
+              Secure
+            </p>
+            <p className="inline-flex items-center gap-1">
+              <Lock size={13} className="text-[#1b8d7a]" />
+              Private
+            </p>
+            <p className="inline-flex items-center gap-1">
+              <BadgeCheck size={13} className="text-[#1b8d7a]" />
+              Trusted
+            </p>
+          </div>
+
+          <div className="flex items-center justify-center gap-4 pt-1 text-xs text-[#4b6a5f]">
+            <Link href="/privacy" className="hover:text-[#127e6d]">Privacy Policy</Link>
+            <Link href="/terms" className="hover:text-[#127e6d]">Terms of Use</Link>
+            <Link href="/support" className="hover:text-[#127e6d]">Help Center</Link>
+          </div>
         </div>
       </div>
     </section>
   );
 }
-

@@ -52,7 +52,8 @@ export function AppHeader() {
     pathname.startsWith("/chat") ||
     pathname.startsWith("/call") ||
     pathname.startsWith("/login") ||
-    pathname.startsWith("/otp")
+    pathname.startsWith("/otp") ||
+    pathname.startsWith("/onboarding")
   ) {
     return null;
   }
