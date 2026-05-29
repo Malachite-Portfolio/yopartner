@@ -4,6 +4,7 @@ import { ArrowLeft, CheckCheck, CirclePlus, EllipsisVertical, Gift, Phone, SendH
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { getGiftEffectConfig } from "@/lib/chat/giftEffects";
+import { getCatalogGiftByKey } from "@/lib/chat/giftCatalog";
 import type { CompanionRouteProfile } from "@/lib/companionRoutes";
 
 export type ChatScreenMessage = {
@@ -13,7 +14,7 @@ export type ChatScreenMessage = {
   timestamp: string;
   messageType?: "TEXT" | "GIFT";
   gift?: {
-    giftKey: "rose" | "coffee" | "star" | "heart" | "crown" | "diamond";
+    giftKey: string;
     giftName: string;
     giftEmoji: string;
     amount: number;
@@ -54,8 +55,12 @@ function getInitials(name: string) {
     .toUpperCase();
 }
 
+function resolveGiftEffectKey(giftKey: string) {
+  return getCatalogGiftByKey(giftKey)?.soundType ?? "diamond";
+}
+
 function getGiftBubbleClass(giftKey: NonNullable<ChatScreenMessage["gift"]>["giftKey"], own: boolean) {
-  const tier = getGiftEffectConfig(giftKey).tier;
+  const tier = getGiftEffectConfig(resolveGiftEffectKey(giftKey)).tier;
   if (tier === "premium") {
     return own
       ? "rounded-br-md border border-amber-300/80 bg-gradient-to-br from-amber-100 via-yellow-50 to-orange-100 text-amber-950 shadow-[0_0_24px_rgba(245,158,11,0.35)]"
@@ -217,7 +222,7 @@ export function ChatScreen({
             const own = message.sender === "self";
             const gift = message.messageType === "GIFT" ? message.gift : null;
             const isGift = Boolean(gift);
-            const giftTier = gift ? getGiftEffectConfig(gift.giftKey).tier : null;
+            const giftTier = gift ? getGiftEffectConfig(resolveGiftEffectKey(gift.giftKey)).tier : null;
             const isPremiumGift = giftTier === "premium";
 
             return (

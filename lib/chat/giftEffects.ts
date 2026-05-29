@@ -1,9 +1,9 @@
-import type { GiftKey } from "@/lib/api/sessions";
+export type GiftEffectKey = "rose" | "coffee" | "star" | "heart" | "crown" | "diamond";
 
 export type GiftTier = "low" | "mid" | "premium";
 
 export type GiftEffectConfig = {
-  key: GiftKey;
+  key: GiftEffectKey;
   name: string;
   emoji: string;
   tier: GiftTier;
@@ -17,7 +17,7 @@ export type GiftEffectConfig = {
   soundVolume: number;
 };
 
-export const GIFT_EFFECTS: Record<GiftKey, GiftEffectConfig> = {
+export const GIFT_EFFECTS: Record<GiftEffectKey, GiftEffectConfig> = {
   rose: {
     key: "rose",
     name: "Rose",
@@ -115,11 +115,11 @@ export type GiftBurstParticle = {
   scale: number;
 };
 
-export function getGiftEffectConfig(giftKey: GiftKey): GiftEffectConfig {
+export function getGiftEffectConfig(giftKey: GiftEffectKey): GiftEffectConfig {
   return GIFT_EFFECTS[giftKey];
 }
 
-function hashGiftKey(giftKey: GiftKey) {
+function hashGiftKey(giftKey: GiftEffectKey) {
   return [...giftKey].reduce((total, char) => total + char.charCodeAt(0), 0);
 }
 
@@ -128,7 +128,7 @@ function pseudoRandom(seed: number) {
   return value - Math.floor(value);
 }
 
-export function buildGiftBurstParticles(giftKey: GiftKey): GiftBurstParticle[] {
+export function buildGiftBurstParticles(giftKey: GiftEffectKey): GiftBurstParticle[] {
   const config = getGiftEffectConfig(giftKey);
   const count = config.particleCount;
   const keyHash = hashGiftKey(giftKey);
@@ -220,7 +220,7 @@ function schedulePop(context: AudioContext, master: GainNode, now: number, start
   });
 }
 
-export async function playGiftSound(giftKey: GiftKey, volume = 0.08) {
+export async function playGiftSound(giftKey: GiftEffectKey, volume = 0.08) {
   const context = getAudioContext();
   if (!context) return;
 

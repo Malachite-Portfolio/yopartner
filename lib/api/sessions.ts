@@ -59,7 +59,7 @@ export type SessionMessageRecord = {
   text?: string;
   body: string;
   gift?: {
-    giftKey: "rose" | "coffee" | "star" | "heart" | "crown" | "diamond";
+    giftKey: string;
     giftName: string;
     giftEmoji: string;
     amount: number;
@@ -73,7 +73,7 @@ export type SessionMessageRecord = {
   };
 };
 
-export type GiftKey = "rose" | "coffee" | "star" | "heart" | "crown" | "diamond";
+export type GiftKey = string;
 
 export async function createSession(payload: {
   companionId: string;
