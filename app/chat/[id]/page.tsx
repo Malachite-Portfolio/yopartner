@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ChatScreen, type ChatScreenMessage } from "@/components/chat/ChatScreen";
-import { GiftBurstOverlay, type GiftBurstEffect } from "@/components/chat/GiftBurstOverlay";
+import { GiftOverlay, type GiftOverlayEffect } from "@/components/chat/GiftOverlay";
+import { GiftPlayer } from "@/components/chat/GiftPlayer";
 import { EndSessionConfirmModal } from "@/components/session/EndSessionConfirmModal";
 import { useSessionExitGuard } from "@/hooks/useSessionExitGuard";
 import {
@@ -23,12 +24,13 @@ import {
   type CompanionRouteProfile,
 } from "@/lib/companionRoutes";
 import { requestAudioPermission, requestVideoPermission } from "@/lib/agora";
-import { getGiftEffectConfig, playGiftSound } from "@/lib/chat/giftEffects";
+import { playGiftSound } from "@/lib/chat/giftSound";
 import {
   CHAT_GIFT_CATALOG,
   CHAT_GIFT_GROUPS,
   getCatalogGiftByKey,
   getCatalogGiftsByTier,
+  getGiftSvgaPath,
   type ChatGiftCatalogItem,
 } from "@/lib/chat/giftCatalog";
 import { isActiveSessionStatus, isTerminalSessionStatus } from "@/lib/sessionStatus";
@@ -113,8 +115,8 @@ export default function ChatPage() {
   const [selectedGiftId, setSelectedGiftId] = useState(() => CHAT_GIFT_CATALOG[0]?.id ?? "");
   const [giftError, setGiftError] = useState("");
   const [isSendingGift, setIsSendingGift] = useState(false);
-  const [activeGiftEffect, setActiveGiftEffect] = useState<GiftBurstEffect | null>(null);
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const [activeGiftEffect, setActiveGiftEffect] = useState<GiftOverlayEffect | null>(null);
+  const [selectedGiftPreviewFailed, setSelectedGiftPreviewFailed] = useState(false);
   const reviewRedirectUrlRef = useRef<string | null>(null);
   const seenGiftMessageIdsRef = useRef<Set<string>>(new Set());
   const hasHydratedGiftFeedRef = useRef(false);
@@ -136,23 +138,15 @@ export default function ChatPage() {
       catalogGift?: ChatGiftCatalogItem | null,
     ) => {
       const resolvedGift = catalogGift ?? getCatalogGiftByKey(gift.giftKey);
-      const soundGiftKey = resolvedGift?.soundType ?? "diamond";
-      const config = getGiftEffectConfig(soundGiftKey);
-      await playGiftSound(soundGiftKey, isMine ? 0.11 : 0.09);
+      if (!resolvedGift) return;
+      await playGiftSound(resolvedGift.sound, isMine ? 0.11 : 0.09);
       setActiveGiftEffect({
-        id: `${resolvedGift?.id ?? gift.giftKey}-${Date.now()}`,
-        giftKey: soundGiftKey,
-        giftEmoji: config.emoji,
-        svgaFile: resolvedGift?.svgaFile,
-        giftName: resolvedGift?.name ?? gift.giftName,
-        amount: resolvedGift?.price ?? gift.amount,
-        premium: resolvedGift?.premium ?? config.tier === "premium",
+        id: `${resolvedGift.id}-${Date.now()}`,
+        gift: resolvedGift,
         direction: isMine ? "sent" : "received",
-        reducedMotion: prefersReducedMotion,
-        durationMs: config.sceneDurationMs,
       });
     },
-    [prefersReducedMotion],
+    [],
   );
 
   const refreshMessages = useCallback(async (sessionId: string) => {
@@ -305,23 +299,6 @@ export default function ChatPage() {
     }, 1000);
     return () => window.clearInterval(timer);
   }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
-    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const applyPreference = () => setPrefersReducedMotion(mediaQuery.matches);
-    applyPreference();
-    mediaQuery.addEventListener("change", applyPreference);
-    return () => mediaQuery.removeEventListener("change", applyPreference);
-  }, []);
-
-  useEffect(() => {
-    if (!activeGiftEffect) return;
-    const timer = window.setTimeout(() => {
-      setActiveGiftEffect(null);
-    }, activeGiftEffect.durationMs ?? 2200);
-    return () => window.clearTimeout(timer);
-  }, [activeGiftEffect]);
 
   useEffect(() => {
     seenGiftMessageIdsRef.current = new Set();
@@ -670,12 +647,13 @@ export default function ChatPage() {
         showGiftAction
         onGiftClick={() => {
           setGiftError("");
+          setSelectedGiftPreviewFailed(false);
           void refreshWalletBalance();
           setIsGiftModalOpen(true);
         }}
         giftActionDisabled={isSendingGift}
       />
-      <GiftBurstOverlay effect={activeGiftEffect} />
+      <GiftOverlay effect={activeGiftEffect} onClose={() => setActiveGiftEffect(null)} />
       {isGiftModalOpen ? (
         <div className="absolute inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
           <div className="w-full max-w-md rounded-2xl border border-amber-200 bg-white p-4 shadow-xl">
@@ -684,6 +662,33 @@ export default function ChatPage() {
             <p className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700">
               Wallet Balance: {"\u20B9"}{walletBalance}
             </p>
+            {selectedGift ? (
+              <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-2">
+                <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-600">Selected gift preview</p>
+                <div className="flex items-center gap-3">
+                  <div className="h-20 w-20 overflow-hidden rounded-lg border border-slate-200 bg-white">
+                    {!selectedGiftPreviewFailed ? (
+                      <GiftPlayer
+                        src={getGiftSvgaPath(selectedGift)}
+                        loop={0}
+                        className="h-full w-full"
+                        onError={() => {
+                          setSelectedGiftPreviewFailed(true);
+                        }}
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center px-1 text-center text-[10px] font-medium text-slate-500">
+                        Preview unavailable
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-slate-900">{selectedGift.name}</p>
+                    <p className="text-xs text-slate-500">{"\u20B9"}{selectedGift.price}</p>
+                  </div>
+                </div>
+              </div>
+            ) : null}
             <div className="mt-3 max-h-[52vh] space-y-3 overflow-y-auto pr-1">
               {CHAT_GIFT_GROUPS.map((group) => {
                 const gifts = getCatalogGiftsByTier(group.tier);
@@ -697,14 +702,16 @@ export default function ChatPage() {
                     <div className="grid grid-cols-3 gap-2">
                       {gifts.map((gift) => {
                         const selected = gift.id === selectedGift?.id;
-                        const config = getGiftEffectConfig(gift.soundType);
                         const isPremium = gift.tier !== "popular";
                         const isLegendary = gift.tier === "legendary";
                         return (
                           <button
                             key={gift.id}
                             type="button"
-                            onClick={() => setSelectedGiftId(gift.id)}
+                            onClick={() => {
+                              setSelectedGiftPreviewFailed(false);
+                              setSelectedGiftId(gift.id);
+                            }}
                             className={`relative rounded-xl border px-2 py-2 text-center transition ${
                               isLegendary
                                 ? selected
@@ -721,10 +728,12 @@ export default function ChatPage() {
                           >
                             {isPremium ? (
                               <span className="absolute right-1 top-1 rounded-full bg-slate-900 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] text-amber-200">
-                                {gift.tier}
+                                Premium
                               </span>
                             ) : null}
-                            <p className={`mx-auto ${gift.tier === "popular" ? "text-lg" : "text-2xl"}`}>{config.emoji}</p>
+                            <div className="mx-auto mb-1 flex h-12 w-12 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-[10px] font-semibold text-slate-500">
+                              SVGA
+                            </div>
                             <p className="line-clamp-1 text-xs font-semibold text-slate-800">{gift.name}</p>
                             <p className="text-[11px] text-slate-500">{"\u20B9"}{gift.price}</p>
                           </button>

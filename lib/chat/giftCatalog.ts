@@ -1,4 +1,4 @@
-import type { GiftEffectKey } from "@/lib/chat/giftEffects";
+import type { GiftSoundType } from "@/lib/chat/giftSound";
 
 export type GiftCatalogTier = "popular" | "premium" | "luxury" | "legendary";
 
@@ -9,8 +9,8 @@ export type ChatGiftCatalogItem = {
   price: number;
   tier: GiftCatalogTier;
   originalFileName: string;
-  svgaFile: string;
-  soundType: GiftEffectKey;
+  svga: string;
+  sound: GiftSoundType;
   premium: boolean;
 };
 
@@ -22,8 +22,8 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
     "price": 10,
     "tier": "popular",
     "originalFileName": "101.svga",
-    "svgaFile": "/gifts/svga/gift-001.svga",
-    "soundType": "rose",
+    "svga": "/gifts/svga/gift-001.svga",
+    "sound": "rose",
     "premium": false
   },
   {
@@ -33,8 +33,8 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
     "price": 25,
     "tier": "popular",
     "originalFileName": "104.svga",
-    "svgaFile": "/gifts/svga/gift-002.svga",
-    "soundType": "coffee",
+    "svga": "/gifts/svga/gift-002.svga",
+    "sound": "coffee",
     "premium": false
   },
   {
@@ -44,8 +44,8 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
     "price": 50,
     "tier": "popular",
     "originalFileName": "108.svga",
-    "svgaFile": "/gifts/svga/gift-003.svga",
-    "soundType": "star",
+    "svga": "/gifts/svga/gift-003.svga",
+    "sound": "star",
     "premium": false
   },
   {
@@ -55,8 +55,8 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
     "price": 100,
     "tier": "popular",
     "originalFileName": "114.svga",
-    "svgaFile": "/gifts/svga/gift-004.svga",
-    "soundType": "heart",
+    "svga": "/gifts/svga/gift-004.svga",
+    "sound": "heart",
     "premium": false
   },
   {
@@ -66,8 +66,8 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
     "price": 150,
     "tier": "popular",
     "originalFileName": "117.svga",
-    "svgaFile": "/gifts/svga/gift-005.svga",
-    "soundType": "rose",
+    "svga": "/gifts/svga/gift-005.svga",
+    "sound": "rose",
     "premium": false
   },
   {
@@ -77,8 +77,8 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
     "price": 250,
     "tier": "popular",
     "originalFileName": "249.svga",
-    "svgaFile": "/gifts/svga/gift-006.svga",
-    "soundType": "coffee",
+    "svga": "/gifts/svga/gift-006.svga",
+    "sound": "coffee",
     "premium": false
   },
   {
@@ -88,8 +88,8 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
     "price": 10,
     "tier": "popular",
     "originalFileName": "250.svga",
-    "svgaFile": "/gifts/svga/gift-007.svga",
-    "soundType": "star",
+    "svga": "/gifts/svga/gift-007.svga",
+    "sound": "star",
     "premium": false
   },
   {
@@ -99,8 +99,8 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
     "price": 25,
     "tier": "popular",
     "originalFileName": "251.svga",
-    "svgaFile": "/gifts/svga/gift-008.svga",
-    "soundType": "heart",
+    "svga": "/gifts/svga/gift-008.svga",
+    "sound": "heart",
     "premium": false
   },
   {
@@ -110,8 +110,8 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
     "price": 50,
     "tier": "popular",
     "originalFileName": "252.svga",
-    "svgaFile": "/gifts/svga/gift-009.svga",
-    "soundType": "rose",
+    "svga": "/gifts/svga/gift-009.svga",
+    "sound": "rose",
     "premium": false
   },
   {
@@ -121,8 +121,8 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
     "price": 100,
     "tier": "popular",
     "originalFileName": "253.svga",
-    "svgaFile": "/gifts/svga/gift-010.svga",
-    "soundType": "coffee",
+    "svga": "/gifts/svga/gift-010.svga",
+    "sound": "coffee",
     "premium": false
   },
   {
@@ -132,8 +132,8 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
     "price": 150,
     "tier": "popular",
     "originalFileName": "254.svga",
-    "svgaFile": "/gifts/svga/gift-011.svga",
-    "soundType": "star",
+    "svga": "/gifts/svga/gift-011.svga",
+    "sound": "star",
     "premium": false
   },
   {
@@ -143,8 +143,8 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
     "price": 250,
     "tier": "popular",
     "originalFileName": "255.svga",
-    "svgaFile": "/gifts/svga/gift-012.svga",
-    "soundType": "heart",
+    "svga": "/gifts/svga/gift-012.svga",
+    "sound": "heart",
     "premium": false
   },
   {
@@ -154,8 +154,8 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
     "price": 10,
     "tier": "popular",
     "originalFileName": "256.svga",
-    "svgaFile": "/gifts/svga/gift-013.svga",
-    "soundType": "rose",
+    "svga": "/gifts/svga/gift-013.svga",
+    "sound": "rose",
     "premium": false
   },
   {
@@ -165,8 +165,8 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
     "price": 25,
     "tier": "popular",
     "originalFileName": "257.svga",
-    "svgaFile": "/gifts/svga/gift-014.svga",
-    "soundType": "coffee",
+    "svga": "/gifts/svga/gift-014.svga",
+    "sound": "coffee",
     "premium": false
   },
   {
@@ -176,8 +176,8 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
     "price": 50,
     "tier": "popular",
     "originalFileName": "258.svga",
-    "svgaFile": "/gifts/svga/gift-015.svga",
-    "soundType": "star",
+    "svga": "/gifts/svga/gift-015.svga",
+    "sound": "star",
     "premium": false
   },
   {
@@ -187,8 +187,8 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
     "price": 500,
     "tier": "premium",
     "originalFileName": "259.svga",
-    "svgaFile": "/gifts/svga/gift-016.svga",
-    "soundType": "crown",
+    "svga": "/gifts/svga/gift-016.svga",
+    "sound": "crown",
     "premium": true
   },
   {
@@ -198,8 +198,8 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
     "price": 1000,
     "tier": "premium",
     "originalFileName": "260.svga",
-    "svgaFile": "/gifts/svga/gift-017.svga",
-    "soundType": "diamond",
+    "svga": "/gifts/svga/gift-017.svga",
+    "sound": "diamond",
     "premium": true
   },
   {
@@ -209,8 +209,8 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
     "price": 500,
     "tier": "premium",
     "originalFileName": "6c2ec2ec1c9f4e079b5bfee5f96b7b3c.svga",
-    "svgaFile": "/gifts/svga/gift-018.svga",
-    "soundType": "crown",
+    "svga": "/gifts/svga/gift-018.svga",
+    "sound": "crown",
     "premium": true
   },
   {
@@ -220,8 +220,8 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
     "price": 1000,
     "tier": "premium",
     "originalFileName": "73.svga",
-    "svgaFile": "/gifts/svga/gift-019.svga",
-    "soundType": "diamond",
+    "svga": "/gifts/svga/gift-019.svga",
+    "sound": "diamond",
     "premium": true
   },
   {
@@ -231,8 +231,8 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
     "price": 500,
     "tier": "premium",
     "originalFileName": "74.svga",
-    "svgaFile": "/gifts/svga/gift-020.svga",
-    "soundType": "crown",
+    "svga": "/gifts/svga/gift-020.svga",
+    "sound": "crown",
     "premium": true
   },
   {
@@ -242,8 +242,8 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
     "price": 1000,
     "tier": "premium",
     "originalFileName": "75.svga",
-    "svgaFile": "/gifts/svga/gift-021.svga",
-    "soundType": "diamond",
+    "svga": "/gifts/svga/gift-021.svga",
+    "sound": "diamond",
     "premium": true
   },
   {
@@ -253,8 +253,8 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
     "price": 500,
     "tier": "premium",
     "originalFileName": "7c7382698eb64d2794c199f52224688b (2).svga",
-    "svgaFile": "/gifts/svga/gift-022.svga",
-    "soundType": "crown",
+    "svga": "/gifts/svga/gift-022.svga",
+    "sound": "crown",
     "premium": true
   },
   {
@@ -264,8 +264,8 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
     "price": 1000,
     "tier": "premium",
     "originalFileName": "80.svga",
-    "svgaFile": "/gifts/svga/gift-023.svga",
-    "soundType": "diamond",
+    "svga": "/gifts/svga/gift-023.svga",
+    "sound": "diamond",
     "premium": true
   },
   {
@@ -275,8 +275,8 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
     "price": 500,
     "tier": "premium",
     "originalFileName": "84.svga",
-    "svgaFile": "/gifts/svga/gift-024.svga",
-    "soundType": "crown",
+    "svga": "/gifts/svga/gift-024.svga",
+    "sound": "crown",
     "premium": true
   },
   {
@@ -286,8 +286,8 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
     "price": 1000,
     "tier": "premium",
     "originalFileName": "93.svga",
-    "svgaFile": "/gifts/svga/gift-025.svga",
-    "soundType": "diamond",
+    "svga": "/gifts/svga/gift-025.svga",
+    "sound": "diamond_rain",
     "premium": true
   },
   {
@@ -297,8 +297,8 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
     "price": 2000,
     "tier": "luxury",
     "originalFileName": "95.svga",
-    "svgaFile": "/gifts/svga/gift-026.svga",
-    "soundType": "diamond",
+    "svga": "/gifts/svga/gift-026.svga",
+    "sound": "diamond",
     "premium": true
   },
   {
@@ -308,8 +308,8 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
     "price": 5000,
     "tier": "luxury",
     "originalFileName": "Ä¦ï¿½ï¿½ï¿½ï¿½05.svga",
-    "svgaFile": "/gifts/svga/gift-027.svga",
-    "soundType": "crown",
+    "svga": "/gifts/svga/gift-027.svga",
+    "sound": "crown",
     "premium": true
   },
   {
@@ -319,8 +319,8 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
     "price": 2000,
     "tier": "luxury",
     "originalFileName": "Ã°â_¬â__Ã_.svga",
-    "svgaFile": "/gifts/svga/gift-028.svga",
-    "soundType": "diamond",
+    "svga": "/gifts/svga/gift-028.svga",
+    "sound": "diamond",
     "premium": true
   },
   {
@@ -330,8 +330,8 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
     "price": 5000,
     "tier": "luxury",
     "originalFileName": "é__ç¥¨æ_ª.svga",
-    "svgaFile": "/gifts/svga/gift-029.svga",
-    "soundType": "crown",
+    "svga": "/gifts/svga/gift-029.svga",
+    "sound": "crown",
     "premium": true
   },
   {
@@ -341,8 +341,8 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
     "price": 2000,
     "tier": "luxury",
     "originalFileName": "ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½05 (1).svga",
-    "svgaFile": "/gifts/svga/gift-030.svga",
-    "soundType": "diamond",
+    "svga": "/gifts/svga/gift-030.svga",
+    "sound": "diamond",
     "premium": true
   },
   {
@@ -352,8 +352,8 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
     "price": 5000,
     "tier": "luxury",
     "originalFileName": "ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½.svga",
-    "svgaFile": "/gifts/svga/gift-031.svga",
-    "soundType": "crown",
+    "svga": "/gifts/svga/gift-031.svga",
+    "sound": "crown",
     "premium": true
   },
   {
@@ -363,8 +363,8 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
     "price": 2000,
     "tier": "luxury",
     "originalFileName": "ï¿½ï¿½ï¿½Õ¿ï¿½ï¿½ï¿½05.svga",
-    "svgaFile": "/gifts/svga/gift-032.svga",
-    "soundType": "diamond",
+    "svga": "/gifts/svga/gift-032.svga",
+    "sound": "diamond",
     "premium": true
   },
   {
@@ -374,8 +374,8 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
     "price": 10000,
     "tier": "legendary",
     "originalFileName": "kiss gift_56.svga",
-    "svgaFile": "/gifts/svga/gift-033.svga",
-    "soundType": "diamond",
+    "svga": "/gifts/svga/gift-033.svga",
+    "sound": "diamond",
     "premium": true
   },
   {
@@ -385,8 +385,8 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
     "price": 12000,
     "tier": "legendary",
     "originalFileName": "Love ring.svga",
-    "svgaFile": "/gifts/svga/gift-034.svga",
-    "soundType": "diamond",
+    "svga": "/gifts/svga/gift-034.svga",
+    "sound": "diamond",
     "premium": true
   },
   {
@@ -396,8 +396,8 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
     "price": 15000,
     "tier": "legendary",
     "originalFileName": "Luxury purse.svga",
-    "svgaFile": "/gifts/svga/gift-035.svga",
-    "soundType": "diamond",
+    "svga": "/gifts/svga/gift-035.svga",
+    "sound": "diamond",
     "premium": true
   },
   {
@@ -407,8 +407,8 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
     "price": 18000,
     "tier": "legendary",
     "originalFileName": "Luxury watch.svga",
-    "svgaFile": "/gifts/svga/gift-036.svga",
-    "soundType": "diamond",
+    "svga": "/gifts/svga/gift-036.svga",
+    "sound": "luxury_watch",
     "premium": true
   },
   {
@@ -418,8 +418,8 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
     "price": 20000,
     "tier": "legendary",
     "originalFileName": "marry.svga",
-    "svgaFile": "/gifts/svga/gift-037.svga",
-    "soundType": "diamond",
+    "svga": "/gifts/svga/gift-037.svga",
+    "sound": "marry",
     "premium": true
   }
 ];
@@ -430,6 +430,8 @@ export const CHAT_GIFT_GROUPS: { tier: GiftCatalogTier; label: string }[] = [
   { tier: "luxury", label: "Luxury" },
   { tier: "legendary", label: "Legendary" },
 ];
+
+export const PREMIUM_SPOTLIGHT_GIFT_KEYS = new Set(["gift-025", "gift-036", "gift-037"]);
 
 export function getCatalogGiftById(id: string) {
   return CHAT_GIFT_CATALOG.find((gift) => gift.id === id);
@@ -442,3 +444,16 @@ export function getCatalogGiftByKey(giftKey: string) {
 export function getCatalogGiftsByTier(tier: GiftCatalogTier) {
   return CHAT_GIFT_CATALOG.filter((gift) => gift.tier === tier);
 }
+
+export function isSpotlightPremiumGift(giftKey: string) {
+  return PREMIUM_SPOTLIGHT_GIFT_KEYS.has(giftKey);
+}
+
+export function getGiftSvgaPath(gift: Pick<ChatGiftCatalogItem, "svga" | "originalFileName">) {
+  const original = gift.originalFileName.trim();
+  if (original.length > 0) {
+    return `/gifts/svga/${encodeURIComponent(original)}`;
+  }
+  return gift.svga;
+}
+

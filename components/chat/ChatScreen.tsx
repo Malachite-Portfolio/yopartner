@@ -3,7 +3,6 @@
 import { ArrowLeft, CheckCheck, CirclePlus, EllipsisVertical, Gift, Phone, SendHorizontal, Smile, Video } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { getGiftEffectConfig } from "@/lib/chat/giftEffects";
 import { getCatalogGiftByKey } from "@/lib/chat/giftCatalog";
 import type { CompanionRouteProfile } from "@/lib/companionRoutes";
 
@@ -55,21 +54,13 @@ function getInitials(name: string) {
     .toUpperCase();
 }
 
-function resolveGiftEffectKey(giftKey: string) {
-  return getCatalogGiftByKey(giftKey)?.soundType ?? "diamond";
-}
-
 function getGiftBubbleClass(giftKey: NonNullable<ChatScreenMessage["gift"]>["giftKey"], own: boolean) {
-  const tier = getGiftEffectConfig(resolveGiftEffectKey(giftKey)).tier;
-  if (tier === "premium") {
+  const gift = getCatalogGiftByKey(giftKey);
+  const isPremium = gift?.premium ?? false;
+  if (isPremium) {
     return own
       ? "rounded-br-md border border-amber-300/80 bg-gradient-to-br from-amber-100 via-yellow-50 to-orange-100 text-amber-950 shadow-[0_0_24px_rgba(245,158,11,0.35)]"
       : "rounded-bl-md border border-sky-300/75 bg-gradient-to-br from-sky-100 via-indigo-50 to-cyan-100 text-slate-900 shadow-[0_0_24px_rgba(59,130,246,0.3)]";
-  }
-  if (tier === "mid") {
-    return own
-      ? "rounded-br-md border border-pink-200/85 bg-pink-100/90 text-pink-950 shadow-[0_0_16px_rgba(236,72,153,0.24)]"
-      : "rounded-bl-md border border-yellow-200/85 bg-yellow-50 text-amber-950 shadow-[0_0_16px_rgba(250,204,21,0.22)]";
   }
   return own
     ? "rounded-br-md border border-rose-200/85 bg-rose-50 text-rose-950"
@@ -222,8 +213,7 @@ export function ChatScreen({
             const own = message.sender === "self";
             const gift = message.messageType === "GIFT" ? message.gift : null;
             const isGift = Boolean(gift);
-            const giftTier = gift ? getGiftEffectConfig(resolveGiftEffectKey(gift.giftKey)).tier : null;
-            const isPremiumGift = giftTier === "premium";
+            const isPremiumGift = gift ? Boolean(getCatalogGiftByKey(gift.giftKey)?.premium) : false;
 
             return (
               <div key={message.id} className={`flex items-end gap-2 ${own ? "justify-end" : "justify-start"}`}>
@@ -258,7 +248,7 @@ export function ChatScreen({
                         </>
                       ) : null}
                       <p className="text-[14.5px] font-semibold leading-relaxed">
-                        {own ? "You sent" : "You received"} {gift?.giftEmoji} {gift?.giftName}
+                        {own ? "You sent" : "You received"} {gift?.giftName}
                       </p>
                       <p className="mt-1 text-[12px] text-slate-700/90">Gift amount ₹{gift?.amount}</p>
                     </>

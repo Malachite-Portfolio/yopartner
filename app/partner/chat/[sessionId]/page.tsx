@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { PartnerGuard } from "@/components/partner/PartnerGuard";
-import { GiftBurstOverlay, type GiftBurstEffect } from "@/components/chat/GiftBurstOverlay";
+import { GiftOverlay, type GiftOverlayEffect } from "@/components/chat/GiftOverlay";
 import { ChatScreen, type ChatScreenMessage } from "@/components/chat/ChatScreen";
 import { EndSessionConfirmModal } from "@/components/session/EndSessionConfirmModal";
 import { useSessionExitGuard } from "@/hooks/useSessionExitGuard";
@@ -16,7 +16,7 @@ import {
   type SessionRecord,
 } from "@/lib/api/sessions";
 import { requestAudioPermission, requestVideoPermission } from "@/lib/agora";
-import { getGiftEffectConfig, playGiftSound } from "@/lib/chat/giftEffects";
+import { playGiftSound } from "@/lib/chat/giftSound";
 import { getCatalogGiftByKey } from "@/lib/chat/giftCatalog";
 import type { CompanionRouteProfile } from "@/lib/companionRoutes";
 import { isActiveSessionStatus, isTerminalSessionStatus } from "@/lib/sessionStatus";
@@ -52,8 +52,7 @@ export default function PartnerChatSessionPage() {
   const [input, setInput] = useState("");
   const [isEndingSession, setIsEndingSession] = useState(false);
   const [clockNow, setClockNow] = useState(() => Date.now());
-  const [activeGiftEffect, setActiveGiftEffect] = useState<GiftBurstEffect | null>(null);
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const [activeGiftEffect, setActiveGiftEffect] = useState<GiftOverlayEffect | null>(null);
   const lastSeenGiftMessageIdRef = useRef("");
   const hasHydratedGiftFeedRef = useRef(false);
 
@@ -107,20 +106,12 @@ export default function PartnerChatSessionPage() {
 
       lastSeenGiftMessageIdRef.current = latestGiftMessage.id;
       const catalogGift = getCatalogGiftByKey(latestGiftMessage.gift.giftKey);
-      const soundGiftKey = catalogGift?.soundType ?? "diamond";
-      const config = getGiftEffectConfig(soundGiftKey);
-      void playGiftSound(soundGiftKey, 0.08);
+      if (!catalogGift) return;
+      void playGiftSound(catalogGift.sound, 0.08);
       setActiveGiftEffect({
-        id: `${catalogGift?.id ?? latestGiftMessage.gift.giftKey}-${Date.now()}`,
-        giftKey: soundGiftKey,
-        giftEmoji: config.emoji,
-        svgaFile: catalogGift?.svgaFile,
-        giftName: catalogGift?.name ?? latestGiftMessage.gift.giftName,
-        amount: catalogGift?.price ?? latestGiftMessage.gift.amount,
-        premium: catalogGift?.premium ?? config.tier === "premium",
+        id: `${catalogGift.id}-${Date.now()}`,
+        gift: catalogGift,
         direction: "received",
-        reducedMotion: prefersReducedMotion,
-        durationMs: config.sceneDurationMs,
       });
     };
     void refresh();
@@ -128,7 +119,7 @@ export default function PartnerChatSessionPage() {
       void refresh();
     }, 2000);
     return () => window.clearInterval(timer);
-  }, [prefersReducedMotion, session?.status, sessionId]);
+  }, [session?.status, sessionId]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -136,23 +127,6 @@ export default function PartnerChatSessionPage() {
     }, 1000);
     return () => window.clearInterval(timer);
   }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
-    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const applyPreference = () => setPrefersReducedMotion(mediaQuery.matches);
-    applyPreference();
-    mediaQuery.addEventListener("change", applyPreference);
-    return () => mediaQuery.removeEventListener("change", applyPreference);
-  }, []);
-
-  useEffect(() => {
-    if (!activeGiftEffect) return;
-    const timer = window.setTimeout(() => {
-      setActiveGiftEffect(null);
-    }, activeGiftEffect.durationMs ?? 2200);
-    return () => window.clearTimeout(timer);
-  }, [activeGiftEffect]);
 
   useEffect(() => {
     hasHydratedGiftFeedRef.current = false;
@@ -323,7 +297,7 @@ export default function PartnerChatSessionPage() {
               showCallActions={false}
               sessionTimerLabel={timerLabel}
             />
-            <GiftBurstOverlay effect={activeGiftEffect} />
+            <GiftOverlay effect={activeGiftEffect} onClose={() => setActiveGiftEffect(null)} />
           </>
         )}
       </main>
