@@ -697,7 +697,7 @@ export default function ChatPage() {
                     {!selectedGiftPreviewFailed ? (
                       <GiftPlayer
                         src={selectedGift.svga}
-                        loop={0}
+                        loop={1}
                         className="h-full w-full"
                         onError={() => {
                           setSelectedGiftPreviewFailed(true);
@@ -710,7 +710,6 @@ export default function ChatPage() {
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-slate-900">{selectedGift.name}</p>
                     <p className="text-xs text-slate-500">{"\u20B9"}{selectedGift.price}</p>
                   </div>
                 </div>
@@ -774,13 +773,10 @@ export default function ChatPage() {
                               ) : (
                                 <div className="relative flex h-full w-full items-center justify-center overflow-hidden">
                                   <span className="absolute inset-0 animate-pulse bg-gradient-to-br from-slate-200 to-slate-100" />
-                                  <span className="relative px-1 text-center text-[9px] font-semibold text-slate-600">
-                                    {gift.name}
-                                  </span>
+                                  <span className="relative px-1 text-center text-[9px] font-semibold text-slate-600">Preview</span>
                                 </div>
                               )}
                             </div>
-                            <p className="line-clamp-1 text-xs font-semibold text-slate-800">{gift.name}</p>
                             <p className="text-[11px] text-slate-500">{"\u20B9"}{gift.price}</p>
                           </button>
                         );

@@ -248,7 +248,7 @@ export function ChatScreen({
                         </>
                       ) : null}
                       <p className="text-[14.5px] font-semibold leading-relaxed">
-                        {own ? "You sent" : "You received"} {gift?.giftName}
+                        {own ? "You sent a gift" : "You received a gift"}
                       </p>
                       <p className="mt-1 text-[12px] text-slate-700/90">Gift amount ₹{gift?.amount}</p>
                     </>

@@ -16,7 +16,7 @@ type GiftPlayerProps = {
 
 function normalizeLoops(loop: number | boolean) {
   if (typeof loop === "number") return Math.max(0, loop);
-  return loop ? 0 : 1;
+  return loop ? 1 : 1;
 }
 
 export function GiftPlayer({
