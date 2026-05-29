@@ -6,13 +6,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { getCurrentUserProfile, updateCurrentUserProfile } from "@/lib/api/users";
 import { consumeStoredPostLoginRedirect } from "@/lib/auth/onboarding";
 import { restoreUserAuthSessionFromFirebase } from "@/lib/auth/userAuth";
+import { uploadUserProfilePhoto } from "@/lib/firebaseUserProfileUpload";
 
 type FormState = {
   name: string;
   email: string;
   age: string;
   gender: string;
-  profileImageUrl: string;
 };
 
 const defaultForm: FormState = {
@@ -20,11 +20,9 @@ const defaultForm: FormState = {
   email: "",
   age: "25",
   gender: "",
-  profileImageUrl: "",
 };
 
 function isValidEmail(value: string) {
-  if (!value.trim()) return true;
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
 
@@ -32,11 +30,14 @@ export default function UserOnboardingProfilePage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [form, setForm] = useState<FormState>(defaultForm);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
   const [avatarFileName, setAvatarFileName] = useState<string>("");
+  const [uploadedProfileImageUrl, setUploadedProfileImageUrl] = useState<string>("");
+  const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const ageValue = useMemo(() => {
@@ -44,6 +45,29 @@ export default function UserOnboardingProfilePage() {
     if (!Number.isFinite(parsed)) return 18;
     return Math.max(18, Math.min(70, parsed));
   }, [form.age]);
+
+  const canSubmit = useMemo(() => {
+    const name = form.name.trim();
+    const email = form.email.trim();
+    const age = Number(form.age);
+    return (
+      name.length >= 2 &&
+      email.length > 0 &&
+      isValidEmail(email) &&
+      Number.isFinite(age) &&
+      age >= 18 &&
+      Boolean(uploadedProfileImageUrl) &&
+      !isUploadingAvatar
+    );
+  }, [form, uploadedProfileImageUrl, isUploadingAvatar]);
+
+  useEffect(() => {
+    return () => {
+      if (localPreviewUrl) {
+        URL.revokeObjectURL(localPreviewUrl);
+      }
+    };
+  }, [localPreviewUrl]);
 
   useEffect(() => {
     let active = true;
@@ -77,8 +101,8 @@ export default function UserOnboardingProfilePage() {
         email: existing?.email ?? "",
         age: existing?.age ? String(existing.age) : "25",
         gender: existing?.gender ?? "",
-        profileImageUrl: existing?.profileImageUrl ?? "",
       });
+      setUploadedProfileImageUrl(existing?.profileImageUrl ?? "");
       setAvatarPreviewUrl(existing?.profileImageUrl ?? null);
       setLoading(false);
     })();
@@ -88,23 +112,47 @@ export default function UserOnboardingProfilePage() {
     };
   }, [router]);
 
-  const onAvatarChange = (file: File | null) => {
+  const onAvatarChange = async (file: File | null) => {
     if (!file) return;
-    const previewUrl = URL.createObjectURL(file);
-    setAvatarPreviewUrl(previewUrl);
+
+    setError("");
+    setMessage("");
+
+    const nextPreviewUrl = URL.createObjectURL(file);
+    if (localPreviewUrl) {
+      URL.revokeObjectURL(localPreviewUrl);
+    }
+    setLocalPreviewUrl(nextPreviewUrl);
+    setAvatarPreviewUrl(nextPreviewUrl);
     setAvatarFileName(file.name);
-    setMessage("Photo selected for preview. Upload persistence will require a storage endpoint.");
+
+    setIsUploadingAvatar(true);
+
+    try {
+      const uploadResult = await uploadUserProfilePhoto(file);
+      setUploadedProfileImageUrl(uploadResult.downloadUrl);
+      setMessage("Profile photo uploaded successfully.");
+    } catch (uploadError) {
+      setUploadedProfileImageUrl("");
+      setError(uploadError instanceof Error ? uploadError.message : "Unable to upload profile photo right now.");
+    } finally {
+      setIsUploadingAvatar(false);
+    }
   };
 
   const handleSubmit = async () => {
     const trimmedName = form.name.trim();
     const trimmedEmail = form.email.trim();
     const trimmedGender = form.gender.trim();
-    const trimmedImageUrl = form.profileImageUrl.trim();
     const parsedAge = Number(form.age);
 
     if (trimmedName.length < 2) {
       setError("Full name is required.");
+      return;
+    }
+
+    if (!trimmedEmail || !isValidEmail(trimmedEmail)) {
+      setError("Please enter a valid email address.");
       return;
     }
 
@@ -113,13 +161,13 @@ export default function UserOnboardingProfilePage() {
       return;
     }
 
-    if (!isValidEmail(trimmedEmail)) {
-      setError("Enter a valid email address.");
+    if (isUploadingAvatar) {
+      setError("Please wait for profile photo upload to finish.");
       return;
     }
 
-    if (trimmedImageUrl && !/^https?:\/\//i.test(trimmedImageUrl)) {
-      setError("Profile image URL must start with http:// or https://");
+    if (!uploadedProfileImageUrl) {
+      setError("Please upload a profile photo.");
       return;
     }
 
@@ -129,10 +177,10 @@ export default function UserOnboardingProfilePage() {
 
     const result = await updateCurrentUserProfile({
       name: trimmedName,
-      email: trimmedEmail || undefined,
+      email: trimmedEmail,
       age: Math.round(parsedAge),
       gender: trimmedGender || undefined,
-      profileImageUrl: trimmedImageUrl || undefined,
+      profileImageUrl: uploadedProfileImageUrl,
     });
 
     setSaving(false);
@@ -189,10 +237,13 @@ export default function UserOnboardingProfilePage() {
               type="file"
               accept="image/*"
               className="hidden"
-              onChange={(event) => onAvatarChange(event.target.files?.[0] ?? null)}
+              onChange={(event) => {
+                void onAvatarChange(event.target.files?.[0] ?? null);
+              }}
             />
-            <p className="text-xs text-[#5b7269]">Profile photo / avatar (optional)</p>
+            <p className="text-xs text-[#5b7269]">Profile photo / avatar (required)</p>
             {avatarFileName ? <p className="text-[11px] text-[#567468]">Selected: {avatarFileName}</p> : null}
+            {isUploadingAvatar ? <p className="text-[11px] text-[#127e6d]">Uploading photo...</p> : null}
           </div>
 
           <label className="block">
@@ -206,13 +257,14 @@ export default function UserOnboardingProfilePage() {
           </label>
 
           <label className="block">
-            <p className="mb-1.5 text-sm font-medium text-[#305247]">Email (optional)</p>
+            <p className="mb-1.5 text-sm font-medium text-[#305247]">Email</p>
             <input
               type="email"
               value={form.email}
               onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
               placeholder="name@example.com"
               className="h-12 w-full rounded-2xl border border-[#d2e7de] bg-[#f8fcfa] px-3 text-sm text-slate-800 outline-none"
+              required
             />
           </label>
 
@@ -256,20 +308,6 @@ export default function UserOnboardingProfilePage() {
             </select>
           </label>
 
-          <label className="block">
-            <p className="mb-1.5 text-sm font-medium text-[#305247]">Profile image URL (optional)</p>
-            <input
-              type="url"
-              value={form.profileImageUrl}
-              onChange={(event) => setForm((current) => ({ ...current, profileImageUrl: event.target.value }))}
-              placeholder="https://example.com/avatar.jpg"
-              className="h-12 w-full rounded-2xl border border-[#d2e7de] bg-[#f8fcfa] px-3 text-sm text-slate-800 outline-none"
-            />
-            <p className="mt-1 text-[11px] text-[#5b7269]">
-              Local file selection is preview-only for now. URL persists when provided.
-            </p>
-          </label>
-
           <p className="rounded-2xl border border-[#d8ebe3] bg-[#f4faf7] px-3 py-2 text-xs text-[#4e6a60]">
             Your information is private and used to personalize your YoPartner experience.
           </p>
@@ -277,10 +315,10 @@ export default function UserOnboardingProfilePage() {
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={saving}
+            disabled={!canSubmit || saving || isUploadingAvatar}
             className="h-12 w-full rounded-2xl bg-[#127e6d] text-sm font-semibold text-white transition hover:bg-[#0f6e5f] disabled:cursor-not-allowed disabled:bg-slate-400"
           >
-            {saving ? "Saving..." : "Complete Profile"}
+            {isUploadingAvatar ? "Uploading photo..." : saving ? "Saving..." : "Complete Profile"}
           </button>
 
           {message ? <p className="text-xs font-medium text-emerald-700">{message}</p> : null}

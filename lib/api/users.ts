@@ -19,10 +19,10 @@ type UserProfileResponse = {
 
 export type UpdateUserProfileInput = {
   name: string;
-  email?: string;
+  email: string;
   age: number;
   gender?: string;
-  profileImageUrl?: string;
+  profileImageUrl: string;
 };
 
 function toText(value: unknown) {
@@ -59,7 +59,11 @@ function normalizeUserProfile(input: Partial<UserProfileRecord> | null | undefin
 export function isUserProfileComplete(profile: UserProfileRecord | null, explicit?: boolean) {
   if (typeof explicit === "boolean") return explicit;
   if (!profile) return false;
-  return Boolean(profile.name && typeof profile.age === "number" && profile.age >= 18);
+  const hasName = Boolean(profile.name && profile.name.trim().length >= 2);
+  const hasEmail = Boolean(profile.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profile.email));
+  const hasAge = typeof profile.age === "number" && profile.age >= 18;
+  const hasProfileImage = Boolean(profile.profileImageUrl && profile.profileImageUrl.startsWith("https://"));
+  return hasName && hasEmail && hasAge && hasProfileImage;
 }
 
 export async function getCurrentUserProfile() {
