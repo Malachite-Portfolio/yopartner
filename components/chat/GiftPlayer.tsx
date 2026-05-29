@@ -34,9 +34,19 @@ export function GiftPlayer({
   onError,
 }: GiftPlayerProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const playerRef = useRef<SvgAPlayer | null>(null);
   const hasCompletedRef = useRef(false);
   const hasFailedRef = useRef(false);
+  const onReadyRef = useRef(onReady);
+  const onCompleteRef = useRef(onComplete);
+  const onErrorRef = useRef(onError);
   const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    onReadyRef.current = onReady;
+    onCompleteRef.current = onComplete;
+    onErrorRef.current = onError;
+  }, [onComplete, onError, onReady]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -45,7 +55,7 @@ export function GiftPlayer({
     setLoaded(false);
     hasCompletedRef.current = false;
     hasFailedRef.current = false;
-    let player: SvgAPlayer | null = null;
+    playerRef.current = null;
     let unmounted = false;
     let loadTimeout: number | null = null;
     let playbackTimeout: number | null = null;
@@ -61,27 +71,33 @@ export function GiftPlayer({
       }
     };
 
-    const completeOnce = () => {
+    const completeOnce = (reason: "finished" | "timeout") => {
       if (unmounted || hasCompletedRef.current || hasFailedRef.current) return;
       hasCompletedRef.current = true;
       clearTimers();
-      if (player) {
-        player.stopAnimation(false);
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("[GiftPlayer] completeOnce", { src, reason });
+      }
+      if (playerRef.current) {
+        playerRef.current.stopAnimation(false);
         if (clearOnComplete) {
-          player.clear();
+          playerRef.current.clear();
         }
       }
-      onComplete?.();
+      onCompleteRef.current?.();
     };
 
     const failOnce = (message: string) => {
       if (unmounted || hasFailedRef.current || hasCompletedRef.current) return;
       hasFailedRef.current = true;
       clearTimers();
-      if (player) {
-        player.stopAnimation(false);
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("[GiftPlayer] failOnce", { src, message });
       }
-      onError?.(message);
+      if (playerRef.current) {
+        playerRef.current.stopAnimation(false);
+      }
+      onErrorRef.current?.(message);
     };
 
     const load = async () => {
@@ -108,16 +124,19 @@ export function GiftPlayer({
 
         const loops = normalizeLoops(loop);
         const parser = new svgaLib.Parser();
-        player = new svgaLib.Player(container);
+        playerRef.current = new svgaLib.Player(container);
         // svgaplayerweb expects `loops` where 0 means Infinity; use 1 for single-play.
-        player.loops = loops;
-        player.clearsAfterStop = false;
-        player.fillMode = "Forward";
+        playerRef.current.loops = loops;
+        playerRef.current.clearsAfterStop = false;
+        playerRef.current.fillMode = "Forward";
+        if (process.env.NODE_ENV !== "production") {
+          console.warn("[GiftPlayer] init player", { src, loops: playerRef.current.loops });
+        }
 
         parser.load(
           src,
           (videoItem) => {
-            if (unmounted || !player) return;
+            if (unmounted || !playerRef.current) return;
             try {
               const frameCount = Number(videoItem.frames) || 0;
               const fps = Number(videoItem.FPS) || 0;
@@ -125,16 +144,30 @@ export function GiftPlayer({
               const authorityMs = playbackTimeoutMs
                 ?? Math.max(1500, Math.min(Math.ceil(intrinsicDurationMs + 500), 8000));
 
-              player.onFinished(() => {
-                completeOnce();
+              if (process.env.NODE_ENV !== "production") {
+                console.warn("[GiftPlayer] parsed video", {
+                  src,
+                  frames: frameCount,
+                  fps,
+                  loops,
+                  intrinsicDurationMs,
+                  authorityMs,
+                });
+              }
+
+              playerRef.current.onFinished(() => {
+                if (process.env.NODE_ENV !== "production") {
+                  console.warn("[GiftPlayer] onFinished fired", { src });
+                }
+                completeOnce("finished");
               });
-              player.setVideoItem(videoItem);
-              player.startAnimation();
+              playerRef.current.setVideoItem(videoItem);
+              playerRef.current.startAnimation();
 
               clearTimers();
               playbackTimeout = window.setTimeout(() => {
                 if (process.env.NODE_ENV !== "production") {
-                  console.warn("[GiftPlayer] Playback timeout reached, forcing completion.", {
+                  console.warn("[GiftPlayer] playback timeout fired", {
                     src,
                     frameCount,
                     fps,
@@ -142,12 +175,12 @@ export function GiftPlayer({
                     authorityMs,
                   });
                 }
-                completeOnce();
+                completeOnce("timeout");
               }, authorityMs);
 
               if (!hasFailedRef.current && !hasCompletedRef.current) {
                 setLoaded(true);
-                onReady?.();
+                onReadyRef.current?.();
               }
             } catch (error) {
               const message = error instanceof Error ? error.message : "SVGA player failed to start animation.";
@@ -170,13 +203,17 @@ export function GiftPlayer({
     return () => {
       unmounted = true;
       clearTimers();
-      if (player) {
-        player.stopAnimation();
-        player.clear();
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("[GiftPlayer] cleanup", { src });
+      }
+      if (playerRef.current) {
+        playerRef.current.stopAnimation();
+        playerRef.current.clear();
+        playerRef.current = null;
       }
       container.innerHTML = "";
     };
-  }, [clearOnComplete, loop, onComplete, onError, onReady, playbackTimeoutMs, preflight, src, timeoutMs]);
+  }, [clearOnComplete, loop, playbackTimeoutMs, preflight, src, timeoutMs]);
 
   return <div ref={containerRef} className={className} style={{ opacity: loaded ? 1 : 0, transition: "opacity 160ms ease" }} aria-hidden />;
 }
