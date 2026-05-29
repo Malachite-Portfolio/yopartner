@@ -17,6 +17,7 @@ import {
 } from "@/lib/api/sessions";
 import { requestAudioPermission, requestVideoPermission } from "@/lib/agora";
 import { getGiftEffectConfig, playGiftSound } from "@/lib/chat/giftEffects";
+import { getCatalogGiftByKey } from "@/lib/chat/giftCatalog";
 import type { CompanionRouteProfile } from "@/lib/companionRoutes";
 import { isActiveSessionStatus, isTerminalSessionStatus } from "@/lib/sessionStatus";
 
@@ -105,12 +106,18 @@ export default function PartnerChatSessionPage() {
       if (!latestGiftMessage.id || latestGiftMessage.id === lastSeenGiftMessageIdRef.current) return;
 
       lastSeenGiftMessageIdRef.current = latestGiftMessage.id;
-      const config = getGiftEffectConfig(latestGiftMessage.gift.giftKey);
-      void playGiftSound(latestGiftMessage.gift.giftKey, 0.08);
+      const catalogGift = getCatalogGiftByKey(latestGiftMessage.gift.giftKey);
+      const soundGiftKey = catalogGift?.soundType ?? "diamond";
+      const config = getGiftEffectConfig(soundGiftKey);
+      void playGiftSound(soundGiftKey, 0.08);
       setActiveGiftEffect({
-        id: `${latestGiftMessage.gift.giftKey}-${Date.now()}`,
-        giftKey: latestGiftMessage.gift.giftKey,
-        giftEmoji: latestGiftMessage.gift.giftEmoji,
+        id: `${catalogGift?.id ?? latestGiftMessage.gift.giftKey}-${Date.now()}`,
+        giftKey: soundGiftKey,
+        giftEmoji: config.emoji,
+        svgaFile: catalogGift?.svgaFile,
+        giftName: catalogGift?.name ?? latestGiftMessage.gift.giftName,
+        amount: catalogGift?.price ?? latestGiftMessage.gift.amount,
+        premium: catalogGift?.premium ?? config.tier === "premium",
         direction: "received",
         reducedMotion: prefersReducedMotion,
         durationMs: config.sceneDurationMs,

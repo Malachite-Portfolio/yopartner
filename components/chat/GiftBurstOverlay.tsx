@@ -1,13 +1,17 @@
 "use client";
 
-import type { CSSProperties } from "react";
-import type { GiftKey } from "@/lib/api/sessions";
-import { buildGiftBurstParticles, getGiftEffectConfig } from "@/lib/chat/giftEffects";
+import { useState, type CSSProperties } from "react";
+import { buildGiftBurstParticles, getGiftEffectConfig, type GiftEffectKey } from "@/lib/chat/giftEffects";
+import { SVGAGiftPlayer } from "@/components/chat/SVGAGiftPlayer";
 
 export type GiftBurstEffect = {
   id: string;
-  giftKey: GiftKey;
+  giftKey: GiftEffectKey;
   giftEmoji: string;
+  svgaFile?: string;
+  giftName?: string;
+  amount?: number;
+  premium?: boolean;
   direction?: "sent" | "received";
   reducedMotion?: boolean;
   durationMs?: number;
@@ -17,7 +21,7 @@ type GiftBurstOverlayProps = {
   effect: GiftBurstEffect | null;
 };
 
-function renderGiftScene(giftKey: GiftKey, giftEmoji: string) {
+function renderGiftScene(giftKey: GiftEffectKey, giftEmoji: string) {
   switch (giftKey) {
     case "rose":
       return (
@@ -134,11 +138,13 @@ function renderGiftScene(giftKey: GiftKey, giftEmoji: string) {
 }
 
 export function GiftBurstOverlay({ effect }: GiftBurstOverlayProps) {
+  const [svgaFailedForId, setSvgaFailedForId] = useState<string | null>(null);
   if (!effect) return null;
+  const svgaFailed = svgaFailedForId === effect.id;
 
   const config = getGiftEffectConfig(effect.giftKey);
   const particles = buildGiftBurstParticles(effect.giftKey);
-  const isPremium = config.tier === "premium";
+  const isPremium = effect.premium ?? config.tier === "premium";
   const reducedMotion = Boolean(effect.reducedMotion);
 
   if (reducedMotion) {
@@ -147,7 +153,7 @@ export function GiftBurstOverlay({ effect }: GiftBurstOverlayProps) {
         <div className="w-full max-w-xs rounded-2xl border border-white/70 bg-white/90 px-4 py-4 text-center shadow-xl backdrop-blur-sm">
           <p className="text-4xl">{effect.giftEmoji}</p>
           <p className="mt-2 text-sm font-semibold text-slate-900">
-            {effect.direction === "received" ? "Gift received" : "Gift sent"}: {config.name}
+            {effect.direction === "received" ? "Gift received" : "Gift sent"}: {effect.giftName ?? config.name}
           </p>
           <p className="mt-1 text-xs text-slate-600">Premium effect reduced for motion settings.</p>
         </div>
@@ -176,7 +182,16 @@ export function GiftBurstOverlay({ effect }: GiftBurstOverlayProps) {
         />
 
         <div className="relative h-[clamp(120px,38vw,260px)] w-[clamp(120px,38vw,260px)]">
-          {renderGiftScene(effect.giftKey, effect.giftEmoji)}
+          {effect.svgaFile && !svgaFailed ? (
+            <SVGAGiftPlayer
+              src={effect.svgaFile}
+              loop={1}
+              className="h-full w-full"
+              onError={() => setSvgaFailedForId(effect.id)}
+            />
+          ) : (
+            renderGiftScene(effect.giftKey, effect.giftEmoji)
+          )}
 
           {particles.map((particle) => (
             <span

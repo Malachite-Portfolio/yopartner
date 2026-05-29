@@ -14,7 +14,6 @@ import {
   getSessionMessages,
   sendSessionGift,
   sendSessionMessage,
-  type GiftKey,
   type SessionRecord,
   type SessionMessageRecord,
 } from "@/lib/api/sessions";
@@ -25,27 +24,16 @@ import {
 } from "@/lib/companionRoutes";
 import { requestAudioPermission, requestVideoPermission } from "@/lib/agora";
 import { getGiftEffectConfig, playGiftSound } from "@/lib/chat/giftEffects";
+import {
+  CHAT_GIFT_CATALOG,
+  CHAT_GIFT_GROUPS,
+  getCatalogGiftByKey,
+  getCatalogGiftsByTier,
+  type ChatGiftCatalogItem,
+} from "@/lib/chat/giftCatalog";
 import { isActiveSessionStatus, isTerminalSessionStatus } from "@/lib/sessionStatus";
 import { getUserAuthTokenWithRestore } from "@/lib/auth/userAuth";
 import { WALLET_UPDATED_EVENT } from "@/lib/wallet";
-
-const chatGiftCatalog = (["rose", "coffee", "star", "heart", "crown", "diamond"] as GiftKey[]).map((key) => {
-  const config = getGiftEffectConfig(key);
-  const amountMap: Record<GiftKey, number> = {
-    rose: 10,
-    coffee: 25,
-    star: 50,
-    heart: 100,
-    crown: 250,
-    diamond: 500,
-  };
-  return {
-    key,
-    name: config.name,
-    emoji: config.emoji,
-    amount: amountMap[key],
-  };
-});
 
 function toLoginUrl(returnUrl: string) {
   return `/login?returnUrl=${encodeURIComponent(returnUrl)}`;
@@ -106,7 +94,7 @@ export default function ChatPage() {
   const [clockNow, setClockNow] = useState(() => Date.now());
   const [walletBalance, setWalletBalance] = useState(0);
   const [isGiftModalOpen, setIsGiftModalOpen] = useState(false);
-  const [selectedGiftKey, setSelectedGiftKey] = useState<GiftKey>("rose");
+  const [selectedGiftId, setSelectedGiftId] = useState(() => CHAT_GIFT_CATALOG[0]?.id ?? "");
   const [giftError, setGiftError] = useState("");
   const [isSendingGift, setIsSendingGift] = useState(false);
   const [activeGiftEffect, setActiveGiftEffect] = useState<GiftBurstEffect | null>(null);
@@ -120,19 +108,29 @@ export default function ChatPage() {
     return query ? `/chat/${routeId}?${query}` : `/chat/${routeId}`;
   }, [routeId, searchParams]);
   const selectedGift = useMemo(
-    () => chatGiftCatalog.find((gift) => gift.key === selectedGiftKey) ?? chatGiftCatalog[0],
-    [selectedGiftKey],
+    () => CHAT_GIFT_CATALOG.find((gift) => gift.id === selectedGiftId) ?? CHAT_GIFT_CATALOG[0],
+    [selectedGiftId],
   );
-  const hasGiftBalance = walletBalance >= selectedGift.amount;
+  const hasGiftBalance = selectedGift ? walletBalance >= selectedGift.price : false;
 
   const triggerGiftCelebration = useCallback(
-    async (gift: NonNullable<SessionMessageRecord["gift"]>, isMine: boolean) => {
-      const config = getGiftEffectConfig(gift.giftKey);
-      await playGiftSound(gift.giftKey, isMine ? 0.11 : 0.09);
+    async (
+      gift: NonNullable<SessionMessageRecord["gift"]>,
+      isMine: boolean,
+      catalogGift?: ChatGiftCatalogItem | null,
+    ) => {
+      const resolvedGift = catalogGift ?? getCatalogGiftByKey(gift.giftKey);
+      const soundGiftKey = resolvedGift?.soundType ?? "diamond";
+      const config = getGiftEffectConfig(soundGiftKey);
+      await playGiftSound(soundGiftKey, isMine ? 0.11 : 0.09);
       setActiveGiftEffect({
-        id: `${gift.giftKey}-${Date.now()}`,
-        giftKey: gift.giftKey,
-        giftEmoji: gift.giftEmoji,
+        id: `${resolvedGift?.id ?? gift.giftKey}-${Date.now()}`,
+        giftKey: soundGiftKey,
+        giftEmoji: config.emoji,
+        svgaFile: resolvedGift?.svgaFile,
+        giftName: resolvedGift?.name ?? gift.giftName,
+        amount: resolvedGift?.price ?? gift.amount,
+        premium: resolvedGift?.premium ?? config.tier === "premium",
         direction: isMine ? "sent" : "received",
         reducedMotion: prefersReducedMotion,
         durationMs: config.sceneDurationMs,
@@ -328,7 +326,11 @@ export default function ChatPage() {
 
     unseenGiftMessages.forEach((message) => seenGiftMessageIdsRef.current.add(message.id));
     const latestGiftMessage = unseenGiftMessages[unseenGiftMessages.length - 1];
-    void triggerGiftCelebration(latestGiftMessage.gift, Boolean(latestGiftMessage.isMine));
+    void triggerGiftCelebration(
+      latestGiftMessage.gift,
+      Boolean(latestGiftMessage.isMine),
+      getCatalogGiftByKey(latestGiftMessage.gift.giftKey),
+    );
   }, [messages, triggerGiftCelebration]);
 
   useEffect(() => {
@@ -471,6 +473,7 @@ export default function ChatPage() {
 
   const handleSendGift = async () => {
     if (!session?.id || session.status !== "LIVE" || isSendingGift) return;
+    if (!selectedGift) return;
     if (!hasGiftBalance) {
       setGiftError("Insufficient balance for this gift.");
       return;
@@ -478,7 +481,7 @@ export default function ChatPage() {
 
     setIsSendingGift(true);
     setGiftError("");
-    const response = await sendSessionGift(session.id, selectedGift.key);
+    const response = await sendSessionGift(session.id, selectedGift.giftKey);
     setIsSendingGift(false);
 
     if (!response.data) {
@@ -495,7 +498,9 @@ export default function ChatPage() {
     if (!giftResult) return;
 
     setMessages((current) => [...current, giftResult.message]);
+    seenGiftMessageIdsRef.current.add(giftResult.message.id);
     setWalletBalance(giftResult.walletBalance);
+    void triggerGiftCelebration(giftResult.gift, true, selectedGift);
     if (typeof window !== "undefined") {
       window.dispatchEvent(new CustomEvent(WALLET_UPDATED_EVENT));
     }
@@ -656,40 +661,54 @@ export default function ChatPage() {
             <p className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700">
               Wallet Balance: {"\u20B9"}{walletBalance}
             </p>
-            <div className="mt-3 grid grid-cols-3 gap-2">
-              {chatGiftCatalog.map((gift) => {
-                const selected = gift.key === selectedGift.key;
-                const config = getGiftEffectConfig(gift.key);
-                const isPremium = config.tier === "premium";
-                const isMidTier = config.tier === "mid";
+            <div className="mt-3 max-h-[52vh] space-y-3 overflow-y-auto pr-1">
+              {CHAT_GIFT_GROUPS.map((group) => {
+                const gifts = getCatalogGiftsByTier(group.tier);
+                if (gifts.length === 0) return null;
+
                 return (
-                  <button
-                    key={gift.key}
-                    type="button"
-                    onClick={() => setSelectedGiftKey(gift.key)}
-                    className={`relative rounded-xl border px-2 py-2 text-center transition ${
-                      isPremium
-                        ? selected
-                          ? "border-amber-400 bg-gradient-to-br from-amber-50 to-yellow-100 shadow-[0_0_18px_rgba(245,158,11,0.35)]"
-                          : "border-amber-300/70 bg-gradient-to-br from-amber-50/80 to-yellow-50 hover:border-amber-400"
-                        : isMidTier
-                          ? selected
-                            ? "border-pink-300 bg-gradient-to-br from-pink-50 to-yellow-50 shadow-[0_0_14px_rgba(236,72,153,0.25)]"
-                            : "border-pink-200/70 bg-pink-50/50 hover:border-pink-300"
-                          : selected
-                            ? "border-rose-300 bg-rose-50"
-                            : "border-slate-200 hover:border-rose-300"
-                    }`}
-                  >
-                    {isPremium ? (
-                      <span className="absolute right-1 top-1 rounded-full bg-slate-900 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] text-amber-200">
-                        Premium
-                      </span>
-                    ) : null}
-                    <p className={`mx-auto ${config.tier === "low" ? "text-lg" : "text-2xl"}`}>{gift.emoji}</p>
-                    <p className="text-xs font-semibold text-slate-800">{gift.name}</p>
-                    <p className="text-[11px] text-slate-500">{"\u20B9"}{gift.amount}</p>
-                  </button>
+                  <section key={group.tier}>
+                    <h4 className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-slate-600">
+                      {group.label}
+                    </h4>
+                    <div className="grid grid-cols-3 gap-2">
+                      {gifts.map((gift) => {
+                        const selected = gift.id === selectedGift?.id;
+                        const config = getGiftEffectConfig(gift.soundType);
+                        const isPremium = gift.tier !== "popular";
+                        const isLegendary = gift.tier === "legendary";
+                        return (
+                          <button
+                            key={gift.id}
+                            type="button"
+                            onClick={() => setSelectedGiftId(gift.id)}
+                            className={`relative rounded-xl border px-2 py-2 text-center transition ${
+                              isLegendary
+                                ? selected
+                                  ? "border-fuchsia-400 bg-gradient-to-br from-fuchsia-50 to-amber-50 shadow-[0_0_18px_rgba(217,70,239,0.35)]"
+                                  : "border-fuchsia-200 bg-gradient-to-br from-fuchsia-50/80 to-amber-50/70 hover:border-fuchsia-300"
+                                : isPremium
+                                  ? selected
+                                    ? "border-amber-400 bg-gradient-to-br from-amber-50 to-yellow-100 shadow-[0_0_18px_rgba(245,158,11,0.35)]"
+                                    : "border-amber-300/70 bg-gradient-to-br from-amber-50/80 to-yellow-50 hover:border-amber-400"
+                                  : selected
+                                    ? "border-rose-300 bg-rose-50"
+                                    : "border-slate-200 hover:border-rose-300"
+                            }`}
+                          >
+                            {isPremium ? (
+                              <span className="absolute right-1 top-1 rounded-full bg-slate-900 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] text-amber-200">
+                                {gift.tier}
+                              </span>
+                            ) : null}
+                            <p className={`mx-auto ${gift.tier === "popular" ? "text-lg" : "text-2xl"}`}>{config.emoji}</p>
+                            <p className="line-clamp-1 text-xs font-semibold text-slate-800">{gift.name}</p>
+                            <p className="text-[11px] text-slate-500">{"\u20B9"}{gift.price}</p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </section>
                 );
               })}
             </div>
