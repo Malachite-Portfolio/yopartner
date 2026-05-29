@@ -436,7 +436,7 @@ export function getCatalogGiftById(id: string) {
 }
 
 export function getCatalogGiftByKey(giftKey: string) {
-  return CHAT_GIFT_CATALOG.find((gift) => gift.giftKey === giftKey) ?? CHAT_GIFT_CATALOG[0];
+  return CHAT_GIFT_CATALOG.find((gift) => gift.giftKey === giftKey) ?? null;
 }
 
 export function getCatalogGiftsByTier(tier: GiftCatalogTier) {

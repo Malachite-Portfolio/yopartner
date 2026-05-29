@@ -19,6 +19,7 @@ export function SVGAGiftPlayer({ src, className, loop = 1, onEnd, onError }: SVG
     const canvas = canvasRef.current;
     if (!canvas || !src) return;
 
+    setHasLoaded(false);
     let disposed = false;
     const parser = new Parser();
     let player: Player | null = null;

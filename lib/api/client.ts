@@ -12,6 +12,7 @@ export type ApiClientError = {
   code?: string;
   message: string;
   status?: number;
+  details?: unknown;
 };
 
 export type ApiResult<T> = {
@@ -268,6 +269,7 @@ function toApiError(status: number, payload: { message?: string; error?: string 
   return {
     code: payload.error,
     status,
+    details: payload,
     message:
       payload.message ||
       payload.error ||

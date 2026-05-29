@@ -75,6 +75,22 @@ function getReviewUrl(session: SessionRecord) {
   return `/review/${session.id}?companionId=${encodeURIComponent(session.companionId)}`;
 }
 
+function mapGiftSendError(code?: string) {
+  switch (code) {
+    case "INVALID_GIFT":
+      return "This gift is currently unavailable.";
+    case "INSUFFICIENT_BALANCE":
+    case "INSUFFICIENT_WALLET_BALANCE":
+      return "You don't have enough wallet balance.";
+    case "SESSION_NOT_LIVE":
+      return "Gifts can only be sent during an active chat.";
+    case "PARTNER_NOT_FOUND":
+      return "Partner unavailable.";
+    default:
+      return "Could not send gift. Please try again.";
+  }
+}
+
 export default function ChatPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
@@ -485,12 +501,19 @@ export default function ChatPage() {
     setIsSendingGift(false);
 
     if (!response.data) {
-      if (response.error?.code === "INSUFFICIENT_WALLET_BALANCE") {
-        setGiftError("Insufficient balance for this gift.");
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("[chat] send gift failed", {
+          sessionId: session.id,
+          giftKey: selectedGift.giftKey,
+          error: response.error,
+        });
+      }
+      if (response.error?.code === "INSUFFICIENT_BALANCE" || response.error?.code === "INSUFFICIENT_WALLET_BALANCE") {
+        setGiftError("You don't have enough wallet balance.");
         await refreshWalletBalance();
         return;
       }
-      setGiftError(response.error?.message || "Could not send gift. Please try again.");
+      setGiftError(response.error?.code ? mapGiftSendError(response.error.code) : response.error?.message || mapGiftSendError());
       return;
     }
 

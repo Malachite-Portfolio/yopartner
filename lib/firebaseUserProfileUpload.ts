@@ -38,7 +38,7 @@ function validateImage(file: File) {
   }
 }
 
-async function waitForFirebaseUser(timeoutMs = 5000) {
+async function waitForFirebaseUser(timeoutMs = 10000) {
   const existing = getCurrentFirebaseUser();
   if (existing) return existing;
   if (typeof window === "undefined") return null;
@@ -63,10 +63,22 @@ async function waitForFirebaseUser(timeoutMs = 5000) {
   });
 }
 
-function toUploadError(error: unknown) {
+function toUploadError(error: unknown, context: { uid: string | null; storagePath: string }) {
   const code = typeof error === "object" && error && "code" in error ? String((error as { code?: unknown }).code ?? "") : "";
+  const message = typeof error === "object" && error && "message" in error ? String((error as { message?: unknown }).message ?? "") : "";
+  if (process.env.NODE_ENV !== "production") {
+    console.warn("[profile-upload] firebase storage upload failed", {
+      code,
+      message,
+      uid: context.uid,
+      storagePath: context.storagePath,
+    });
+  }
   if (code === "storage/unauthorized") {
     return new Error("Profile photo upload is blocked by storage permissions. Please try again later.");
+  }
+  if (code === "storage/unauthenticated") {
+    return new Error("Please login again to upload your profile photo.");
   }
   if (error instanceof Error && error.message.trim().length > 0) {
     return error;
@@ -80,7 +92,7 @@ export async function uploadUserProfilePhoto(file: File): Promise<UserProfilePho
   }
   const authUser = (await waitForFirebaseUser()) ?? getCurrentFirebaseUser();
   const uid = authUser?.uid?.trim();
-  if (!uid) {
+  if (!authUser || !uid) {
     throw new Error("Please login again to upload your photo.");
   }
 
@@ -93,10 +105,11 @@ export async function uploadUserProfilePhoto(file: File): Promise<UserProfilePho
 
   let downloadUrl = "";
   try {
+    await authUser.getIdToken(true);
     await uploadBytes(mediaRef, file, { contentType: file.type });
     downloadUrl = await getDownloadURL(mediaRef);
   } catch (error) {
-    throw toUploadError(error);
+    throw toUploadError(error, { uid: uid ?? null, storagePath });
   }
 
   return {
