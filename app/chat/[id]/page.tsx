@@ -133,6 +133,24 @@ export default function ChatPage() {
   );
   const hasGiftBalance = selectedGift ? walletBalance >= selectedGift.price : false;
 
+  useEffect(() => {
+    if (process.env.NODE_ENV === "production") return;
+    CHAT_GIFT_CATALOG.forEach((gift) => {
+      if (gift.id !== gift.giftKey) {
+        console.warn("[chat] catalog mismatch: id and giftKey differ", { id: gift.id, giftKey: gift.giftKey });
+      }
+      const resolvedSvgaPath = getGiftSvgaUrl(gift);
+      if (resolvedSvgaPath !== gift.svga) {
+        console.warn("[chat] catalog mismatch: preview/playback path differs from gift.svga", {
+          id: gift.id,
+          giftKey: gift.giftKey,
+          svga: gift.svga,
+          resolvedSvgaPath,
+        });
+      }
+    });
+  }, []);
+
   const triggerGiftCelebration = useCallback(
     async (
       gift: NonNullable<SessionMessageRecord["gift"]>,
@@ -141,7 +159,7 @@ export default function ChatPage() {
     ) => {
       const resolvedGift = catalogGift ?? getCatalogGiftByKey(gift.giftKey);
       if (!resolvedGift) return;
-      const svgaUrl = getGiftSvgaUrl(resolvedGift);
+      const svgaUrl = resolvedGift.svga;
       if (process.env.NODE_ENV !== "production" && !svgaUrl.trim()) {
         console.warn("[chat] selected gift has empty SVGA path", {
           giftId: resolvedGift.id,
@@ -678,7 +696,7 @@ export default function ChatPage() {
                   <div className="h-20 w-20 overflow-hidden rounded-lg border border-slate-200 bg-white">
                     {!selectedGiftPreviewFailed ? (
                       <GiftPlayer
-                        src={getGiftSvgaUrl(selectedGift)}
+                        src={selectedGift.svga}
                         loop={0}
                         className="h-full w-full"
                         onError={() => {
@@ -713,6 +731,7 @@ export default function ChatPage() {
                         const selected = gift.id === selectedGift?.id;
                         const isPremium = gift.tier !== "popular";
                         const isLegendary = gift.tier === "legendary";
+                        const previewImageUrl = getGiftPreviewImageUrl(gift);
                         return (
                           <button
                             key={gift.id}
@@ -741,10 +760,10 @@ export default function ChatPage() {
                               </span>
                             ) : null}
                             <div className="mx-auto mb-1 h-12 w-12 overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
-                              {!failedThumbGiftIds[gift.id] ? (
+                              {!failedThumbGiftIds[gift.id] && previewImageUrl ? (
                                 // eslint-disable-next-line @next/next/no-img-element
                                 <img
-                                  src={getGiftPreviewImageUrl(gift)}
+                                  src={previewImageUrl}
                                   alt={`${gift.name} preview`}
                                   className="h-full w-full object-cover"
                                   loading="lazy"

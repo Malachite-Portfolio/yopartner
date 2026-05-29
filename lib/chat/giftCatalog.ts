@@ -18,7 +18,7 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
   {
     "id": "gift-001",
     "giftKey": "gift-001",
-    "name": "Rose Bloom",
+    "name": "Gift 001",
     "price": 10,
     "tier": "popular",
     "originalFileName": "101.svga",
@@ -29,7 +29,7 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
   {
     "id": "gift-002",
     "giftKey": "gift-002",
-    "name": "Coffee Cheers",
+    "name": "Gift 002",
     "price": 25,
     "tier": "popular",
     "originalFileName": "104.svga",
@@ -40,7 +40,7 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
   {
     "id": "gift-003",
     "giftKey": "gift-003",
-    "name": "Starlight Spark",
+    "name": "Gift 003",
     "price": 50,
     "tier": "popular",
     "originalFileName": "108.svga",
@@ -51,7 +51,7 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
   {
     "id": "gift-004",
     "giftKey": "gift-004",
-    "name": "Heart Beat",
+    "name": "Gift 004",
     "price": 100,
     "tier": "popular",
     "originalFileName": "114.svga",
@@ -62,7 +62,7 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
   {
     "id": "gift-005",
     "giftKey": "gift-005",
-    "name": "Warm Hug",
+    "name": "Gift 005",
     "price": 150,
     "tier": "popular",
     "originalFileName": "117.svga",
@@ -73,7 +73,7 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
   {
     "id": "gift-006",
     "giftKey": "gift-006",
-    "name": "Lucky Charm",
+    "name": "Gift 006",
     "price": 250,
     "tier": "popular",
     "originalFileName": "249.svga",
@@ -84,7 +84,7 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
   {
     "id": "gift-007",
     "giftKey": "gift-007",
-    "name": "Sweet Wave",
+    "name": "Gift 007",
     "price": 10,
     "tier": "popular",
     "originalFileName": "250.svga",
@@ -95,7 +95,7 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
   {
     "id": "gift-008",
     "giftKey": "gift-008",
-    "name": "Blush Burst",
+    "name": "Gift 008",
     "price": 25,
     "tier": "popular",
     "originalFileName": "251.svga",
@@ -106,7 +106,7 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
   {
     "id": "gift-009",
     "giftKey": "gift-009",
-    "name": "Moon Wink",
+    "name": "Gift 009",
     "price": 50,
     "tier": "popular",
     "originalFileName": "252.svga",
@@ -117,7 +117,7 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
   {
     "id": "gift-010",
     "giftKey": "gift-010",
-    "name": "Sunshine Pop",
+    "name": "Gift 010",
     "price": 100,
     "tier": "popular",
     "originalFileName": "253.svga",
@@ -128,7 +128,7 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
   {
     "id": "gift-011",
     "giftKey": "gift-011",
-    "name": "Wish Lantern",
+    "name": "Gift 011",
     "price": 150,
     "tier": "popular",
     "originalFileName": "254.svga",
@@ -139,7 +139,7 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
   {
     "id": "gift-012",
     "giftKey": "gift-012",
-    "name": "Golden Smile",
+    "name": "Gift 012",
     "price": 250,
     "tier": "popular",
     "originalFileName": "255.svga",
@@ -150,7 +150,7 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
   {
     "id": "gift-013",
     "giftKey": "gift-013",
-    "name": "Happy Pulse",
+    "name": "Gift 013",
     "price": 10,
     "tier": "popular",
     "originalFileName": "256.svga",
@@ -161,7 +161,7 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
   {
     "id": "gift-014",
     "giftKey": "gift-014",
-    "name": "Candy Star",
+    "name": "Gift 014",
     "price": 25,
     "tier": "popular",
     "originalFileName": "257.svga",
@@ -172,7 +172,7 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
   {
     "id": "gift-015",
     "giftKey": "gift-015",
-    "name": "Dream Kiss",
+    "name": "Gift 015",
     "price": 50,
     "tier": "popular",
     "originalFileName": "258.svga",
@@ -183,7 +183,7 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
   {
     "id": "gift-016",
     "giftKey": "gift-016",
-    "name": "Royal Aura",
+    "name": "Gift 016",
     "price": 500,
     "tier": "premium",
     "originalFileName": "259.svga",
@@ -194,7 +194,7 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
   {
     "id": "gift-017",
     "giftKey": "gift-017",
-    "name": "Crystal Crown",
+    "name": "Gift 017",
     "price": 1000,
     "tier": "premium",
     "originalFileName": "260.svga",
@@ -205,7 +205,7 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
   {
     "id": "gift-018",
     "giftKey": "gift-018",
-    "name": "Mystic Flash",
+    "name": "Gift 018",
     "price": 500,
     "tier": "premium",
     "originalFileName": "6c2ec2ec1c9f4e079b5bfee5f96b7b3c.svga",
@@ -216,7 +216,7 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
   {
     "id": "gift-019",
     "giftKey": "gift-019",
-    "name": "Sky Glitter",
+    "name": "Gift 019",
     "price": 1000,
     "tier": "premium",
     "originalFileName": "73.svga",
@@ -227,7 +227,7 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
   {
     "id": "gift-020",
     "giftKey": "gift-020",
-    "name": "Shimmer Path",
+    "name": "Gift 020",
     "price": 500,
     "tier": "premium",
     "originalFileName": "74.svga",
@@ -238,7 +238,7 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
   {
     "id": "gift-021",
     "giftKey": "gift-021",
-    "name": "Moon Palace",
+    "name": "Gift 021",
     "price": 1000,
     "tier": "premium",
     "originalFileName": "75.svga",
@@ -249,7 +249,7 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
   {
     "id": "gift-022",
     "giftKey": "gift-022",
-    "name": "Velvet Night",
+    "name": "Gift 022",
     "price": 500,
     "tier": "premium",
     "originalFileName": "7c7382698eb64d2794c199f52224688b (2).svga",
@@ -260,7 +260,7 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
   {
     "id": "gift-023",
     "giftKey": "gift-023",
-    "name": "Neon Crown",
+    "name": "Gift 023",
     "price": 1000,
     "tier": "premium",
     "originalFileName": "80.svga",
@@ -271,7 +271,7 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
   {
     "id": "gift-024",
     "giftKey": "gift-024",
-    "name": "Star Parade",
+    "name": "Gift 024",
     "price": 500,
     "tier": "premium",
     "originalFileName": "84.svga",
@@ -282,7 +282,7 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
   {
     "id": "gift-025",
     "giftKey": "gift-025",
-    "name": "Diamond Rain",
+    "name": "Gift 025",
     "price": 1000,
     "tier": "premium",
     "originalFileName": "93.svga",
@@ -293,7 +293,7 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
   {
     "id": "gift-026",
     "giftKey": "gift-026",
-    "name": "Sapphire Jet",
+    "name": "Gift 026",
     "price": 2000,
     "tier": "luxury",
     "originalFileName": "95.svga",
@@ -304,7 +304,7 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
   {
     "id": "gift-027",
     "giftKey": "gift-027",
-    "name": "Platinum Storm",
+    "name": "Gift 027",
     "price": 5000,
     "tier": "luxury",
     "originalFileName": "Ä¦ï¿½ï¿½ï¿½ï¿½05.svga",
@@ -315,7 +315,7 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
   {
     "id": "gift-028",
     "giftKey": "gift-028",
-    "name": "Royal Blizzard",
+    "name": "Gift 028",
     "price": 2000,
     "tier": "luxury",
     "originalFileName": "Ã°â_¬â__Ã_.svga",
@@ -326,7 +326,7 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
   {
     "id": "gift-029",
     "giftKey": "gift-029",
-    "name": "Eternal Shine",
+    "name": "Gift 029",
     "price": 5000,
     "tier": "luxury",
     "originalFileName": "é__ç¥¨æ_ª.svga",
@@ -337,7 +337,7 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
   {
     "id": "gift-030",
     "giftKey": "gift-030",
-    "name": "Galaxy Drift",
+    "name": "Gift 030",
     "price": 2000,
     "tier": "luxury",
     "originalFileName": "ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½05 (1).svga",
@@ -348,7 +348,7 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
   {
     "id": "gift-031",
     "giftKey": "gift-031",
-    "name": "Ocean Legend",
+    "name": "Gift 031",
     "price": 5000,
     "tier": "luxury",
     "originalFileName": "ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½.svga",
@@ -359,7 +359,7 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
   {
     "id": "gift-032",
     "giftKey": "gift-032",
-    "name": "Phoenix Pulse",
+    "name": "Gift 032",
     "price": 2000,
     "tier": "luxury",
     "originalFileName": "ï¿½ï¿½ï¿½Õ¿ï¿½ï¿½ï¿½05.svga",
@@ -370,7 +370,7 @@ export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
   {
     "id": "gift-033",
     "giftKey": "gift-033",
-    "name": "Kiss Gift",
+    "name": "Dream Kiss",
     "price": 10000,
     "tier": "legendary",
     "originalFileName": "kiss gift_56.svga",
@@ -449,20 +449,21 @@ export function isSpotlightPremiumGift(giftKey: string) {
   return PREMIUM_SPOTLIGHT_GIFT_KEYS.has(giftKey);
 }
 
-export function getGiftSvgaUrl(gift: Pick<ChatGiftCatalogItem, "svga" | "originalFileName">) {
-  const original = gift.originalFileName.trim();
-  if (original.length > 0) {
-    return `/gifts/svga/${encodeURIComponent(original)}`;
-  }
-  return gift.svga;
+export function getGiftSvgaUrl(gift: Pick<ChatGiftCatalogItem, "svga">) {
+  return gift.svga.trim();
 }
 
-export function getGiftPreviewImageUrl(gift: Pick<ChatGiftCatalogItem, "originalFileName" | "giftKey">) {
+export function getGiftPreviewImageUrl(gift: Pick<ChatGiftCatalogItem, "svga" | "originalFileName">) {
   const original = gift.originalFileName.trim();
-  const baseName = original.toLowerCase().endsWith(".svga") ? original.slice(0, -5) : original;
-  if (baseName.length > 0) {
+  if (original.toLowerCase().endsWith(".svga")) {
+    const baseName = original.slice(0, -5);
     return `/gifts/svga/${encodeURIComponent(baseName)}.png`;
   }
-  return `/gifts/svga/${encodeURIComponent(gift.giftKey)}.png`;
+
+  const svgaPath = getGiftSvgaUrl(gift);
+  if (!svgaPath.toLowerCase().endsWith(".svga")) {
+    return "";
+  }
+  return `${svgaPath.slice(0, -5)}.png`;
 }
 

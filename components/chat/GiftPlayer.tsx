@@ -7,6 +7,7 @@ type GiftPlayerProps = {
   src: string;
   className?: string;
   loop?: number | boolean;
+  preflight?: boolean;
   onReady?: () => void;
   onComplete?: () => void;
   onError?: (message: string) => void;
@@ -17,7 +18,7 @@ function normalizeLoop(loop: number | boolean) {
   return loop ? 0 : 1;
 }
 
-export function GiftPlayer({ src, className, loop = 1, onReady, onComplete, onError }: GiftPlayerProps) {
+export function GiftPlayer({ src, className, loop = 1, preflight = true, onReady, onComplete, onError }: GiftPlayerProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [loaded, setLoaded] = useState(false);
 
@@ -32,6 +33,13 @@ export function GiftPlayer({ src, className, loop = 1, onReady, onComplete, onEr
 
     const load = async () => {
       try {
+        if (preflight) {
+          const headResponse = await fetch(src, { method: "HEAD", cache: "no-store" });
+          if (!headResponse.ok) {
+            throw new Error(`SVGA file unavailable (${headResponse.status}).`);
+          }
+        }
+
         const response = await fetch(src, { cache: "force-cache" });
         if (!response.ok) {
           throw new Error(`Failed to fetch SVGA (${response.status}).`);
@@ -79,7 +87,7 @@ export function GiftPlayer({ src, className, loop = 1, onReady, onComplete, onEr
         player.destroy();
       }
     };
-  }, [loop, onComplete, onError, onReady, src]);
+  }, [loop, onComplete, onError, onReady, preflight, src]);
 
   return <canvas ref={canvasRef} className={className} style={{ opacity: loaded ? 1 : 0, transition: "opacity 160ms ease" }} aria-hidden />;
 }
