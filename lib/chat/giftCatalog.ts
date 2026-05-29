@@ -449,11 +449,20 @@ export function isSpotlightPremiumGift(giftKey: string) {
   return PREMIUM_SPOTLIGHT_GIFT_KEYS.has(giftKey);
 }
 
-export function getGiftSvgaPath(gift: Pick<ChatGiftCatalogItem, "svga" | "originalFileName">) {
+export function getGiftSvgaUrl(gift: Pick<ChatGiftCatalogItem, "svga" | "originalFileName">) {
   const original = gift.originalFileName.trim();
   if (original.length > 0) {
     return `/gifts/svga/${encodeURIComponent(original)}`;
   }
   return gift.svga;
+}
+
+export function getGiftPreviewImageUrl(gift: Pick<ChatGiftCatalogItem, "originalFileName" | "giftKey">) {
+  const original = gift.originalFileName.trim();
+  const baseName = original.toLowerCase().endsWith(".svga") ? original.slice(0, -5) : original;
+  if (baseName.length > 0) {
+    return `/gifts/svga/${encodeURIComponent(baseName)}.png`;
+  }
+  return `/gifts/svga/${encodeURIComponent(gift.giftKey)}.png`;
 }
 

@@ -7,6 +7,7 @@ type GiftPlayerProps = {
   src: string;
   className?: string;
   loop?: number | boolean;
+  onReady?: () => void;
   onComplete?: () => void;
   onError?: (message: string) => void;
 };
@@ -16,7 +17,7 @@ function normalizeLoop(loop: number | boolean) {
   return loop ? 0 : 1;
 }
 
-export function GiftPlayer({ src, className, loop = 1, onComplete, onError }: GiftPlayerProps) {
+export function GiftPlayer({ src, className, loop = 1, onReady, onComplete, onError }: GiftPlayerProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [loaded, setLoaded] = useState(false);
 
@@ -59,6 +60,7 @@ export function GiftPlayer({ src, className, loop = 1, onComplete, onError }: Gi
         if (unmounted) return;
 
         setLoaded(true);
+        onReady?.();
         player.start();
       } catch (error) {
         const message = error instanceof Error ? error.message : "Unable to play gift animation.";
@@ -77,7 +79,7 @@ export function GiftPlayer({ src, className, loop = 1, onComplete, onError }: Gi
         player.destroy();
       }
     };
-  }, [loop, onComplete, onError, src]);
+  }, [loop, onComplete, onError, onReady, src]);
 
   return <canvas ref={canvasRef} className={className} style={{ opacity: loaded ? 1 : 0, transition: "opacity 160ms ease" }} aria-hidden />;
 }

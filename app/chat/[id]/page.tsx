@@ -30,7 +30,8 @@ import {
   CHAT_GIFT_GROUPS,
   getCatalogGiftByKey,
   getCatalogGiftsByTier,
-  getGiftSvgaPath,
+  getGiftPreviewImageUrl,
+  getGiftSvgaUrl,
   type ChatGiftCatalogItem,
 } from "@/lib/chat/giftCatalog";
 import { isActiveSessionStatus, isTerminalSessionStatus } from "@/lib/sessionStatus";
@@ -117,6 +118,7 @@ export default function ChatPage() {
   const [isSendingGift, setIsSendingGift] = useState(false);
   const [activeGiftEffect, setActiveGiftEffect] = useState<GiftOverlayEffect | null>(null);
   const [selectedGiftPreviewFailed, setSelectedGiftPreviewFailed] = useState(false);
+  const [failedThumbGiftIds, setFailedThumbGiftIds] = useState<Record<string, boolean>>({});
   const reviewRedirectUrlRef = useRef<string | null>(null);
   const seenGiftMessageIdsRef = useRef<Set<string>>(new Set());
   const hasHydratedGiftFeedRef = useRef(false);
@@ -139,6 +141,13 @@ export default function ChatPage() {
     ) => {
       const resolvedGift = catalogGift ?? getCatalogGiftByKey(gift.giftKey);
       if (!resolvedGift) return;
+      const svgaUrl = getGiftSvgaUrl(resolvedGift);
+      if (process.env.NODE_ENV !== "production" && !svgaUrl.trim()) {
+        console.warn("[chat] selected gift has empty SVGA path", {
+          giftId: resolvedGift.id,
+          giftKey: resolvedGift.giftKey,
+        });
+      }
       await playGiftSound(resolvedGift.sound, isMine ? 0.11 : 0.09);
       setActiveGiftEffect({
         id: `${resolvedGift.id}-${Date.now()}`,
@@ -669,7 +678,7 @@ export default function ChatPage() {
                   <div className="h-20 w-20 overflow-hidden rounded-lg border border-slate-200 bg-white">
                     {!selectedGiftPreviewFailed ? (
                       <GiftPlayer
-                        src={getGiftSvgaPath(selectedGift)}
+                        src={getGiftSvgaUrl(selectedGift)}
                         loop={0}
                         className="h-full w-full"
                         onError={() => {
@@ -731,8 +740,26 @@ export default function ChatPage() {
                                 Premium
                               </span>
                             ) : null}
-                            <div className="mx-auto mb-1 flex h-12 w-12 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-[10px] font-semibold text-slate-500">
-                              SVGA
+                            <div className="mx-auto mb-1 h-12 w-12 overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+                              {!failedThumbGiftIds[gift.id] ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={getGiftPreviewImageUrl(gift)}
+                                  alt={`${gift.name} preview`}
+                                  className="h-full w-full object-cover"
+                                  loading="lazy"
+                                  onError={() => {
+                                    setFailedThumbGiftIds((current) => ({ ...current, [gift.id]: true }));
+                                  }}
+                                />
+                              ) : (
+                                <div className="relative flex h-full w-full items-center justify-center overflow-hidden">
+                                  <span className="absolute inset-0 animate-pulse bg-gradient-to-br from-slate-200 to-slate-100" />
+                                  <span className="relative px-1 text-center text-[9px] font-semibold text-slate-600">
+                                    {gift.name}
+                                  </span>
+                                </div>
+                              )}
                             </div>
                             <p className="line-clamp-1 text-xs font-semibold text-slate-800">{gift.name}</p>
                             <p className="text-[11px] text-slate-500">{"\u20B9"}{gift.price}</p>
