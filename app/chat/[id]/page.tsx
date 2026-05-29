@@ -698,6 +698,7 @@ export default function ChatPage() {
                       <GiftPlayer
                         src={selectedGift.svga}
                         loop={1}
+                        playbackTimeoutMs={3200}
                         className="h-full w-full"
                         onError={() => {
                           setSelectedGiftPreviewFailed(true);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { GiftPlayer } from "@/components/chat/GiftPlayer";
 import { getGiftSvgaUrl, type ChatGiftCatalogItem, isSpotlightPremiumGift } from "@/lib/chat/giftCatalog";
 
@@ -23,21 +23,29 @@ type SceneProps = {
 function GiftOverlayScene({ effect, onClose }: SceneProps) {
   const [isPreparing, setIsPreparing] = useState(true);
   const [hasFailed, setHasFailed] = useState(false);
+  const hasClosedRef = useRef(false);
 
   const spotlightPremium = isSpotlightPremiumGift(effect.gift.giftKey);
   const hardCloseMs = spotlightPremium ? 6000 : 4000;
+  const playbackTimeoutMs = spotlightPremium ? 5200 : 3200;
   const scaleClass = spotlightPremium ? "w-[min(92vw,560px)] h-[min(92vw,560px)]" : "w-[min(82vw,420px)] h-[min(82vw,420px)]";
   const giftSvgaPath = getGiftSvgaUrl(effect.gift);
 
+  const closeOnce = useCallback(() => {
+    if (hasClosedRef.current) return;
+    hasClosedRef.current = true;
+    onClose();
+  }, [onClose]);
+
   useEffect(() => {
     const hardCloseTimer = window.setTimeout(() => {
-      onClose();
+      closeOnce();
     }, hardCloseMs);
 
     return () => {
       window.clearTimeout(hardCloseTimer);
     };
-  }, [hardCloseMs, onClose]);
+  }, [closeOnce, hardCloseMs]);
 
   return (
     <div className="pointer-events-none absolute inset-0 z-[80] flex items-center justify-center overflow-hidden" aria-hidden>
@@ -50,7 +58,9 @@ function GiftOverlayScene({ effect, onClose }: SceneProps) {
             src={giftSvgaPath}
             loop={1}
             className="h-full w-full"
-            onComplete={onClose}
+            playbackTimeoutMs={playbackTimeoutMs}
+            clearOnComplete
+            onComplete={closeOnce}
             onReady={() => {
               setIsPreparing(false);
             }}
@@ -65,7 +75,7 @@ function GiftOverlayScene({ effect, onClose }: SceneProps) {
                   error: message,
                 });
               }
-              window.setTimeout(onClose, 1500);
+              window.setTimeout(closeOnce, 1500);
             }}
           />
         ) : (
