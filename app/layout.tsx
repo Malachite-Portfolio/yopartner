@@ -10,9 +10,18 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "YoPartner | Verified Human Companionship",
+  title: "YoPartner | Premium Verified Companionship Platform",
   description:
-    "YoPartner offers safe, verified, strictly platonic companionship for chats, calls, activities, and emotional support.",
+    "YoPartner is India's premium companionship platform for verified companions, voice call companionship, video companionship, home visit companionship, social companionship, and trusted human connection.",
+  keywords: [
+    "companionship platform",
+    "verified companions",
+    "voice call companionship",
+    "video companionship",
+    "home visit companionship",
+    "social companionship",
+    "human connection",
+  ],
   metadataBase: new URL("https://yopartner.com"),
   alternates: {
     canonical: "/",

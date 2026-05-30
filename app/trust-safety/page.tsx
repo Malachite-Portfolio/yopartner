@@ -10,44 +10,44 @@ import Link from "next/link";
 
 const trustPillars = [
   {
-    title: "Background Verified",
+    title: "Verified Companions",
     description:
-      "Each approved companion goes through identity and background checks before they can be visible on the platform.",
+      "Every active profile passes identity and background verification before going live.",
     icon: IdCard,
     iconTone: "bg-[#dff2ef] text-[#0b5b52]",
   },
   {
-    title: "Profile Reviewed",
+    title: "Quality Review",
     description:
-      "Profiles are manually reviewed for authenticity, respectful communication, and category suitability before approval.",
+      "Profiles are manually reviewed for authenticity, communication quality, and platform fit.",
     icon: UserRoundCheck,
     iconTone: "bg-[#e5edff] text-[#3557b7]",
   },
   {
-    title: "Private & Confidential",
+    title: "Privacy First",
     description:
-      "Your sessions and account data are handled with privacy-first practices so personal conversations remain protected.",
+      "Session data is handled with privacy-first practices to protect personal communication.",
     icon: EyeOff,
     iconTone: "bg-[#f1ebff] text-[#5c3faf]",
   },
   {
-    title: "Zero Tolerance Policy",
+    title: "Policy Enforcement",
     description:
-      "Harassment, exploitation, and non-platonic violations are actively monitored and acted upon with strict enforcement.",
+      "Abuse, harassment, and non-platonic behavior are actively reviewed and strictly enforced.",
     icon: ShieldAlert,
     iconTone: "bg-[#ffe9ea] text-[#b53e48]",
   },
   {
-    title: "24/7 Support",
+    title: "Safety Support",
     description:
-      "Our support team is available when something feels off, so users and companions can get help quickly and safely.",
+      "Users and companions can quickly report concerns through dedicated support channels.",
     icon: BellRing,
     iconTone: "bg-[#fff1dd] text-[#a56717]",
   },
   {
-    title: "Judgment-Free Zone",
+    title: "Secure Communication",
     description:
-      "YoPartner is designed for compassionate listening where people can talk openly without criticism or pressure.",
+      "Chat, voice, and video companionship happen in secure in-app communication channels.",
     icon: HeartHandshake,
     iconTone: "bg-[#e4f5ea] text-[#2b7b4e]",
   },
@@ -60,11 +60,11 @@ export default function TrustSafetyPage() {
         <div className="mx-auto w-full max-w-[1180px]">
           <div className="max-w-[760px]">
             <h1 className="font-['Georgia','Times_New_Roman',serif] text-[2.7rem] font-semibold leading-[1.05] text-[#0d3832] sm:text-[3.4rem] lg:text-[4.5rem]">
-              Your Safety Comes First
+              Trust and Safety Built In
             </h1>
             <p className="mt-6 max-w-[650px] text-[16px] leading-8 text-[#4f6762] sm:text-[17px]">
-              YoPartner is built around verified people, clear boundaries, privacy-first standards, and respectful platonic
-              connection at every step.
+              YoPartner is a premium companionship platform with verified companions, strict standards, and privacy-first
+              communication from day one.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
@@ -77,7 +77,7 @@ export default function TrustSafetyPage() {
                 href="#foundations"
                 className="inline-flex h-11 items-center justify-center rounded-full border border-[#cadbd5] bg-white px-6 text-sm font-medium text-[#204d46] transition hover:bg-[#f5faf8]"
               >
-                Learn our protocols
+                View Safety Pillars
               </Link>
             </div>
           </div>
@@ -88,7 +88,7 @@ export default function TrustSafetyPage() {
         <div className="mx-auto w-full max-w-[1180px]">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#4e7169]">Our Foundations</p>
           <h2 className="mt-3 text-[2rem] font-semibold leading-tight text-[#123e37] sm:text-[2.5rem]">
-            Built on six pillars of trust
+            Six pillars that protect every session
           </h2>
 
           <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -117,11 +117,11 @@ export default function TrustSafetyPage() {
         <div className="mx-auto w-full max-w-[1180px]">
           <div className="rounded-[30px] bg-[linear-gradient(140deg,#013e38_0%,#00554f_45%,#0b6e67_100%)] px-6 py-12 text-center text-white shadow-[0_24px_56px_rgba(0,67,61,0.34)] sm:px-10 lg:px-16 lg:py-14">
             <h3 className="font-['Georgia','Times_New_Roman',serif] text-[2.1rem] font-semibold leading-tight sm:text-[2.8rem]">
-              Safe connection starts with trust
+              Trusted by design, not by chance
             </h3>
             <p className="mx-auto mt-4 max-w-[760px] text-[15px] leading-7 text-[#d4ece8] sm:text-[16px]">
-              Every verified companion on YoPartner follows strict platform standards so users can focus on meaningful, safe, and
-              respectful conversations.
+              Verified companions, policy enforcement, and secure communication keep every interaction private, respectful,
+              and reliably safe.
             </p>
             <Link
               href="/connect-now"

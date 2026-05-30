@@ -1,27 +1,22 @@
-﻿import { ArrowRight, CalendarDays, CheckCircle2, Handshake, Search } from "lucide-react";
+import { ArrowRight, CheckCircle2, Handshake, Search } from "lucide-react";
 import Link from "next/link";
 import { CTASection } from "@/components/CTASection";
 import { PageHero } from "@/components/PageHero";
 
 const steps = [
   {
-    title: "Browse verified companions",
-    description: "Explore trusted profiles with clear focus areas, ratings, and city availability.",
+    title: "Step 1: Choose a verified companion",
+    description: "Browse verified companions by format, language, availability, and profile fit.",
     icon: Search,
   },
   {
-    title: "Choose chat, audio, or video support",
-    description: "Pick the type of companionship that fits your emotional needs and comfort level.",
+    title: "Step 2: Select your session format",
+    description: "Pick chat companionship, voice call companionship, video companionship, or home visit companionship.",
     icon: Handshake,
   },
   {
-    title: "Book your preferred time",
-    description: "Select a convenient slot and session format for a smooth and simple experience.",
-    icon: CalendarDays,
-  },
-  {
-    title: "Connect safely with confidence",
-    description: "Every interaction is guided by clear boundaries, privacy, and strict platonic policy.",
+    title: "Step 3: Connect instantly or schedule",
+    description: "Start your session in secure in-app channels for private, high-quality social companionship.",
     icon: CheckCircle2,
   },
 ];
@@ -31,7 +26,7 @@ export default function HowItWorksPage() {
     <>
       <PageHero
         title="How YoPartner Works"
-        subtitle="A simple, safe way to find verified companionship when you need support, company, or a real conversation."
+        subtitle="A fast, trusted way to start meaningful human connection with verified companions."
         actions={
           <Link
             href="/connect-now"
@@ -61,17 +56,17 @@ export default function HowItWorksPage() {
         </div>
 
         <div className="mt-8 rounded-2xl border border-brand/20 bg-brand-soft/55 p-6">
-          <h3 className="text-xl font-semibold text-foreground">Safety note</h3>
+          <h3 className="text-xl font-semibold text-foreground">Platform clarity</h3>
           <p className="mt-3 text-sm leading-7 text-muted">
-            YoPartner is strictly platonic and non-romantic. We verify companions, enforce respectful boundaries,
-            and provide support channels for reporting concerns.
+            YoPartner is strictly platonic. It is not a dating platform and not a therapy or counseling service.
+            The focus is quality conversation, social companionship, and trusted interaction.
           </p>
         </div>
       </section>
 
       <CTASection
-        title="Ready to connect with confidence?"
-        subtitle="Browse verified companions and choose the format that feels right for you."
+        title="Ready to start your first session?"
+        subtitle="Explore verified companions and connect in minutes."
         primaryLabel="Browse Companions"
         primaryHref="/connect-now"
       />

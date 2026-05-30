@@ -175,118 +175,87 @@ export const stats: Stat[] = [
 
 export const processSteps: ProcessStep[] = [
   {
-    title: "Find a Companion",
+    title: "Choose a Verified Companion",
     description:
-      "Explore verified profiles by city, availability, and conversation style.",
+      "Browse verified companions by language, format, and availability.",
     icon: "search",
   },
   {
-    title: "Book a Session",
+    title: "Select Your Session Format",
     description:
-      "Choose your preferred format and reserve a session that fits your schedule.",
+      "Pick chat, voice call companionship, video companionship, or home visit companionship.",
     icon: "calendar",
   },
   {
-    title: "Connect & Enjoy",
+    title: "Connect Securely",
     description:
-      "Share meaningful time in a calm, respectful, and strictly platonic space.",
+      "Start instantly or schedule ahead in private, secure in-app channels.",
     icon: "heart",
   },
 ];
 
 export const services: Service[] = [
   {
-    title: "Private Chat",
-    description: "Thoughtful text conversations when you need presence and care.",
+    title: "Chat Companionship",
+    description: "Private text sessions for fast, meaningful social companionship.",
     icon: "message-circle",
   },
   {
-    title: "Audio Calls",
-    description: "Warm, voice-based support for deeper emotional connection.",
+    title: "Voice Call Companionship",
+    description: "Natural voice conversations for quality human connection.",
     icon: "phone-call",
   },
   {
-    title: "Video Calls",
-    description: "Face-to-face sessions for meaningful and comfortable interaction.",
+    title: "Video Companionship",
+    description: "Face-to-face sessions with verified companions in secure channels.",
     icon: "video",
   },
   {
-    title: "Home Visit",
-    description: "Verified in-person companionship for everyday support.",
+    title: "Home Visit Companionship",
+    description: "Approved in-person companionship with additional safety review.",
     icon: "map-pin",
-  },
-  {
-    title: "Activities",
-    description: "Join hobbies, events, and shared interests with trusted company.",
-    icon: "sparkles",
-  },
-  {
-    title: "Emotional Support",
-    description:
-      "Judgment-free listening and steady support for everyday emotional needs.",
-    icon: "heart-handshake",
   },
 ];
 
 export const serviceDetails: ServiceDetail[] = [
   {
-    title: "Private Chat",
+    title: "Chat Companionship",
     description:
-      "Text-based companionship for day-to-day support, clarity, and comforting conversation.",
+      "Text-first companionship for quick check-ins, ongoing conversations, and reliable social connection.",
     highlights: [
-      "Flexible durations for short check-ins or longer conversations",
-      "Great for introverts and people who prefer writing",
-      "A private and respectful judgment-free exchange",
+      "Fast session start with clear pricing",
+      "Ideal for users who prefer writing",
+      "Private and secure in-app messaging",
     ],
   },
   {
-    title: "Audio Calls",
+    title: "Voice Call Companionship",
     description:
-      "Voice sessions when hearing a calm and caring person helps you feel grounded.",
+      "Real-time voice sessions when conversation quality and tone matter most.",
     highlights: [
-      "Natural conversations with emotional warmth",
-      "Useful during stressful, lonely, or transitional periods",
-      "Scheduled sessions with verified companions",
+      "Natural, high-presence conversations",
+      "Flexible instant or scheduled sessions",
+      "Verified companions only",
     ],
   },
   {
-    title: "Video Calls",
+    title: "Video Companionship",
     description:
-      "Face-to-face calls for stronger human presence and meaningful one-on-one connection.",
+      "Face-to-face sessions for stronger human connection and better communication clarity.",
     highlights: [
-      "Visual support with clear boundaries",
-      "Helpful for confidence and social comfort",
-      "Safe and strictly platonic environment",
+      "Secure in-app video sessions",
+      "Ideal for richer social interaction",
+      "Strictly platonic platform standards",
     ],
   },
   {
-    title: "Home Visit",
+    title: "Home Visit Companionship",
     description:
-      "Verified in-person companionship for everyday support in approved, safety-reviewed settings.",
+      "In-person companionship in approved locations with additional verification controls.",
     highlights: [
-      "Available only after verification and platform approval",
-      "Strictly platonic with respectful boundaries and platform safety rules",
-      "No outside payments or personal contact sharing allowed",
-    ],
-  },
-  {
-    title: "Activities",
-    description:
-      "Shared experiences like hobbies, museum visits, light outings, and social activities.",
-    highlights: [
-      "Companionship for events and routines",
-      "Build confidence through shared moments",
-      "Personalized around comfort and interests",
-    ],
-  },
-  {
-    title: "Emotional Support",
-    description:
-      "Compassionate listening and stable support when life feels heavy or uncertain.",
-    highlights: [
-      "Non-clinical emotional companionship",
-      "Steady, respectful, and confidential presence",
-      "Ideal for those seeking human connection without judgment",
+      "Extra safety checks before activation",
+      "Strictly platonic interactions only",
+      "Platform-monitored standards and support",
     ],
   },
 ];
@@ -425,22 +394,22 @@ export const safetyItems: SafetyItem[] = [
 
 export const testimonials: Testimonial[] = [
   {
-    name: "Nisha",
+    name: "Verified Member",
     city: "Mumbai",
     quote:
-      "I felt seen and heard for the first time in months. The session was warm, respectful, and genuinely comforting.",
+      "The experience felt premium from start to finish. Verified profiles and smooth sessions made it easy to trust.",
   },
   {
-    name: "Arjun",
+    name: "Verified Member",
     city: "Bengaluru",
     quote:
-      "I booked for a difficult week, and the support helped me feel steady again. It was kind and completely non-judgmental.",
+      "I booked voice call companionship and the quality was excellent. Clear pricing, quick matching, real human connection.",
   },
   {
-    name: "Devika",
+    name: "Verified Member",
     city: "Pune",
     quote:
-      "The companion was thoughtful and professional. It felt safe, human, and exactly what I needed after moving to a new city.",
+      "Video companionship felt private and respectful. This is social companionship done right.",
   },
 ];
 

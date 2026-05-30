@@ -10,14 +10,14 @@ export default function ServicesPage() {
   return (
     <>
       <PageHero
-        title="Services Built Around Real Human Connection"
-        subtitle="Choose the kind of support that fits your moment."
+        title="Companionship Services, Designed for Modern Life"
+        subtitle="Choose how you want to connect with verified companions."
         actions={
           <Link
             href="/connect-now"
             className="rounded-full bg-gradient-to-r from-brand to-brand-purple px-6 py-3 text-sm font-semibold text-white transition hover:opacity-90"
           >
-            Find a Companion
+            Explore Companions
           </Link>
         }
       />
@@ -25,7 +25,7 @@ export default function ServicesPage() {
       <ServicesSection showHeader={false} />
 
       <section className="mx-auto w-full max-w-6xl px-4 pb-16 sm:px-6 lg:px-8">
-        <SectionHeader eyebrow="Service Details" title="What each service includes" />
+        <SectionHeader eyebrow="Service Details" title="What each format delivers" />
         <div className="mt-8 space-y-4">
           {serviceDetails.map((detail) => {
             const service = services.find((item) => item.title === detail.title);
@@ -58,9 +58,9 @@ export default function ServicesPage() {
       </section>
 
       <CTASection
-        title="Find support on your terms"
-        subtitle="Choose from verified companions who offer chat, audio, video, and safety-approved Home Visit sessions."
-        primaryLabel="Find a Companion"
+        title="Ready to book your first session?"
+        subtitle="Start with trusted chat, voice call, video, or home visit companionship."
+        primaryLabel="Start Now"
         primaryHref="/connect-now"
       />
     </>

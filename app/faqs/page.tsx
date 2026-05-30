@@ -11,8 +11,6 @@ import {
   Search,
   ShieldCheck,
   Sparkles,
-  UserCheck,
-  Video,
 } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -26,17 +24,17 @@ const faqCategories = [
       {
         question: "What is YoPartner?",
         answer:
-          "YoPartner is a safety-first human connection platform where verified partners offer meaningful conversations, emotional support, and trusted interactions through chat, audio, video, and approved in-person formats.",
+          "YoPartner is India's premium companionship platform for adults. Connect with verified companions through chat, voice calls, video companionship, and approved home visit companionship.",
       },
       {
-        question: "Is YoPartner a dating or escort platform?",
+        question: "Is YoPartner a dating platform?",
         answer:
-          "No. Absolutely not.\n\nWe do not offer dating, escorting, intimacy, or sexual services of any kind.\n\nOur services are strictly emotional, conversational, and partner-based.",
+          "No. YoPartner is strictly platonic and focused on social companionship, quality conversation, and trusted human connection.",
       },
       {
-        question: "Who can use YoPartner?",
+        question: "Is YoPartner therapy or counseling?",
         answer:
-          "Adults who want safe, verified, human support can use YoPartner. The platform is designed for people who value privacy, respectful boundaries, and calm communication.",
+          "No. YoPartner is not a therapy or counseling service. It provides non-clinical companionship and conversation.",
       },
     ],
   },
@@ -48,17 +46,17 @@ const faqCategories = [
       {
         question: "How do I start a session?",
         answer:
-          "Create an account, choose a verified partner, select chat, audio, or video, and confirm your wallet balance. Once the request is accepted, your session opens securely inside YoPartner.",
+          "Choose a verified companion, select your format, and start now or schedule for later. Sessions run securely in-app.",
       },
       {
-        question: "Can I choose the type of support I need?",
+        question: "Which formats can I choose?",
         answer:
-          "Yes. You can browse by services, availability, language, and session mode so the experience feels comfortable and relevant to you.",
+          "You can choose chat companionship, voice call companionship, video companionship, and approved home visit companionship.",
       },
       {
-        question: "Do I need to install an app?",
+        question: "Can I filter by language and availability?",
         answer:
-          "YoPartner works in the browser on supported devices. For the best video-call experience, use an updated browser and allow camera and microphone permissions.",
+          "Yes. Profiles show language, service formats, and availability so you can choose the best fit quickly.",
       },
     ],
   },
@@ -68,90 +66,41 @@ const faqCategories = [
     tint: "bg-[#e9f8ef] text-[#047857]",
     questions: [
       {
-        question: "How does YoPartner keep interactions safe?",
+        question: "How does YoPartner keep sessions safe?",
         answer:
-          "YoPartner uses partner verification, platform guidelines, session controls, wallet-based payments, reporting tools, and manual review processes to keep interactions respectful and safety-led.",
+          "YoPartner combines profile verification, policy enforcement, reporting workflows, and support review to protect users and companions.",
       },
       {
         question: "Is my personal information private?",
         answer:
-          "Yes. YoPartner limits what is shared publicly, protects account information, and does not expose private verification documents to users or partners.",
+          "Yes. We use privacy-first practices and limit data exposure across user and companion experiences.",
       },
       {
-        question: "Can I end a session if I feel uncomfortable?",
+        question: "Can I exit a session anytime?",
         answer:
-          "Yes. You can end a session at any time. Safety and personal comfort come first, and support options are available if you need help.",
-      },
-      {
-        question: "Are video calls recorded?",
-        answer:
-          "YoPartner live video calls are designed for real-time interaction. Frames are not stored by the beauty/enhance filter or processed on a server.",
+          "Yes. You can end a session whenever you want and contact support if anything feels off.",
       },
     ],
   },
   {
-    title: "For Partners",
-    icon: UserCheck,
-    tint: "bg-[#e8f3ff] text-[#2563eb]",
-    questions: [
-      {
-        question: "How can I become a verified partner?",
-        answer:
-          "Apply through the partner onboarding flow, complete the required details, submit verification information, and wait for the YoPartner review team to approve your profile.",
-      },
-      {
-        question: "What does verification include?",
-        answer:
-          "Verification may include identity review, profile review, safety guideline acknowledgement, and additional checks before a partner can offer sessions.",
-      },
-      {
-        question: "Can partners choose services they offer?",
-        answer:
-          "Partners can select eligible services during onboarding. Some formats, such as Home Visit, require extra review and platform approval.",
-      },
-    ],
-  },
-  {
-    title: "Payments & Billing",
+    title: "Payments",
     icon: CreditCard,
     tint: "bg-[#fff4df] text-[#a45413]",
     questions: [
       {
-        question: "How are sessions priced?",
+        question: "How is pricing shown?",
         answer:
-          "Session prices are shown before you start. Chat, audio, and video are usually priced per minute, while approved Home Visit sessions may use a separate booking format.",
+          "Pricing is shown clearly on each companion profile before you start a session.",
       },
       {
         question: "How do wallet payments work?",
         answer:
-          "Add money to your YoPartner wallet, choose a session, and the platform checks your balance before the session starts. If your balance is low, you will be guided to recharge.",
+          "Recharge your wallet and pay in-app. Session payments are handled through secure platform flows.",
       },
       {
-        question: "What payment methods are accepted?",
+        question: "Are payment options fixed?",
         answer:
-          "Available payment methods may include supported online payment options shown during recharge. Payment availability can vary by device, bank, and provider.",
-      },
-    ],
-  },
-  {
-    title: "Video Calls",
-    icon: Video,
-    tint: "bg-[#eef2ff] text-[#4f46e5]",
-    questions: [
-      {
-        question: "How do video calls work?",
-        answer:
-          "Video calls run inside YoPartner using secure live-call technology. Allow camera and microphone access, keep your browser updated, and remain inside the call screen until the session ends.",
-      },
-      {
-        question: "Can I mute or turn off my camera?",
-        answer:
-          "Yes. Video calls include controls for microphone, camera, speaker, camera switching, and ending the session.",
-      },
-      {
-        question: "What happens if my connection is unstable?",
-        answer:
-          "YoPartner keeps the call experience lightweight and will continue to prioritize call stability. If the connection drops, rejoin from the active session when available.",
+          "Available recharge options may vary by payment provider, bank, and device.",
       },
     ],
   },
@@ -161,19 +110,19 @@ const faqCategories = [
     tint: "bg-[#f3eeff] text-[#6d28d9]",
     questions: [
       {
-        question: "Are Home Visits available to everyone?",
+        question: "Are home visits available everywhere?",
         answer:
-          "Home Visit availability depends on location, partner approval, safety review, and platform rules. It is only enabled for verified partners approved for this format.",
+          "Home visit companionship is enabled only in approved locations and for companions with additional verification.",
       },
       {
-        question: "How is Home Visit safety handled?",
+        question: "How is home visit companionship reviewed?",
         answer:
-          "Home Visits require additional checks, clear boundaries, platform approval, and support oversight. YoPartner may limit or decline requests that do not meet safety standards.",
+          "Home visit sessions follow stricter safety checks, platform protocols, and support oversight.",
       },
       {
-        question: "Can I book a Home Visit instantly?",
+        question: "Can every request be instant?",
         answer:
-          "Some Home Visit requests may require manual review. If instant booking is not available, the platform will guide you to support or the approved request flow.",
+          "Some requests are instant, while others may require a short manual review before confirmation.",
       },
     ],
   },
@@ -212,10 +161,10 @@ export default function FAQsPage() {
             Help Center
           </span>
           <h1 className="mt-6 max-w-3xl text-4xl font-bold tracking-tight text-[#111827] sm:text-5xl lg:text-6xl">
-            How can we <span className="text-[#007065]">help you</span> today?
+            Clear answers. <span className="text-[#007065]">Fast decisions.</span>
           </h1>
           <p className="mt-5 max-w-2xl text-base leading-8 text-[#5d6b68] sm:text-lg">
-            Find answers about safety, sessions, payments, privacy, and how YoPartner works.
+            Everything you need to know about verified companions, safety, privacy, and sessions.
           </p>
 
           <label className="mt-9 flex h-14 w-full max-w-xl items-center gap-3 rounded-full border border-white/80 bg-white/88 px-5 text-left shadow-[0_24px_80px_rgba(31,41,55,0.08)] backdrop-blur-xl transition focus-within:border-[#0f766e]/40 focus-within:ring-4 focus-within:ring-[#0f766e]/10">
@@ -236,7 +185,7 @@ export default function FAQsPage() {
           {filteredCategories.length === 0 ? (
             <div className="rounded-[28px] border border-[#e1e8e6] bg-white p-8 text-center shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
               <p className="text-lg font-semibold text-[#10201e]">No answers found</p>
-              <p className="mt-2 text-sm text-[#667572]">Try searching for safety, payments, video calls, or verification.</p>
+              <p className="mt-2 text-sm text-[#667572]">Try searching for verification, privacy, payments, or home visits.</p>
             </div>
           ) : (
             filteredCategories.map((category) => {
@@ -296,8 +245,8 @@ export default function FAQsPage() {
             <span className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15 backdrop-blur">
               <MessageCircle size={23} />
             </span>
-            <h2 className="mt-5 text-3xl font-bold tracking-tight">Still have questions?</h2>
-            <p className="mt-3 text-sm leading-7 text-white/86 sm:text-base">Our support team is here to help you 24/7.</p>
+            <h2 className="mt-5 text-3xl font-bold tracking-tight">Need help choosing the right format?</h2>
+            <p className="mt-3 text-sm leading-7 text-white/86 sm:text-base">Our support team can guide you quickly and securely.</p>
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Link
                 href="/support"
@@ -311,13 +260,12 @@ export default function FAQsPage() {
                 className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full border border-white/45 bg-white/8 px-5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-white/14 sm:w-auto"
               >
                 <MessageCircle size={17} />
-                Talk Now
+                Explore Companions
               </Link>
             </div>
           </div>
         </section>
       </main>
-
     </div>
   );
 }

@@ -8,7 +8,13 @@ const outfit = Outfit({
   variable: "--font-outfit-home",
 });
 
-const statPills = ["Background Verified", "Identity Confirmed", "Empathy Training"];
+const statPills = ["ID + Background Verified", "Private by Design", "Secure In-App Sessions"];
+const heroBenefits = [
+  "Chat companionship",
+  "Voice call companionship",
+  "Video companionship",
+  "Home visit companionship",
+];
 
 export default function HomePage() {
   return (
@@ -19,31 +25,39 @@ export default function HomePage() {
           <div className="max-w-[620px]">
             <span className="inline-flex items-center gap-2 rounded-full border border-[#d6e7de] bg-white/80 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.13em] text-[#40605b]">
               <Users size={13} />
-              Trusted Community Support
+              India&apos;s Premium Companionship Platform
             </span>
 
             <h1 className="mt-6 text-[2.65rem] font-semibold leading-[1.04] text-[#00433d] sm:text-[3.2rem] lg:text-[3.8rem]">
-              Your safe space for authentic connection.
+              Verified companions for real conversations.
             </h1>
 
             <p className="mt-5 max-w-[560px] text-[15px] leading-7 text-[#4f6661] sm:text-[16px]">
-              Experience compassionate listening and platonic companionship. We provide a digital sanctuary where you can express yourself
-              freely without judgment.
+              YoPartner helps you connect through chat, voice calls, video sessions, and home visit companionship.
+              Built for social companionship, quality time, and trusted human connection.
             </p>
+
+            <div className="mt-5 flex flex-wrap gap-2.5">
+              {heroBenefits.map((benefit) => (
+                <span key={benefit} className="rounded-full border border-[#d6e7de] bg-white/85 px-3 py-1 text-[11px] font-medium text-[#315851]">
+                  {benefit}
+                </span>
+              ))}
+            </div>
 
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
                 href="/connect-now"
                 className="inline-flex h-11 items-center gap-2 rounded-full bg-[#00433d] px-6 text-sm font-semibold !text-white shadow-[0_12px_30px_rgba(0,67,61,0.24)] transition hover:-translate-y-0.5 hover:bg-[#005c55]"
               >
-                Find a Companion
+                Start Connecting
                 <ArrowRight size={15} className="text-white" />
               </Link>
               <Link
-                href="/about"
+                href="/how-it-works"
                 className="inline-flex h-11 items-center rounded-full border border-[#cadcd4] bg-white/70 px-6 text-sm font-medium text-[#244d47] transition hover:-translate-y-0.5 hover:bg-white"
               >
-                Learn Our Story
+                How It Works
               </Link>
             </div>
           </div>
@@ -69,7 +83,7 @@ export default function HomePage() {
 
             <div className="absolute left-[10%] top-[56%] w-[260px] rounded-[24px] border border-white/80 bg-white/78 p-4 shadow-[0_14px_36px_rgba(0,67,61,0.2)] backdrop-blur-md sm:left-[14%]">
               <ActiveCompanionsCount />
-              <p className="mt-1 text-xs leading-5 text-[#5b716c]">Ready to talk and listen whenever you need support.</p>
+              <p className="mt-1 text-xs leading-5 text-[#5b716c]">Online now for secure, private, real-time sessions.</p>
             </div>
           </div>
         </div>
@@ -78,8 +92,8 @@ export default function HomePage() {
       <section className="bg-[#EEF4F1] px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
         <div className="mx-auto w-full max-w-[1180px]">
           <div className="text-center">
-            <h2 className="text-[2rem] font-semibold text-[#102f2b] sm:text-[2.25rem]">Designed for Emotional Wellbeing</h2>
-            <p className="mt-3 text-[15px] text-[#536965]">We&apos;ve built a sanctuary based on empathy, safety, and mutual respect.</p>
+            <h2 className="text-[2rem] font-semibold text-[#102f2b] sm:text-[2.25rem]">Trust, Safety, and Privacy by Default</h2>
+            <p className="mt-3 text-[15px] text-[#536965]">A modern companionship platform with verified companions and secure communication.</p>
           </div>
 
           <div className="mt-10 grid gap-4 lg:grid-cols-12">
@@ -89,11 +103,12 @@ export default function HomePage() {
               </span>
               <div className="mt-3 grid gap-5 md:grid-cols-[1fr_210px] md:items-start">
                 <div>
-                  <h3 className="text-[1.75rem] font-semibold text-[#102f2b]">Verified Safety First</h3>
+                  <h3 className="text-[1.75rem] font-semibold text-[#102f2b]">Verification You Can Trust</h3>
                   <p className="mt-3 text-sm leading-7 text-[#4f6661]">
-                    Every companion undergoes a rigorous background check and empathy screening to ensure you&apos;re always in safe hands.
+                    Every profile goes through structured verification before going live.
+                    You connect with real people on a platform built for accountability.
                   </p>
-                  <p className="mt-5 text-sm font-semibold text-[#123f39]">Our safety protocol</p>
+                  <p className="mt-5 text-sm font-semibold text-[#123f39]">Verification layers</p>
                 </div>
                 <div className="rounded-[20px] bg-[#d7f4f3] p-4">
                   <div className="space-y-2">
@@ -111,20 +126,20 @@ export default function HomePage() {
               <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white/12">
                 <HeartHandshake size={18} />
               </span>
-              <h3 className="mt-4 text-[1.65rem] font-semibold">Heart-to-Heart</h3>
-              <p className="mt-3 text-sm leading-7 text-[#d4ece8]">True platonic connection that focuses on listening, not fixing.</p>
-              <button type="button" className="mt-8 inline-flex h-9 w-full items-center justify-center rounded-full bg-white text-xs font-semibold text-[#0b4e47]">
-                Join Community
-              </button>
+              <h3 className="mt-4 text-[1.65rem] font-semibold">Companionship, Not Dating</h3>
+              <p className="mt-3 text-sm leading-7 text-[#d4ece8]">YoPartner is strictly platonic. No dating. No therapy. Just quality social companionship.</p>
+              <Link href="/trust-safety" className="mt-8 inline-flex h-9 w-full items-center justify-center rounded-full bg-white text-xs font-semibold text-[#0b4e47]">
+                See Safety Standards
+              </Link>
             </article>
 
             <article className="rounded-[24px] bg-[#d7ecef] p-6 shadow-[0_12px_28px_rgba(0,67,61,0.08)] lg:col-span-4">
               <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white text-[#3d5b57]">
                 <Sparkles size={18} />
               </span>
-              <h3 className="mt-4 text-[1.7rem] font-semibold text-[#173934]">No Judgment</h3>
+              <h3 className="mt-4 text-[1.7rem] font-semibold text-[#173934]">Premium Experience</h3>
               <p className="mt-3 text-sm leading-7 text-[#4f6661]">
-                A neutral space to share your thoughts, fears, or simply your day with someone who cares.
+                Clean session flow, verified profiles, and professional support designed for modern human connection.
               </p>
             </article>
 
@@ -134,9 +149,10 @@ export default function HomePage() {
                   <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[#d8efea] text-[#00433d]">
                     <MessageCircleHeart size={18} />
                   </span>
-                  <h3 className="mt-4 text-[1.75rem] font-semibold text-[#102f2b]">Real-time Connections</h3>
+                  <h3 className="mt-4 text-[1.75rem] font-semibold text-[#102f2b]">Secure Communication</h3>
                   <p className="mt-3 text-sm leading-7 text-[#4f6661]">
-                    Talk now or schedule for later. Our platform adapts to your emotional rhythms and availability.
+                    Message instantly or schedule sessions on your time.
+                    Chat, voice, and video companionship stay inside protected in-app channels.
                   </p>
                 </div>
                 <div className="rounded-[18px] bg-[#eaf2ef] p-4 text-xs text-[#4a615c]">
@@ -159,15 +175,15 @@ export default function HomePage() {
         <div className="mx-auto w-full max-w-[1180px] rounded-[24px] bg-[#005c55] px-6 py-10 text-white shadow-[0_24px_50px_rgba(0,67,61,0.26)] sm:px-10 sm:py-12">
           <Quote size={38} className="text-white/35" />
           <blockquote className="mx-auto mt-2 max-w-[860px] text-center text-[2rem] font-semibold leading-[1.25] sm:text-[2.3rem]">
-            &quot;YoPartner wasn&apos;t just a service; it was the bridge I needed during a lonely transition. Having someone who truly listens changed
-            everything.&quot;
+            &quot;Fast onboarding, verified profiles, and high-quality conversations.
+            YoPartner made social companionship simple and safe.&quot;
           </blockquote>
           <div className="mt-8 flex items-center justify-center gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/images/home-avatar-james.svg" alt="James R." className="h-11 w-11 rounded-full border border-white/70" />
+            <img src="/images/home-avatar-james.svg" alt="Verified member" className="h-11 w-11 rounded-full border border-white/70" />
             <div>
-              <p className="text-sm font-semibold">James R.</p>
-              <p className="text-[11px] text-[#c8e5df]">Community Member since 2023</p>
+              <p className="text-sm font-semibold">Verified Member</p>
+              <p className="text-[11px] text-[#c8e5df]">Bengaluru</p>
             </div>
           </div>
         </div>
@@ -175,22 +191,22 @@ export default function HomePage() {
 
       <section className="px-4 pb-20 pt-6 sm:px-6 lg:px-8 lg:pb-24">
         <div className="mx-auto w-full max-w-[860px] text-center">
-          <h2 className="text-[2.6rem] font-semibold leading-[1.1] text-[#00433d] sm:text-[3.3rem]">Start your journey today.</h2>
+          <h2 className="text-[2.6rem] font-semibold leading-[1.1] text-[#00433d] sm:text-[3.3rem]">Real conversations. Real people. Better days.</h2>
           <p className="mx-auto mt-4 max-w-[660px] text-[15px] leading-7 text-[#4f6661]">
-            Join thousands of others finding support and connection. Your first 10 minutes are on us.
+            Join India&apos;s premium companionship platform for trusted chat, voice, video, and home visit companionship.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link
               href="/partner"
               className="inline-flex h-11 items-center justify-center rounded-full bg-[#00433d] px-7 text-sm font-semibold !text-white shadow-[0_10px_24px_rgba(0,67,61,0.22)] transition hover:-translate-y-0.5 hover:bg-[#005c55]"
             >
-              Become a Partner
+              Become a Verified Companion
             </Link>
             <Link
               href="/connect-now"
               className="inline-flex h-11 items-center justify-center rounded-full border border-[#c6d9d1] bg-white px-7 text-sm font-medium text-[#224d46] transition hover:-translate-y-0.5 hover:bg-[#f9fcfb]"
             >
-              Talk to Someone Now
+              Explore Companions
             </Link>
           </div>
         </div>

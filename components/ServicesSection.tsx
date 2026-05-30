@@ -11,8 +11,8 @@ export function ServicesSection({ showHeader = true }: ServicesSectionProps) {
     <section id="services" className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 lg:px-8">
       {showHeader && (
         <SectionHeader
-          eyebrow="Emotional Wellness"
-          title="Support for the moments that feel heavy"
+          eyebrow="Core Services"
+          title="Choose your companionship format"
         />
       )}
       <div className={`${showHeader ? "mt-8" : ""} grid gap-4 md:grid-cols-2 xl:grid-cols-3`}>

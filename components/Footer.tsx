@@ -24,8 +24,8 @@ export function Footer() {
       title: "Platform",
       links: [
         { label: "How it Works", href: "/how-it-works" },
-        { label: "About Us", href: "/faqs" },
-        { label: "Safety Guidelines", href: "/trust-safety" },
+        { label: "About Us", href: "/about" },
+        { label: "Safety & Trust", href: "/trust-safety" },
         { label: "Help Center", href: "/faqs" },
       ],
     },
@@ -50,7 +50,7 @@ export function Footer() {
               <span className="text-[22px] font-semibold text-[#0f2f2c]">YoPartner</span>
             </Link>
             <p className="mt-4 max-w-[300px] text-[13px] leading-6 text-[#58706a]">
-              Your safe space for emotional connection and authentic platonic support.
+              India&apos;s premium companionship platform for verified chat, voice call, video, and home visit sessions.
             </p>
           </div>
 
@@ -98,7 +98,7 @@ export function Footer() {
         </div>
 
         <div className="mt-10 flex flex-col gap-4 border-t border-[#c8ddd3] pt-6 text-[11px] text-[#5a7069] sm:flex-row sm:items-center sm:justify-between">
-          <p>(c) {new Date().getFullYear()} YoPartner. Your safe space for connection.</p>
+          <p>(c) {new Date().getFullYear()} YoPartner. Verified companions. Trusted human connection.</p>
           <div className="flex items-center gap-2">
             <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#cfe4d7] bg-white/70">
               <Globe size={15} />
