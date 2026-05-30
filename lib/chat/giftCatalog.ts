@@ -60,6 +60,11 @@ function toTitleFromFile(fileName: string) {
   return fileName.replace(/\.png$/i, "").replace(/[_-]+/g, " ").trim();
 }
 
+function warnCatalogIssue(message: string, meta: Record<string, unknown>) {
+  if (process.env.NODE_ENV === "production") return;
+  console.warn(`[giftCatalog] ${message}`, meta);
+}
+
 function buildSvgaItems() {
   const prices = [...PREMIUM_SVGA_PRICES, ...LUXURY_SVGA_PRICES, ...EXPENSIVE_SVGA_PRICES];
   const items: ChatGiftCatalogItem[] = [];
@@ -109,10 +114,57 @@ function buildPngItems() {
   });
 }
 
-export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = [
-  ...buildPngItems(),
-  ...buildSvgaItems(),
-];
+function normalizeMediaKey(mediaUrl: string) {
+  return decodeURIComponent(mediaUrl).trim().toLowerCase();
+}
+
+function buildUniqueCatalog(items: ChatGiftCatalogItem[]) {
+  const seenGiftKeys = new Set<string>();
+  const seenMediaUrls = new Set<string>();
+  const uniqueItems: ChatGiftCatalogItem[] = [];
+
+  for (const item of items) {
+    const mediaKey = normalizeMediaKey(item.mediaUrl);
+    const tierMismatch =
+      (item.mediaType === "png" && item.tier !== "normal")
+      || (item.mediaType === "svga" && item.tier === "normal");
+
+    if (tierMismatch) {
+      warnCatalogIssue("tier/media mismatch removed from catalog", {
+        giftKey: item.giftKey,
+        tier: item.tier,
+        mediaType: item.mediaType,
+        mediaUrl: item.mediaUrl,
+      });
+      continue;
+    }
+
+    if (seenGiftKeys.has(item.giftKey)) {
+      warnCatalogIssue("duplicate giftKey removed from catalog", {
+        giftKey: item.giftKey,
+        mediaUrl: item.mediaUrl,
+      });
+      continue;
+    }
+
+    if (seenMediaUrls.has(mediaKey)) {
+      warnCatalogIssue("duplicate mediaUrl removed from catalog", {
+        giftKey: item.giftKey,
+        mediaUrl: item.mediaUrl,
+      });
+      continue;
+    }
+
+    seenGiftKeys.add(item.giftKey);
+    seenMediaUrls.add(mediaKey);
+    uniqueItems.push(item);
+  }
+
+  return uniqueItems;
+}
+
+const RAW_GIFT_CATALOG = [...buildPngItems(), ...buildSvgaItems()];
+export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = buildUniqueCatalog(RAW_GIFT_CATALOG);
 
 export const CHAT_GIFT_GROUPS: { tier: GiftCatalogTier; label: string }[] = [
   { tier: "normal", label: "Normal" },

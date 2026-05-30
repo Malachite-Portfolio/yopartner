@@ -17,12 +17,16 @@ export type ChatScreenMessage = {
     giftName: string;
     giftEmoji: string;
     amount: number;
+    quantity?: number;
+    unitAmount?: number;
   } | null;
 };
 
 type ChatScreenProps = {
   companion: CompanionRouteProfile;
   messages: ChatScreenMessage[];
+  messagesLoading?: boolean;
+  messagesLoadingLabel?: string;
   input: string;
   onInputChange: (next: string) => void;
   onSend: () => void;
@@ -70,6 +74,8 @@ function getGiftBubbleClass(giftKey: NonNullable<ChatScreenMessage["gift"]>["gif
 export function ChatScreen({
   companion,
   messages,
+  messagesLoading = false,
+  messagesLoadingLabel = "Loading messages...",
   input,
   onInputChange,
   onSend,
@@ -203,9 +209,15 @@ export function ChatScreen({
         </div>
 
         {messages.length === 0 ? (
-          <p className="mx-auto max-w-xs rounded-2xl bg-white px-4 py-2.5 text-center text-[14px] text-[#64748b] shadow-sm">
-            {emptyMessage}
-          </p>
+          messagesLoading ? (
+            <p className="mx-auto max-w-xs rounded-2xl bg-white px-4 py-2.5 text-center text-[14px] text-[#64748b] shadow-sm">
+              {messagesLoadingLabel}
+            </p>
+          ) : (
+            <p className="mx-auto max-w-xs rounded-2xl bg-white px-4 py-2.5 text-center text-[14px] text-[#64748b] shadow-sm">
+              {emptyMessage}
+            </p>
+          )
         ) : null}
 
         <div className="space-y-3">
@@ -250,7 +262,14 @@ export function ChatScreen({
                       <p className="text-[14.5px] font-semibold leading-relaxed">
                         {own ? "You sent a gift" : "You received a gift"}
                       </p>
-                      <p className="mt-1 text-[12px] text-slate-700/90">Gift amount ₹{gift?.amount}</p>
+                      <div className="mt-1 flex items-center gap-2 text-[12px] text-slate-700/90">
+                        <span>Gift amount ₹{gift?.amount}</span>
+                        {gift?.quantity && gift.quantity > 1 ? (
+                          <span className="rounded-full bg-slate-900/80 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                            x{gift.quantity}
+                          </span>
+                        ) : null}
+                      </div>
                     </>
                   ) : (
                     <p className="text-[14.5px] leading-relaxed">{message.text}</p>

@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import dynamic from "next/dynamic";
 import { ChatScreen, type ChatScreenMessage } from "@/components/chat/ChatScreen";
 import { GiftOverlay, type GiftOverlayEffect } from "@/components/chat/GiftOverlay";
-import { GiftPlayer } from "@/components/chat/GiftPlayer";
 import { EndSessionConfirmModal } from "@/components/session/EndSessionConfirmModal";
 import { useSessionExitGuard } from "@/hooks/useSessionExitGuard";
 import {
@@ -39,6 +39,11 @@ import {
 import { isActiveSessionStatus, isTerminalSessionStatus } from "@/lib/sessionStatus";
 import { getUserAuthTokenWithRestore } from "@/lib/auth/userAuth";
 import { WALLET_UPDATED_EVENT } from "@/lib/wallet";
+
+const LazyGiftPlayer = dynamic(
+  () => import("@/components/chat/GiftPlayer").then((mod) => mod.GiftPlayer),
+  { ssr: false },
+);
 
 function toLoginUrl(returnUrl: string) {
   return `/login?returnUrl=${encodeURIComponent(returnUrl)}`;
@@ -96,6 +101,18 @@ function mapGiftSendError(code?: string) {
   }
 }
 
+function buildFallbackCompanion(sessionData: SessionRecord): CompanionRouteProfile {
+  return {
+    id: sessionData.companionId,
+    name: sessionData.companion?.name?.trim() || "Companion",
+    tagline: "Private session",
+    online: sessionData.status === "LIVE",
+    chatPrice: 0,
+    voicePrice: 0,
+    videoPrice: 0,
+  };
+}
+
 export default function ChatPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
@@ -110,11 +127,13 @@ export default function ChatPage() {
   const [isCancelling, setIsCancelling] = useState(false);
   const [messageInput, setMessageInput] = useState("");
   const [messages, setMessages] = useState<SessionMessageRecord[]>([]);
+  const [isMessagesLoading, setIsMessagesLoading] = useState(false);
   const [messageError, setMessageError] = useState("");
   const [isEndingSession, setIsEndingSession] = useState(false);
   const [clockNow, setClockNow] = useState(() => Date.now());
   const [walletBalance, setWalletBalance] = useState(0);
   const [isGiftModalOpen, setIsGiftModalOpen] = useState(false);
+  const [isGiftDrawerContentReady, setIsGiftDrawerContentReady] = useState(false);
   const [selectedGiftId, setSelectedGiftId] = useState(() => CHAT_GIFT_CATALOG[0]?.id ?? "");
   const [selectedGiftQuantity, setSelectedGiftQuantity] = useState<GiftQuantity>(1);
   const [giftError, setGiftError] = useState("");
@@ -134,11 +153,17 @@ export default function ChatPage() {
     () => CHAT_GIFT_CATALOG.find((gift) => gift.id === selectedGiftId) ?? CHAT_GIFT_CATALOG[0],
     [selectedGiftId],
   );
+  const giftGroups = useMemo(
+    () => CHAT_GIFT_GROUPS.map((group) => ({ ...group, gifts: getCatalogGiftsByTier(group.tier) })),
+    [],
+  );
   const selectedGiftTotal = selectedGift ? selectedGift.price * selectedGiftQuantity : 0;
   const hasGiftBalance = selectedGiftTotal > 0 ? walletBalance >= selectedGiftTotal : false;
 
   useEffect(() => {
     if (process.env.NODE_ENV === "production") return;
+    const seenGiftKeys = new Set<string>();
+    const seenMediaUrls = new Set<string>();
     CHAT_GIFT_CATALOG.forEach((gift) => {
       if (gift.id !== gift.giftKey) {
         console.warn("[chat] catalog mismatch: id and giftKey differ", { id: gift.id, giftKey: gift.giftKey });
@@ -151,8 +176,24 @@ export default function ChatPage() {
           mediaType: gift.mediaType,
         });
       }
+      if (seenGiftKeys.has(gift.giftKey)) {
+        console.warn("[chat] catalog duplicate giftKey detected", { giftKey: gift.giftKey, id: gift.id });
+      } else {
+        seenGiftKeys.add(gift.giftKey);
+      }
+      if (seenMediaUrls.has(mediaUrl)) {
+        console.warn("[chat] catalog duplicate mediaUrl detected", { giftKey: gift.giftKey, mediaUrl });
+      } else {
+        seenMediaUrls.add(mediaUrl);
+      }
     });
   }, []);
+
+  useEffect(() => {
+    if (!isGiftModalOpen) return;
+    const frame = window.requestAnimationFrame(() => setIsGiftDrawerContentReady(true));
+    return () => window.cancelAnimationFrame(frame);
+  }, [isGiftModalOpen]);
 
   const triggerGiftCelebration = useCallback(
     async (
@@ -181,10 +222,16 @@ export default function ChatPage() {
     [],
   );
 
-  const refreshMessages = useCallback(async (sessionId: string) => {
+  const refreshMessages = useCallback(async (sessionId: string, options?: { silent?: boolean }) => {
+    if (!options?.silent) {
+      setIsMessagesLoading(true);
+    }
     const response = await getSessionMessages(sessionId);
     if (response.error) {
       setMessageError(response.error.message || "Unable to load messages right now.");
+      if (!options?.silent) {
+        setIsMessagesLoading(false);
+      }
       return;
     }
     if (!hasHydratedGiftFeedRef.current) {
@@ -198,6 +245,9 @@ export default function ChatPage() {
       hasHydratedGiftFeedRef.current = true;
     }
     setMessages(response.data);
+    if (!options?.silent) {
+      setIsMessagesLoading(false);
+    }
     setMessageError("");
   }, []);
 
@@ -232,18 +282,16 @@ export default function ChatPage() {
       }
 
       if (fetched.data) {
-        setSession(fetched.data);
-        const resolvedCompanion = await resolveCompanionRouteProfile(fetched.data.companionId);
-        if (!active) return;
-        if (!resolvedCompanion) {
-          setErrorMessage("Unable to open this chat right now. Please try again from the companion profile.");
-          setCompanion(null);
-          setIsLoading(false);
-          return;
-        }
-        setCompanion(resolvedCompanion);
+        const existingSession = fetched.data;
+        setSession(existingSession);
+        setCompanion(buildFallbackCompanion(existingSession));
         void refreshWalletBalance();
         setIsLoading(false);
+        void (async () => {
+          const resolvedCompanion = await resolveCompanionRouteProfile(existingSession.companionId);
+          if (!active || !resolvedCompanion) return;
+          setCompanion(resolvedCompanion);
+        })();
         return;
       }
 
@@ -314,10 +362,10 @@ export default function ChatPage() {
   useEffect(() => {
     if (!session?.id || session.status !== "LIVE") return;
     const loadNow = window.setTimeout(() => {
-      void refreshMessages(session.id);
+      void refreshMessages(session.id, { silent: false });
     }, 0);
     const timer = window.setInterval(() => {
-      void refreshMessages(session.id);
+      void refreshMessages(session.id, { silent: true });
     }, 2000);
     return () => {
       window.clearTimeout(loadNow);
@@ -537,6 +585,7 @@ export default function ChatPage() {
     if (typeof window !== "undefined") {
       window.dispatchEvent(new CustomEvent(WALLET_UPDATED_EVENT));
     }
+    setIsGiftDrawerContentReady(false);
     setIsGiftModalOpen(false);
   };
 
@@ -659,6 +708,8 @@ export default function ChatPage() {
       <ChatScreen
         companion={companion}
         messages={screenMessages}
+        messagesLoading={isMessagesLoading}
+        messagesLoadingLabel="Loading chat messages..."
         input={messageInput}
         onInputChange={setMessageInput}
         onSend={() => {
@@ -682,6 +733,7 @@ export default function ChatPage() {
           setGiftError("");
           setSelectedGiftPreviewFailed(false);
           setSelectedGiftQuantity(1);
+          setIsGiftDrawerContentReady(false);
           void refreshWalletBalance();
           setIsGiftModalOpen(true);
         }}
@@ -715,7 +767,7 @@ export default function ChatPage() {
               <div className="border-b border-white/10 px-4 py-3">
                 <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-[#101820] p-2">
                   <div className="h-20 w-20 overflow-hidden rounded-xl border border-white/10 bg-[#0a0f14]">
-                    {!selectedGiftPreviewFailed ? (
+                    {isGiftDrawerContentReady && !selectedGiftPreviewFailed ? (
                       selectedGift.mediaType === "png" ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
@@ -728,7 +780,7 @@ export default function ChatPage() {
                           }}
                         />
                       ) : (
-                        <GiftPlayer
+                        <LazyGiftPlayer
                           src={getGiftSvgaUrl(selectedGift)}
                           loop={1}
                           preflight={false}
@@ -759,15 +811,19 @@ export default function ChatPage() {
             ) : null}
 
             <div className="max-h-[52vh] space-y-3 overflow-y-auto px-4 py-3">
-              {CHAT_GIFT_GROUPS.map((group) => {
-                const gifts = getCatalogGiftsByTier(group.tier);
-                if (gifts.length === 0) return null;
+              {!isGiftDrawerContentReady ? (
+                <div className="rounded-xl border border-white/10 bg-[#111a23] p-4 text-center text-xs text-slate-400">
+                  Loading gifts...
+                </div>
+              ) : null}
+              {isGiftDrawerContentReady ? giftGroups.map((group) => {
+                if (group.gifts.length === 0) return null;
 
                 return (
                   <section key={group.tier}>
                     <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{group.label}</h4>
                     <div className="grid grid-cols-4 gap-2">
-                      {gifts.map((gift) => {
+                      {group.gifts.map((gift) => {
                         const selected = gift.id === selectedGift?.id;
                         const premium = gift.premium;
                         const cardFailed = Boolean(failedCardPreviewGiftIds[gift.id]);
@@ -791,34 +847,26 @@ export default function ChatPage() {
                               </span>
                             ) : null}
                             <div className="mx-auto mb-1 h-12 w-12 overflow-hidden rounded-lg bg-[#0a0f14]">
-                              {!cardFailed ? (
-                                gift.mediaType === "png" ? (
-                                  // eslint-disable-next-line @next/next/no-img-element
-                                  <img
-                                    src={getGiftPngUrl(gift)}
-                                    alt=""
-                                    className="h-full w-full object-cover"
-                                    loading="lazy"
-                                    onError={() => {
-                                      setFailedCardPreviewGiftIds((current) => ({ ...current, [gift.id]: true }));
-                                    }}
-                                  />
-                                ) : (
-                                  <GiftPlayer
-                                    src={getGiftSvgaUrl(gift)}
-                                    loop={1}
-                                    preflight={false}
-                                    playbackTimeoutMs={2000}
-                                    className="h-full w-full"
-                                    onError={() => {
-                                      setFailedCardPreviewGiftIds((current) => ({ ...current, [gift.id]: true }));
-                                    }}
-                                  />
-                                )
+                              {!cardFailed && gift.mediaType === "png" ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={getGiftPngUrl(gift)}
+                                  alt=""
+                                  className="h-full w-full object-cover"
+                                  loading="lazy"
+                                  onError={() => {
+                                    setFailedCardPreviewGiftIds((current) => ({ ...current, [gift.id]: true }));
+                                  }}
+                                />
                               ) : (
                                 <div className="relative h-full w-full overflow-hidden">
                                   <span className="absolute inset-0 bg-gradient-to-br from-slate-800 to-slate-700" />
                                   <span className="absolute inset-x-2 bottom-2 top-2 rounded-md border border-white/10 bg-white/5" />
+                                  {gift.mediaType === "svga" ? (
+                                    <span className="absolute inset-x-0 bottom-1 text-center text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-300">
+                                      SVGA
+                                    </span>
+                                  ) : null}
                                 </div>
                               )}
                             </div>
@@ -832,7 +880,7 @@ export default function ChatPage() {
                     </div>
                   </section>
                 );
-              })}
+              }) : null}
             </div>
 
             <div className="border-t border-white/10 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
@@ -867,7 +915,10 @@ export default function ChatPage() {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setIsGiftModalOpen(false)}
+                  onClick={() => {
+                    setIsGiftDrawerContentReady(false);
+                    setIsGiftModalOpen(false);
+                  }}
                   className="h-11 w-28 rounded-xl border border-white/20 text-sm font-semibold text-slate-200"
                 >
                   Close

@@ -27,6 +27,16 @@ function maskPhone(value: string) {
   return `+91******${digits.slice(-4)}`;
 }
 
+function resolveMemberDisplayName(session: SessionRecord | null) {
+  const primaryName = session?.user?.name?.trim();
+  if (primaryName) return primaryName;
+  const fallbackFullName = session?.user && "fullName" in session.user ? String((session.user as { fullName?: string }).fullName ?? "").trim() : "";
+  if (fallbackFullName) return fallbackFullName;
+  const masked = String(session?.user?.phoneMasked ?? "");
+  if (masked.trim()) return masked;
+  return maskPhone(String(session?.user?.phoneNumber ?? ""));
+}
+
 function toScreenMessages(messages: SessionMessageRecord[]): ChatScreenMessage[] {
   return messages.map((message) => ({
     id: message.id,
@@ -49,6 +59,7 @@ export default function PartnerChatSessionPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [messages, setMessages] = useState<SessionMessageRecord[]>([]);
+  const [isMessagesLoading, setIsMessagesLoading] = useState(false);
   const [input, setInput] = useState("");
   const [isEndingSession, setIsEndingSession] = useState(false);
   const [clockNow, setClockNow] = useState(() => Date.now());
@@ -83,11 +94,16 @@ export default function PartnerChatSessionPage() {
   useEffect(() => {
     if (!sessionId || session?.status !== "LIVE") return;
     const refresh = async () => {
+      setIsMessagesLoading(true);
       const response = await getSessionMessages(sessionId);
-      if (!response.data) return;
+      if (!response.data) {
+        setIsMessagesLoading(false);
+        return;
+      }
 
       const nextMessages = response.data;
       setMessages(nextMessages);
+      setIsMessagesLoading(false);
 
       const latestGiftMessage = [...nextMessages]
         .reverse()
@@ -112,6 +128,7 @@ export default function PartnerChatSessionPage() {
         id: `${catalogGift.id}-${Date.now()}`,
         gift: catalogGift,
         direction: "received",
+        quantity: latestGiftMessage.gift.quantity && latestGiftMessage.gift.quantity > 1 ? latestGiftMessage.gift.quantity : 1,
       });
     };
     void refresh();
@@ -142,9 +159,8 @@ export default function PartnerChatSessionPage() {
   }, [router, session?.status]);
 
   const memberName = useMemo(() => {
-    const raw = String(session?.user?.phoneMasked ?? session?.user?.phoneNumber ?? session?.user?.name ?? "");
-    return maskPhone(raw);
-  }, [session?.user]);
+    return resolveMemberDisplayName(session);
+  }, [session]);
 
   const memberProfile = useMemo<CompanionRouteProfile>(
     () => ({
@@ -274,6 +290,8 @@ export default function PartnerChatSessionPage() {
             <ChatScreen
               companion={memberProfile}
               messages={toScreenMessages(messages)}
+              messagesLoading={isMessagesLoading}
+              messagesLoadingLabel="Loading chat messages..."
               input={input}
               onInputChange={setInput}
               onSend={() => {

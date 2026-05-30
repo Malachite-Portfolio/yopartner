@@ -37,6 +37,7 @@ export type SessionRecord = {
   user?: {
     id: string;
     name?: string | null;
+    fullName?: string | null;
     phoneMasked?: string;
     phoneNumber?: string;
     [key: string]: unknown;
@@ -63,6 +64,8 @@ export type SessionMessageRecord = {
     giftName: string;
     giftEmoji: string;
     amount: number;
+    quantity?: number;
+    unitAmount?: number;
   } | null;
   createdAt: string;
   isMine?: boolean;
@@ -70,10 +73,12 @@ export type SessionMessageRecord = {
     id: string;
     phoneNumber?: string;
     name?: string | null;
+    fullName?: string | null;
   };
 };
 
 export type GiftKey = string;
+export type GiftQuantity = 1 | 10 | 50 | 100;
 
 export async function createSession(payload: {
   companionId: string;
@@ -133,7 +138,7 @@ export async function sendSessionMessage(sessionId: string, body: string) {
   return { data: result.data?.message ?? null, error: null };
 }
 
-export async function sendSessionGift(sessionId: string, giftKey: GiftKey) {
+export async function sendSessionGift(sessionId: string, giftKey: GiftKey, quantity: GiftQuantity = 1) {
   const result = await apiRequest<{
     walletBalance: number;
     gift: {
@@ -141,11 +146,13 @@ export async function sendSessionGift(sessionId: string, giftKey: GiftKey) {
       giftName: string;
       giftEmoji: string;
       amount: number;
+      quantity: GiftQuantity;
+      unitAmount: number;
     };
     message: SessionMessageRecord;
   }>(`/api/sessions/${sessionId}/gifts`, {
     method: "POST",
-    body: JSON.stringify({ giftKey }),
+    body: JSON.stringify({ giftKey, quantity }),
   });
   if (result.error) return { data: null, error: result.error };
   return {
