@@ -11,6 +11,7 @@ import {
   cancelSession,
   createSession,
   endSession,
+  type GiftQuantity,
   getSessionById,
   getSessionMessages,
   sendSessionGift,
@@ -30,7 +31,8 @@ import {
   CHAT_GIFT_GROUPS,
   getCatalogGiftByKey,
   getCatalogGiftsByTier,
-  getGiftPreviewImageUrl,
+  getGiftMediaUrl,
+  getGiftPngUrl,
   getGiftSvgaUrl,
   type ChatGiftCatalogItem,
 } from "@/lib/chat/giftCatalog";
@@ -114,11 +116,12 @@ export default function ChatPage() {
   const [walletBalance, setWalletBalance] = useState(0);
   const [isGiftModalOpen, setIsGiftModalOpen] = useState(false);
   const [selectedGiftId, setSelectedGiftId] = useState(() => CHAT_GIFT_CATALOG[0]?.id ?? "");
+  const [selectedGiftQuantity, setSelectedGiftQuantity] = useState<GiftQuantity>(1);
   const [giftError, setGiftError] = useState("");
   const [isSendingGift, setIsSendingGift] = useState(false);
   const [activeGiftEffect, setActiveGiftEffect] = useState<GiftOverlayEffect | null>(null);
   const [selectedGiftPreviewFailed, setSelectedGiftPreviewFailed] = useState(false);
-  const [failedThumbGiftIds, setFailedThumbGiftIds] = useState<Record<string, boolean>>({});
+  const [failedCardPreviewGiftIds, setFailedCardPreviewGiftIds] = useState<Record<string, boolean>>({});
   const reviewRedirectUrlRef = useRef<string | null>(null);
   const seenGiftMessageIdsRef = useRef<Set<string>>(new Set());
   const hasHydratedGiftFeedRef = useRef(false);
@@ -131,7 +134,8 @@ export default function ChatPage() {
     () => CHAT_GIFT_CATALOG.find((gift) => gift.id === selectedGiftId) ?? CHAT_GIFT_CATALOG[0],
     [selectedGiftId],
   );
-  const hasGiftBalance = selectedGift ? walletBalance >= selectedGift.price : false;
+  const selectedGiftTotal = selectedGift ? selectedGift.price * selectedGiftQuantity : 0;
+  const hasGiftBalance = selectedGiftTotal > 0 ? walletBalance >= selectedGiftTotal : false;
 
   useEffect(() => {
     if (process.env.NODE_ENV === "production") return;
@@ -139,13 +143,12 @@ export default function ChatPage() {
       if (gift.id !== gift.giftKey) {
         console.warn("[chat] catalog mismatch: id and giftKey differ", { id: gift.id, giftKey: gift.giftKey });
       }
-      const resolvedSvgaPath = getGiftSvgaUrl(gift);
-      if (resolvedSvgaPath !== gift.svga) {
-        console.warn("[chat] catalog mismatch: preview/playback path differs from gift.svga", {
+      const mediaUrl = getGiftMediaUrl(gift);
+      if (!mediaUrl) {
+        console.warn("[chat] catalog mismatch: missing media url", {
           id: gift.id,
           giftKey: gift.giftKey,
-          svga: gift.svga,
-          resolvedSvgaPath,
+          mediaType: gift.mediaType,
         });
       }
     });
@@ -159,11 +162,12 @@ export default function ChatPage() {
     ) => {
       const resolvedGift = catalogGift ?? getCatalogGiftByKey(gift.giftKey);
       if (!resolvedGift) return;
-      const svgaUrl = resolvedGift.svga;
-      if (process.env.NODE_ENV !== "production" && !svgaUrl.trim()) {
-        console.warn("[chat] selected gift has empty SVGA path", {
+      const mediaUrl = getGiftMediaUrl(resolvedGift);
+      if (process.env.NODE_ENV !== "production" && !mediaUrl.trim()) {
+        console.warn("[chat] selected gift has empty media path", {
           giftId: resolvedGift.id,
           giftKey: resolvedGift.giftKey,
+          mediaType: resolvedGift.mediaType,
         });
       }
       await playGiftSound(resolvedGift.sound, isMine ? 0.11 : 0.09);
@@ -171,6 +175,7 @@ export default function ChatPage() {
         id: `${resolvedGift.id}-${Date.now()}`,
         gift: resolvedGift,
         direction: isMine ? "sent" : "received",
+        quantity: gift.quantity && gift.quantity > 1 ? gift.quantity : 1,
       });
     },
     [],
@@ -501,7 +506,7 @@ export default function ChatPage() {
 
     setIsSendingGift(true);
     setGiftError("");
-    const response = await sendSessionGift(session.id, selectedGift.giftKey);
+    const response = await sendSessionGift(session.id, selectedGift.giftKey, selectedGiftQuantity);
     setIsSendingGift(false);
 
     if (!response.data) {
@@ -509,6 +514,7 @@ export default function ChatPage() {
         console.warn("[chat] send gift failed", {
           sessionId: session.id,
           giftKey: selectedGift.giftKey,
+          quantity: selectedGiftQuantity,
           error: response.error,
         });
       }
@@ -675,6 +681,7 @@ export default function ChatPage() {
         onGiftClick={() => {
           setGiftError("");
           setSelectedGiftPreviewFailed(false);
+          setSelectedGiftQuantity(1);
           void refreshWalletBalance();
           setIsGiftModalOpen(true);
         }}
@@ -682,56 +689,88 @@ export default function ChatPage() {
       />
       <GiftOverlay effect={activeGiftEffect} onClose={() => setActiveGiftEffect(null)} />
       {isGiftModalOpen ? (
-        <div className="absolute inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
-          <div className="w-full max-w-md rounded-2xl border border-amber-200 bg-white p-4 shadow-xl">
-            <h3 className="text-lg font-semibold text-slate-900">Send a gift</h3>
-            <p className="mt-1 text-sm text-slate-600">Appreciate your partner with a small gift.</p>
-            <p className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700">
-              Wallet Balance: {"\u20B9"}{walletBalance}
-            </p>
+        <div className="absolute inset-0 z-50 flex items-end justify-center bg-black/70">
+          <div className="w-full max-w-lg overflow-hidden rounded-t-3xl border-t border-slate-700 bg-[#0a0f14] text-white shadow-2xl">
+            <div className="flex justify-center pt-2">
+              <span className="h-1 w-12 rounded-full bg-white/25" />
+            </div>
+            <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+              <h3 className="text-base font-semibold">Send Gift</h3>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => router.push("/wallet?addMoney=1")}
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-sm text-emerald-300"
+                  aria-label="Add money"
+                >
+                  +
+                </button>
+                <span className="rounded-full border border-amber-300/30 bg-amber-300/10 px-3 py-1 text-xs font-semibold text-amber-200">
+                  Coins {"\u20B9"}{walletBalance}
+                </span>
+              </div>
+            </div>
+
             {selectedGift ? (
-              <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-2">
-                <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-600">Selected gift preview</p>
-                <div className="flex items-center gap-3">
-                  <div className="h-20 w-20 overflow-hidden rounded-lg border border-slate-200 bg-white">
+              <div className="border-b border-white/10 px-4 py-3">
+                <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-[#101820] p-2">
+                  <div className="h-20 w-20 overflow-hidden rounded-xl border border-white/10 bg-[#0a0f14]">
                     {!selectedGiftPreviewFailed ? (
-                      <GiftPlayer
-                        src={selectedGift.svga}
-                        loop={1}
-                        playbackTimeoutMs={3200}
-                        className="h-full w-full"
-                        onError={() => {
-                          setSelectedGiftPreviewFailed(true);
-                        }}
-                      />
+                      selectedGift.mediaType === "png" ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={getGiftPngUrl(selectedGift)}
+                          alt=""
+                          className="h-full w-full object-cover"
+                          loading="lazy"
+                          onError={() => {
+                            setSelectedGiftPreviewFailed(true);
+                          }}
+                        />
+                      ) : (
+                        <GiftPlayer
+                          src={getGiftSvgaUrl(selectedGift)}
+                          loop={1}
+                          preflight={false}
+                          playbackTimeoutMs={2200}
+                          className="h-full w-full"
+                          onError={() => {
+                            setSelectedGiftPreviewFailed(true);
+                          }}
+                        />
+                      )
                     ) : (
-                      <div className="flex h-full items-center justify-center px-1 text-center text-[10px] font-medium text-slate-500">
-                        Preview unavailable
+                      <div className="relative h-full w-full overflow-hidden">
+                        <span className="absolute inset-0 bg-gradient-to-br from-slate-800 to-slate-700" />
+                        <span className="absolute inset-x-4 bottom-3 top-3 rounded-lg border border-white/10 bg-white/5" />
                       </div>
                     )}
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs text-slate-500">{"\u20B9"}{selectedGift.price}</p>
+                  <div>
+                    <p className="text-xs text-slate-300">Selected gift</p>
+                    <p className="inline-flex items-center gap-1 text-sm font-semibold text-amber-200">
+                      <span className="inline-block h-2 w-2 rounded-full bg-amber-300" />
+                      <span>{"\u20B9"}{selectedGift.price} {selectedGiftQuantity > 1 ? `x${selectedGiftQuantity}` : ""}</span>
+                    </p>
+                    <p className="text-xs text-slate-400">Total {"\u20B9"}{selectedGiftTotal}</p>
                   </div>
                 </div>
               </div>
             ) : null}
-            <div className="mt-3 max-h-[52vh] space-y-3 overflow-y-auto pr-1">
+
+            <div className="max-h-[52vh] space-y-3 overflow-y-auto px-4 py-3">
               {CHAT_GIFT_GROUPS.map((group) => {
                 const gifts = getCatalogGiftsByTier(group.tier);
                 if (gifts.length === 0) return null;
 
                 return (
                   <section key={group.tier}>
-                    <h4 className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-slate-600">
-                      {group.label}
-                    </h4>
-                    <div className="grid grid-cols-3 gap-2">
+                    <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{group.label}</h4>
+                    <div className="grid grid-cols-4 gap-2">
                       {gifts.map((gift) => {
                         const selected = gift.id === selectedGift?.id;
-                        const isPremium = gift.tier !== "popular";
-                        const isLegendary = gift.tier === "legendary";
-                        const previewImageUrl = getGiftPreviewImageUrl(gift);
+                        const premium = gift.premium;
+                        const cardFailed = Boolean(failedCardPreviewGiftIds[gift.id]);
                         return (
                           <button
                             key={gift.id}
@@ -740,45 +779,53 @@ export default function ChatPage() {
                               setSelectedGiftPreviewFailed(false);
                               setSelectedGiftId(gift.id);
                             }}
-                            className={`relative rounded-xl border px-2 py-2 text-center transition ${
-                              isLegendary
-                                ? selected
-                                  ? "border-fuchsia-400 bg-gradient-to-br from-fuchsia-50 to-amber-50 shadow-[0_0_18px_rgba(217,70,239,0.35)]"
-                                  : "border-fuchsia-200 bg-gradient-to-br from-fuchsia-50/80 to-amber-50/70 hover:border-fuchsia-300"
-                                : isPremium
-                                  ? selected
-                                    ? "border-amber-400 bg-gradient-to-br from-amber-50 to-yellow-100 shadow-[0_0_18px_rgba(245,158,11,0.35)]"
-                                    : "border-amber-300/70 bg-gradient-to-br from-amber-50/80 to-yellow-50 hover:border-amber-400"
-                                  : selected
-                                    ? "border-rose-300 bg-rose-50"
-                                    : "border-slate-200 hover:border-rose-300"
+                            className={`relative overflow-hidden rounded-xl border p-1.5 text-center transition ${
+                              selected
+                                ? "border-emerald-400 bg-emerald-400/10 shadow-[0_0_0_1px_rgba(16,185,129,0.35)]"
+                                : "border-white/10 bg-[#111a23]"
                             }`}
                           >
-                            {isPremium ? (
-                              <span className="absolute right-1 top-1 rounded-full bg-slate-900 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] text-amber-200">
-                                Premium
+                            {premium ? (
+                              <span className="absolute right-1 top-1 rounded-full bg-fuchsia-500/80 px-1 py-[1px] text-[8px] font-semibold uppercase text-white">
+                                P
                               </span>
                             ) : null}
-                            <div className="mx-auto mb-1 h-12 w-12 overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
-                              {!failedThumbGiftIds[gift.id] && previewImageUrl ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img
-                                  src={previewImageUrl}
-                                  alt={`${gift.name} preview`}
-                                  className="h-full w-full object-cover"
-                                  loading="lazy"
-                                  onError={() => {
-                                    setFailedThumbGiftIds((current) => ({ ...current, [gift.id]: true }));
-                                  }}
-                                />
+                            <div className="mx-auto mb-1 h-12 w-12 overflow-hidden rounded-lg bg-[#0a0f14]">
+                              {!cardFailed ? (
+                                gift.mediaType === "png" ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img
+                                    src={getGiftPngUrl(gift)}
+                                    alt=""
+                                    className="h-full w-full object-cover"
+                                    loading="lazy"
+                                    onError={() => {
+                                      setFailedCardPreviewGiftIds((current) => ({ ...current, [gift.id]: true }));
+                                    }}
+                                  />
+                                ) : (
+                                  <GiftPlayer
+                                    src={getGiftSvgaUrl(gift)}
+                                    loop={1}
+                                    preflight={false}
+                                    playbackTimeoutMs={2000}
+                                    className="h-full w-full"
+                                    onError={() => {
+                                      setFailedCardPreviewGiftIds((current) => ({ ...current, [gift.id]: true }));
+                                    }}
+                                  />
+                                )
                               ) : (
-                                <div className="relative flex h-full w-full items-center justify-center overflow-hidden">
-                                  <span className="absolute inset-0 animate-pulse bg-gradient-to-br from-slate-200 to-slate-100" />
-                                  <span className="relative px-1 text-center text-[9px] font-semibold text-slate-600">Preview</span>
+                                <div className="relative h-full w-full overflow-hidden">
+                                  <span className="absolute inset-0 bg-gradient-to-br from-slate-800 to-slate-700" />
+                                  <span className="absolute inset-x-2 bottom-2 top-2 rounded-md border border-white/10 bg-white/5" />
                                 </div>
                               )}
                             </div>
-                            <p className="text-[11px] text-slate-500">{"\u20B9"}{gift.price}</p>
+                            <p className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-200">
+                              <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-300" />
+                              <span>{"\u20B9"}{gift.price}</span>
+                            </p>
                           </button>
                         );
                       })}
@@ -788,45 +835,64 @@ export default function ChatPage() {
               })}
             </div>
 
-            {!hasGiftBalance ? (
-              <p className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
-                Insufficient balance. Add money to send this gift.
-              </p>
-            ) : null}
-            {giftError ? (
-              <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                {giftError}
-              </p>
-            ) : null}
+            <div className="border-t border-white/10 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
+              <div className="mb-3 flex items-center gap-2">
+                {([1, 10, 50, 100] as GiftQuantity[]).map((qty) => (
+                  <button
+                    key={qty}
+                    type="button"
+                    onClick={() => setSelectedGiftQuantity(qty)}
+                    className={`h-8 rounded-full px-3 text-xs font-semibold transition ${
+                      selectedGiftQuantity === qty
+                        ? "bg-emerald-500 text-white"
+                        : "border border-white/20 bg-white/5 text-slate-300"
+                    }`}
+                  >
+                    x{qty}
+                  </button>
+                ))}
+              </div>
 
-            <div className="mt-4 flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setIsGiftModalOpen(false)}
-                className="h-10 flex-1 rounded-xl border border-slate-300 text-sm font-semibold text-slate-700"
-              >
-                Back
-              </button>
               {!hasGiftBalance ? (
+                <p className="mb-3 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
+                  Insufficient balance. Add money to send this gift.
+                </p>
+              ) : null}
+              {giftError ? (
+                <p className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                  {giftError}
+                </p>
+              ) : null}
+
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => router.push("/wallet?addMoney=1")}
-                  className="h-10 flex-1 rounded-xl bg-[#c8191e] text-sm font-semibold text-white"
+                  onClick={() => setIsGiftModalOpen(false)}
+                  className="h-11 w-28 rounded-xl border border-white/20 text-sm font-semibold text-slate-200"
                 >
-                  Add Money
+                  Close
                 </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    void handleSendGift();
-                  }}
-                  disabled={isSendingGift}
-                  className="h-10 flex-1 rounded-xl bg-[#0f766e] text-sm font-semibold text-white disabled:opacity-60"
-                >
-                  {isSendingGift ? "Sending..." : "Send Gift"}
-                </button>
-              )}
+                {!hasGiftBalance ? (
+                  <button
+                    type="button"
+                    onClick={() => router.push("/wallet?addMoney=1")}
+                    className="h-11 flex-1 rounded-xl bg-[#c8191e] text-sm font-semibold text-white"
+                  >
+                    Add Money
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void handleSendGift();
+                    }}
+                    disabled={isSendingGift || !selectedGift}
+                    className="h-11 flex-1 rounded-xl bg-emerald-500 text-sm font-semibold text-white disabled:opacity-60"
+                  >
+                    {isSendingGift ? "Sending..." : selectedGift ? `Send Gift ₹${selectedGiftTotal}` : "Select a Gift"}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -834,6 +900,8 @@ export default function ChatPage() {
     </main>
   );
 }
+
+
 
 
 
