@@ -212,6 +212,10 @@ export default function ChatPage() {
         });
       }
       await playGiftSound(resolvedGift.sound, isMine ? 0.11 : 0.09);
+      if (resolvedGift.mediaType === "png") {
+        setActiveGiftEffect((current) => (current?.gift.mediaType === "png" ? null : current));
+        return;
+      }
       setActiveGiftEffect({
         id: `${resolvedGift.id}-${Date.now()}`,
         gift: resolvedGift,
