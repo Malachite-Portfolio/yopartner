@@ -71,6 +71,23 @@ function getGiftBubbleClass(giftKey: NonNullable<ChatScreenMessage["gift"]>["gif
     : "rounded-bl-md border border-amber-200/85 bg-amber-50 text-amber-950";
 }
 
+function SvgaGiftBubblePreview() {
+  return (
+    <div className="relative h-14 w-14 overflow-hidden rounded-xl border border-amber-300/70 bg-[#0f172a]">
+      <span className="absolute inset-0 bg-[radial-gradient(circle_at_30%_25%,rgba(250,204,21,0.55),rgba(168,85,247,0.22)_45%,rgba(15,23,42,0.98)_100%)]" />
+      <span className="absolute inset-x-2 top-2 h-2 rounded-full bg-white/30 blur-sm" />
+      <span className="absolute inset-0 flex items-center justify-center">
+        <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/25 bg-white/10 text-amber-200 backdrop-blur-sm">
+          <Gift size={14} />
+        </span>
+      </span>
+      <span className="absolute bottom-1 left-1/2 -translate-x-1/2 rounded-full bg-black/35 px-1.5 py-[1px] text-[8px] font-semibold uppercase tracking-[0.08em] text-amber-100">
+        Premium
+      </span>
+    </div>
+  );
+}
+
 export function ChatScreen({
   companion,
   messages,
@@ -338,11 +355,7 @@ export function ChatScreen({
                           }
 
                           if (resolvedGift.mediaType === "svga") {
-                            return (
-                              <div className="inline-flex h-14 w-14 items-center justify-center rounded-xl border border-slate-300/70 bg-white/75 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-600">
-                                SVGA
-                              </div>
-                            );
+                            return <SvgaGiftBubblePreview />;
                           }
 
                           return (
