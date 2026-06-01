@@ -165,8 +165,48 @@ function buildUniqueCatalog(items: ChatGiftCatalogItem[]) {
   return uniqueItems;
 }
 
+function validateSvgaThumbnailCatalog(items: ChatGiftCatalogItem[]) {
+  if (process.env.NODE_ENV === "production") return;
+
+  const svgaItems = items.filter((item) => item.mediaType === "svga");
+  const seenThumbnailUrls = new Map<string, string>();
+
+  svgaItems.forEach((item) => {
+    const thumbnailUrl = item.thumbnailUrl?.trim();
+    if (!thumbnailUrl) {
+      warnCatalogIssue("svga gift missing thumbnailUrl", {
+        giftKey: item.giftKey,
+        mediaUrl: item.mediaUrl,
+      });
+      return;
+    }
+
+    const normalizedThumbnailUrl = normalizeMediaKey(thumbnailUrl);
+    const duplicateGiftKey = seenThumbnailUrls.get(normalizedThumbnailUrl);
+    if (duplicateGiftKey && duplicateGiftKey !== item.giftKey) {
+      warnCatalogIssue("svga gifts share duplicate thumbnailUrl", {
+        giftKey: item.giftKey,
+        duplicateGiftKey,
+        thumbnailUrl,
+      });
+      return;
+    }
+    seenThumbnailUrls.set(normalizedThumbnailUrl, item.giftKey);
+
+    const expectedPath = `/gifts/thumbnails/${item.giftKey}.png`;
+    if (thumbnailUrl !== expectedPath) {
+      warnCatalogIssue("svga thumbnailUrl differs from expected per-gift path", {
+        giftKey: item.giftKey,
+        thumbnailUrl,
+        expectedPath,
+      });
+    }
+  });
+}
+
 const RAW_GIFT_CATALOG = [...buildPngItems(), ...buildSvgaItems()];
 export const CHAT_GIFT_CATALOG: ChatGiftCatalogItem[] = buildUniqueCatalog(RAW_GIFT_CATALOG);
+validateSvgaThumbnailCatalog(CHAT_GIFT_CATALOG);
 
 export const CHAT_GIFT_GROUPS: { tier: GiftCatalogTier; label: string }[] = [
   { tier: "normal", label: "Normal" },
