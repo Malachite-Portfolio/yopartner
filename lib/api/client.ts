@@ -53,6 +53,17 @@ function canUseStorage() {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
 }
 
+function resolveConfiguredApiBaseUrl() {
+  const publicBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
+  if (publicBaseUrl) return publicBaseUrl;
+
+  if (typeof window === "undefined") {
+    return process.env.API_BASE_URL?.trim() || process.env.BACKEND_API_BASE_URL?.trim() || "";
+  }
+
+  return "";
+}
+
 function isBackendManagedApiPath(path: string) {
   return (
     path.startsWith("/api/companions") ||
@@ -85,7 +96,7 @@ function resolveServerOrigin() {
 
 function resolveApiUrl(input: string): ApiUrlResolution {
   if (!input.startsWith("/")) return { url: input };
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
+  const baseUrl = resolveConfiguredApiBaseUrl();
   if (baseUrl) {
     return { url: `${baseUrl.replace(/\/+$/, "")}${input}` };
   }
@@ -280,7 +291,7 @@ function toApiError(status: number, payload: { message?: string; error?: string 
 }
 
 export function isApiBaseUrlConfigured() {
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
+  const baseUrl = resolveConfiguredApiBaseUrl();
   return Boolean(baseUrl);
 }
 
