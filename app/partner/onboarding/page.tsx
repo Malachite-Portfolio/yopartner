@@ -11,7 +11,7 @@ import {
   getPartnerStoredFirebaseToken,
   setPartnerStoredFirebaseToken,
 } from "@/lib/auth/firebasePhoneAuth";
-import { submitPartnerApplication } from "@/lib/api/partner";
+import { getPartnerApplications, getPartnerProfile as getPartnerProfileApi, submitPartnerApplication } from "@/lib/api/partner";
 import { isApiBaseUrlConfigured } from "@/lib/api/client";
 import { saveLocalPartnerApprovalState } from "@/lib/partnerApproval";
 import { uploadPartnerKycFile, type PartnerKycUploadResult } from "@/lib/firebaseKycUpload";
@@ -111,6 +111,128 @@ function parsePrice(value: string) {
 
 function formatDocumentSelectionStatus(hasDocument: boolean) {
   return hasDocument ? "Selected" : "Pending";
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+}
+
+function toOptionalString(value: unknown) {
+  if (typeof value !== "string") return "";
+  return value.trim();
+}
+
+function toOptionalStringArray(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function toOptionalNumericString(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  if (typeof value === "string" && value.trim().length > 0 && /^\d+$/.test(value.trim())) return value.trim();
+  return "";
+}
+
+function mergeIfEmpty(currentValue: string, nextValue: string) {
+  return currentValue.trim().length > 0 ? currentValue : nextValue;
+}
+
+function mergeArrayIfEmpty<T>(currentValue: T[], nextValue: T[]) {
+  return currentValue.length > 0 ? currentValue : nextValue;
+}
+
+function toPartnerGender(value: unknown): PartnerProfile["gender"] {
+  if (value === "Female" || value === "Male" || value === "Other" || value === "Prefer not to say") {
+    return value;
+  }
+  return "";
+}
+
+function toOnboardingServices(value: unknown): OnboardingServiceType[] {
+  return toOptionalStringArray(value)
+    .map((item) => {
+      const normalized = item.toUpperCase();
+      if (normalized === "CHAT") return "Chat";
+      if (normalized === "AUDIO") return "Audio Call";
+      if (normalized === "VIDEO") return "Video Call";
+      if (normalized === "HOME_VISIT" || normalized === "HOME VISIT") return "Home Visit";
+      if (item === "Chat" || item === "Audio Call" || item === "Video Call" || item === "Home Visit") return item;
+      return "";
+    })
+    .filter((item): item is OnboardingServiceType => Boolean(item));
+}
+
+function mergeWithBackendProfile(
+  current: OnboardingProfile,
+  companionInput: Record<string, unknown> | null,
+  applicationInput: Record<string, unknown> | null,
+) {
+  const companion = companionInput ?? {};
+  const application = applicationInput ?? {};
+  const applicationServices = toOnboardingServices(application.servicesOffered);
+  const companionServices = toOnboardingServices(companion.servicesOffered);
+  const categoryFromCompanion = toOptionalString(companion.category);
+
+  return {
+    ...current,
+    fullName: mergeIfEmpty(current.fullName, toOptionalString(application.fullName) || toOptionalString(companion.displayName)),
+    age: mergeIfEmpty(current.age, toOptionalNumericString(application.age)),
+    gender: current.gender || toPartnerGender(application.gender),
+    religion: mergeIfEmpty(current.religion, toOptionalString(application.religion)),
+    bornCity: mergeIfEmpty(current.bornCity, toOptionalString(application.bornCity) || toOptionalString(companion.city)),
+    nationality: mergeIfEmpty(current.nationality, toOptionalString(application.nationality)),
+    school: mergeIfEmpty(current.school, toOptionalString(application.school)),
+    college: mergeIfEmpty(current.college, toOptionalString(application.college)),
+    qualification: mergeIfEmpty(current.qualification, toOptionalString(application.qualification)),
+    languagesKnown: mergeArrayIfEmpty(
+      current.languagesKnown,
+      toOptionalStringArray(application.languagesKnown).length
+        ? toOptionalStringArray(application.languagesKnown)
+        : toOptionalStringArray(companion.languages),
+    ),
+    communicationStyle: mergeArrayIfEmpty(current.communicationStyle, toOptionalStringArray(application.communicationStyle)),
+    hobbies: mergeArrayIfEmpty(current.hobbies, toOptionalStringArray(application.hobbies)),
+    profileTagline: mergeIfEmpty(
+      current.profileTagline,
+      toOptionalString(application.profileTagline) || toOptionalString(companion.tagline),
+    ),
+    aboutYourself: mergeIfEmpty(current.aboutYourself, toOptionalString(application.aboutYourself)),
+    servicesOffered: mergeArrayIfEmpty(
+      current.servicesOffered,
+      applicationServices.length ? applicationServices : companionServices,
+    ),
+    chatPricePerMinute: mergeIfEmpty(
+      current.chatPricePerMinute,
+      toOptionalNumericString(application.chatPrice) || toOptionalNumericString(companion.chatPrice),
+    ),
+    audioPricePerMinute: mergeIfEmpty(
+      current.audioPricePerMinute,
+      toOptionalNumericString(application.audioPrice) || toOptionalNumericString(companion.audioPrice),
+    ),
+    videoPricePerMinute: mergeIfEmpty(
+      current.videoPricePerMinute,
+      toOptionalNumericString(application.videoPrice) || toOptionalNumericString(companion.videoPrice),
+    ),
+    categories: mergeArrayIfEmpty(
+      current.categories,
+      toOptionalStringArray(application.categories).length
+        ? toOptionalStringArray(application.categories)
+        : categoryFromCompanion
+          ? [categoryFromCompanion]
+          : [],
+    ),
+    selfieFileName: mergeIfEmpty(current.selfieFileName, toOptionalString(application.selfieFileName)),
+    aadhaarFrontFileName: mergeIfEmpty(current.aadhaarFrontFileName, toOptionalString(application.aadhaarFrontFileName)),
+    aadhaarBackFileName: mergeIfEmpty(current.aadhaarBackFileName, toOptionalString(application.aadhaarBackFileName)),
+    panFileName: mergeIfEmpty(current.panFileName, toOptionalString(application.panFileName)),
+    aadhaarFileName: mergeIfEmpty(
+      current.aadhaarFileName,
+      toOptionalString(application.aadhaarFrontFileName) || toOptionalString(application.aadhaarBackFileName),
+    ),
+  };
 }
 
 function toOnboardingProfile(source: PartnerProfile): OnboardingProfile {
@@ -250,6 +372,34 @@ export default function PartnerOnboardingPage() {
       router.replace("/partner/login");
     }
   }, [router]);
+
+  useEffect(() => {
+    if (!IS_PRODUCTION_READY_MODE) return;
+
+    let active = true;
+    const hydrateExistingApplication = async () => {
+      const [profileResponse, applicationsResponse] = await Promise.all([getPartnerProfileApi(), getPartnerApplications()]);
+      if (!active) return;
+
+      const profilePayload = asRecord(profileResponse.data);
+      const applicationsPayload = asRecord(applicationsResponse.data);
+      const applicationFromProfile = asRecord(profilePayload.application);
+      const applicationFromApplications = asRecord(applicationsPayload.application);
+      const companionFromProfile = asRecord(profilePayload.companion);
+      const companionFromApplication = asRecord(applicationFromApplications.companion);
+
+      const application = Object.keys(applicationFromProfile).length > 0 ? applicationFromProfile : applicationFromApplications;
+      const companion = Object.keys(companionFromProfile).length > 0 ? companionFromProfile : companionFromApplication;
+
+      if (Object.keys(application).length === 0 && Object.keys(companion).length === 0) return;
+      setProfile((current) => mergeWithBackendProfile(current, companion, application));
+    };
+
+    void hydrateExistingApplication();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!IS_DEMO_MODE) return;

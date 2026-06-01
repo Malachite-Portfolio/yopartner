@@ -3,7 +3,7 @@
 import { ArrowLeft, CheckCheck, CirclePlus, EllipsisVertical, Gift, Phone, SendHorizontal, Smile, Video } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { getCatalogGiftByKey } from "@/lib/chat/giftCatalog";
+import { getCatalogGiftByKey, getGiftPngUrl } from "@/lib/chat/giftCatalog";
 import type { CompanionRouteProfile } from "@/lib/companionRoutes";
 
 export type ChatScreenMessage = {
@@ -99,6 +99,7 @@ export function ChatScreen({
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [attachMessage, setAttachMessage] = useState("");
+  const [failedGiftPreviewByMessageId, setFailedGiftPreviewByMessageId] = useState<Record<string, boolean>>({});
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -251,6 +252,48 @@ export function ChatScreen({
                 >
                   {isGift ? (
                     <>
+                      <div className="mb-2">
+                        {(() => {
+                          const resolvedGift = gift ? getCatalogGiftByKey(gift.giftKey) : null;
+                          const previewFailed = failedGiftPreviewByMessageId[message.id];
+                          if (!resolvedGift) {
+                            return (
+                              <div className="inline-flex h-14 w-14 items-center justify-center rounded-xl border border-slate-300/70 bg-white/70 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-600">
+                                Gift
+                              </div>
+                            );
+                          }
+
+                          if (resolvedGift.mediaType === "png" && !previewFailed) {
+                            return (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={getGiftPngUrl(resolvedGift)}
+                                alt={gift?.giftName || resolvedGift.name}
+                                className="h-14 w-14 rounded-xl border border-slate-300/60 bg-white/75 object-contain p-1"
+                                loading="lazy"
+                                onError={() => {
+                                  setFailedGiftPreviewByMessageId((current) => ({ ...current, [message.id]: true }));
+                                }}
+                              />
+                            );
+                          }
+
+                          if (resolvedGift.mediaType === "svga") {
+                            return (
+                              <div className="inline-flex h-14 w-14 items-center justify-center rounded-xl border border-slate-300/70 bg-white/75 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-600">
+                                SVGA
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <div className="inline-flex h-14 w-14 items-center justify-center rounded-xl border border-slate-300/70 bg-white/70 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-600">
+                              Gift
+                            </div>
+                          );
+                        })()}
+                      </div>
                       {isPremiumGift ? (
                         <>
                           <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/45 to-transparent opacity-0 animate-[messageShine_2.2s_ease-out_infinite]" />

@@ -11,7 +11,6 @@ import {
   getPartnerDashboard,
   markPartnerPresenceOffline,
   markPartnerPresenceOnline,
-  sendPartnerOfflineBeacon,
   type PartnerActiveSession,
   type PartnerIncomingRequest,
 } from "@/lib/api/partner";
@@ -137,9 +136,9 @@ export default function PartnerDashboardPage() {
   const isApproved = isPartnerApproved(approvalState);
   const labels = getPartnerApprovalLabel(approvalState);
   const overlayRequest = useMemo(() => {
-    if (!isApproved || !online) return null;
+    if (!isApproved) return null;
     return pendingRequests[0] ?? null;
-  }, [isApproved, online, pendingRequests]);
+  }, [isApproved, pendingRequests]);
 
   const loadDashboard = useCallback(async () => {
     const [approval, dashboardResponse] = await Promise.all([
@@ -159,8 +158,9 @@ export default function PartnerDashboardPage() {
       const root = asRecord(dashboardResponse.data);
       const companion = asRecord(root.companion);
       const availability = asRecord(root.availability);
-      const companionOnline = Boolean(availability.isOnline ?? companion.isOnline);
-      const nextStatus = String(availability.effectiveStatus ?? (companionOnline ? "ONLINE" : "OFFLINE")).toUpperCase();
+      const companionOnlineRaw = Boolean(availability.rawIsOnline ?? companion.rawIsOnline ?? companion.isOnline);
+      const companionOnlineEffective = Boolean(availability.isOnline ?? companionOnlineRaw);
+      const nextStatus = String(availability.effectiveStatus ?? (companionOnlineEffective ? "ONLINE" : "OFFLINE")).toUpperCase();
       setEffectiveStatus(nextStatus === "BUSY" ? "BUSY" : nextStatus === "ONLINE" ? "ONLINE" : "OFFLINE");
       const statsRaw = asRecord(root.stats);
       setStats({
@@ -179,8 +179,8 @@ export default function PartnerDashboardPage() {
         .filter((item): item is PartnerActiveSession => Boolean(item));
       const dedupedById = Array.from(new Map(normalizedSessions.map((item) => [item.id, item])).values());
       setActiveSessions(dedupedById);
-      setOnline(companionOnline);
-      setPartnerOnlineStatus(companionOnline);
+      setOnline(companionOnlineRaw || getPartnerOnlineStatus());
+      setPartnerOnlineStatus(companionOnlineRaw || getPartnerOnlineStatus());
       setStatusMessage(
         String(root.message ?? (isPartnerApproved(nextApproval) ? "Partner dashboard ready." : "Your profile is being reviewed by our safety team.")),
       );
@@ -233,32 +233,25 @@ export default function PartnerDashboardPage() {
     if (!isApproved || !online) return;
 
     void markPartnerPresenceOnline();
+    const initialHeartbeatTimer = window.setTimeout(() => {
+      void heartbeatPartnerPresence();
+    }, 4000);
     const heartbeatTimer = window.setInterval(() => {
       void heartbeatPartnerPresence();
     }, 25000);
 
-    const sendOffline = () => {
-      sendPartnerOfflineBeacon();
-    };
-
     const onVisibilityChange = () => {
-      if (document.visibilityState === "hidden") {
-        sendOffline();
-      } else if (document.visibilityState === "visible" && online) {
+      if (document.visibilityState === "visible" && online) {
         void markPartnerPresenceOnline();
       }
     };
 
-    window.addEventListener("beforeunload", sendOffline);
-    window.addEventListener("pagehide", sendOffline);
     document.addEventListener("visibilitychange", onVisibilityChange);
 
     return () => {
+      window.clearTimeout(initialHeartbeatTimer);
       window.clearInterval(heartbeatTimer);
-      window.removeEventListener("beforeunload", sendOffline);
-      window.removeEventListener("pagehide", sendOffline);
       document.removeEventListener("visibilitychange", onVisibilityChange);
-      sendOffline();
     };
   }, [isApproved, online]);
 
