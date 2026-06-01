@@ -11,6 +11,7 @@ export type ChatGiftCatalogItem = {
   tier: GiftCatalogTier;
   mediaType: GiftMediaType;
   mediaUrl: string;
+  thumbnailUrl?: string;
   sourceFileName: string;
   sound: GiftSoundType;
   premium: boolean;
@@ -87,6 +88,7 @@ function buildSvgaItems() {
       tier,
       mediaType: "svga",
       mediaUrl: `/gifts/svga/${key}.svga`,
+      thumbnailUrl: `/gifts/thumbnails/${key}.png`,
       sourceFileName: `${key}.svga`,
       sound: SOUND_BY_TIER[tier],
       premium: true,
@@ -205,4 +207,10 @@ export function getGiftSvgaUrl(gift: Pick<ChatGiftCatalogItem, "mediaType" | "me
 
 export function getGiftPngUrl(gift: Pick<ChatGiftCatalogItem, "mediaType" | "mediaUrl">) {
   return gift.mediaType === "png" ? gift.mediaUrl.trim() : "";
+}
+
+export function getGiftThumbnailUrl(gift: Pick<ChatGiftCatalogItem, "mediaUrl" | "thumbnailUrl">) {
+  const thumbnail = gift.thumbnailUrl?.trim();
+  if (thumbnail) return thumbnail;
+  return gift.mediaUrl.trim();
 }
