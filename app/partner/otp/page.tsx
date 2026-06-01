@@ -48,6 +48,12 @@ export default function PartnerOtpPage() {
       ? "firebase"
       : "demo";
   const isClientDemoOtpFlow = isClientDemoEnabled() && isClientDemoPartnerPhone(phone);
+  const showOtpSessionExpiredHint =
+    IS_PRODUCTION_READY_MODE &&
+    firebaseEnabled &&
+    mode === "firebase" &&
+    !pendingConfirmation &&
+    !isClientDemoOtpFlow;
 
   useEffect(() => {
     if (!phone) {
@@ -206,7 +212,7 @@ export default function PartnerOtpPage() {
         {isClientDemoOtpFlow ? (
           <p className="mt-1 text-xs font-medium text-slate-500">Demo login preview</p>
         ) : null}
-        {IS_PRODUCTION_READY_MODE && firebaseEnabled && !pendingConfirmation && !isClientDemoOtpFlow ? (
+        {showOtpSessionExpiredHint ? (
           <p className="mt-1 text-xs font-medium text-rose-600">OTP session expired. Please request a new OTP.</p>
         ) : null}
 

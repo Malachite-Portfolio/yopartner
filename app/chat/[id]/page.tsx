@@ -732,6 +732,7 @@ export default function ChatPage() {
         onGiftClick={() => {
           setGiftError("");
           setSelectedGiftPreviewFailed(false);
+          setFailedCardPreviewGiftIds({});
           setSelectedGiftQuantity(1);
           setIsGiftDrawerContentReady(false);
           void refreshWalletBalance();
@@ -795,6 +796,16 @@ export default function ChatPage() {
                       <div className="relative h-full w-full overflow-hidden">
                         <span className="absolute inset-0 bg-gradient-to-br from-slate-800 to-slate-700" />
                         <span className="absolute inset-x-4 bottom-3 top-3 rounded-lg border border-white/10 bg-white/5" />
+                        {selectedGift?.mediaType === "png" ? (
+                          <span className="absolute inset-x-0 bottom-1 text-center text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-300">
+                            PNG
+                          </span>
+                        ) : null}
+                        {selectedGift?.mediaType === "svga" ? (
+                          <span className="absolute inset-x-0 bottom-1 text-center text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-300">
+                            SVGA
+                          </span>
+                        ) : null}
                       </div>
                     )}
                   </div>
@@ -866,7 +877,11 @@ export default function ChatPage() {
                                     <span className="absolute inset-x-0 bottom-1 text-center text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-300">
                                       SVGA
                                     </span>
-                                  ) : null}
+                                  ) : (
+                                    <span className="absolute inset-x-0 bottom-1 text-center text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-300">
+                                      PNG
+                                    </span>
+                                  )}
                                 </div>
                               )}
                             </div>

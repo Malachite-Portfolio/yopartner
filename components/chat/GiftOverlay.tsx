@@ -33,6 +33,7 @@ function GiftOverlayScene({ effect, onClose }: SceneProps) {
   const mediaUrl = getGiftMediaUrl(effect.gift);
   const giftSvgaPath = getGiftSvgaUrl(effect.gift);
   const giftPngPath = getGiftPngUrl(effect.gift);
+  const hasSvgaSource = Boolean(giftSvgaPath);
 
   const closeOnce = useCallback(() => {
     if (hasClosedRef.current) return;
@@ -66,6 +67,14 @@ function GiftOverlayScene({ effect, onClose }: SceneProps) {
     };
   }, [closeOnce, effect.gift.mediaType, pngDisplayMs]);
 
+  useEffect(() => {
+    if (effect.gift.mediaType !== "svga" || hasSvgaSource) return;
+    const timer = window.setTimeout(closeOnce, 1000);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [closeOnce, effect.gift.mediaType, hasSvgaSource]);
+
   return (
     <div className="pointer-events-none fixed inset-0 z-[120] h-[100dvh] w-screen overflow-hidden" aria-hidden>
       <span className={`absolute inset-0 ${spotlightPremium ? "bg-black/65" : "bg-black/55"}`} />
@@ -74,30 +83,34 @@ function GiftOverlayScene({ effect, onClose }: SceneProps) {
       {!hasFailed ? (
         <div className="relative flex h-[100dvh] w-screen items-center justify-center">
           {effect.gift.mediaType === "svga" ? (
-            <GiftPlayer
-              src={giftSvgaPath}
-              loop={1}
-              className="h-[100dvh] w-screen"
-              playbackTimeoutMs={playbackTimeoutMs}
-              clearOnComplete
-              onComplete={closeOnce}
-              onReady={() => {
-                setIsPreparing(false);
-              }}
-              onError={(message) => {
-                setHasFailed(true);
-                setIsPreparing(false);
-                if (process.env.NODE_ENV !== "production") {
-                  console.warn("[GiftOverlay] Failed to render SVGA gift", {
-                    giftId: effect.gift.id,
-                    giftKey: effect.gift.giftKey,
-                    svga: giftSvgaPath,
-                    error: message,
-                  });
-                }
-                window.setTimeout(closeOnce, 1500);
-              }}
-            />
+            hasSvgaSource ? (
+              <GiftPlayer
+                src={giftSvgaPath}
+                loop={1}
+                className="h-[62dvh] w-[62vw] max-h-[420px] max-w-[420px]"
+                playbackTimeoutMs={playbackTimeoutMs}
+                clearOnComplete
+                onComplete={closeOnce}
+                onReady={() => {
+                  setIsPreparing(false);
+                }}
+                onError={(message) => {
+                  setHasFailed(true);
+                  setIsPreparing(false);
+                  if (process.env.NODE_ENV !== "production") {
+                    console.warn("[GiftOverlay] Failed to render SVGA gift", {
+                      giftId: effect.gift.id,
+                      giftKey: effect.gift.giftKey,
+                      svga: giftSvgaPath,
+                      error: message,
+                    });
+                  }
+                  window.setTimeout(closeOnce, 1500);
+                }}
+              />
+            ) : (
+              <p className="rounded-lg bg-black/50 px-3 py-2 text-sm font-semibold text-white">Gift animation unavailable</p>
+            )
           ) : (
             <div className="relative flex h-[100dvh] w-screen items-center justify-center overflow-hidden">
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.25),rgba(255,255,255,0)_65%)]" />
@@ -105,7 +118,7 @@ function GiftOverlayScene({ effect, onClose }: SceneProps) {
               <img
                 src={giftPngPath}
                 alt=""
-                className={`z-10 max-h-[82dvh] max-w-[82vw] animate-[giftPngIn_420ms_ease-out] object-contain ${spotlightPremium ? "scale-[1.08]" : "scale-100"}`}
+                className={`z-10 max-h-[62dvh] max-w-[62vw] animate-[giftPngIn_420ms_ease-out] object-contain sm:max-h-[420px] sm:max-w-[420px] ${spotlightPremium ? "scale-[1.08]" : "scale-100"}`}
                 onError={() => {
                   setHasFailed(true);
                   window.setTimeout(closeOnce, 1500);
@@ -119,7 +132,7 @@ function GiftOverlayScene({ effect, onClose }: SceneProps) {
             </div>
           ) : null}
 
-          {!hasFailed && effect.gift.mediaType === "svga" && isPreparing ? (
+          {!hasFailed && effect.gift.mediaType === "svga" && hasSvgaSource && isPreparing ? (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="rounded-xl border border-white/35 bg-black/40 px-3 py-2 text-xs font-semibold text-white backdrop-blur-sm">
                 <span className="inline-flex items-center gap-2">

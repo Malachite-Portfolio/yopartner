@@ -91,6 +91,12 @@ export default function OtpPage() {
 
   const isComplete = otp.every((digit) => digit.length === 1);
   const canResend = resendSeconds <= 0 && !isResending && !isSubmitting;
+  const showOtpSessionExpiredHint =
+    IS_PRODUCTION_READY_MODE &&
+    firebaseEnabled &&
+    mode === "firebase" &&
+    !pendingConfirmation &&
+    !message;
 
   useEffect(() => {
     if (!resendAvailableAt) return;
@@ -321,7 +327,7 @@ export default function OtpPage() {
         {message ? <p className="mt-3 text-xs font-medium text-emerald-700">{message}</p> : null}
         {error ? <p className="mt-1 text-xs font-medium text-rose-600">{error}</p> : null}
 
-        {IS_PRODUCTION_READY_MODE && firebaseEnabled && !pendingConfirmation ? (
+        {showOtpSessionExpiredHint ? (
           <p className="mt-2 text-xs font-medium text-rose-600">OTP session expired. Please request a new OTP.</p>
         ) : null}
         {mode === "firebase" ? <div id="otp-recaptcha-container" className="pt-1" /> : null}

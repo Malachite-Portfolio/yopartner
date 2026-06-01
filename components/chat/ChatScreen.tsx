@@ -100,6 +100,7 @@ export function ChatScreen({
   const [showMenu, setShowMenu] = useState(false);
   const [attachMessage, setAttachMessage] = useState("");
   const [failedGiftPreviewByMessageId, setFailedGiftPreviewByMessageId] = useState<Record<string, boolean>>({});
+  const giftPreviewRetryTimerByMessageIdRef = useRef<Record<string, number>>({});
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -111,6 +112,31 @@ export function ChatScreen({
     window.addEventListener("mousedown", onPointerDown);
     return () => window.removeEventListener("mousedown", onPointerDown);
   }, [showMenu]);
+
+  useEffect(() => {
+    return () => {
+      Object.values(giftPreviewRetryTimerByMessageIdRef.current).forEach((timerId) => {
+        window.clearTimeout(timerId);
+      });
+      giftPreviewRetryTimerByMessageIdRef.current = {};
+    };
+  }, []);
+
+  const scheduleGiftPreviewRetry = (messageId: string) => {
+    setFailedGiftPreviewByMessageId((current) => ({ ...current, [messageId]: true }));
+    const existingTimer = giftPreviewRetryTimerByMessageIdRef.current[messageId];
+    if (existingTimer) {
+      window.clearTimeout(existingTimer);
+    }
+    giftPreviewRetryTimerByMessageIdRef.current[messageId] = window.setTimeout(() => {
+      setFailedGiftPreviewByMessageId((current) => {
+        const next = { ...current };
+        delete next[messageId];
+        return next;
+      });
+      delete giftPreviewRetryTimerByMessageIdRef.current[messageId];
+    }, 2200);
+  };
 
   const handleBack = () => {
     if (onBackRequest) {
@@ -273,7 +299,7 @@ export function ChatScreen({
                                 className="h-14 w-14 rounded-xl border border-slate-300/60 bg-white/75 object-contain p-1"
                                 loading="lazy"
                                 onError={() => {
-                                  setFailedGiftPreviewByMessageId((current) => ({ ...current, [message.id]: true }));
+                                  scheduleGiftPreviewRetry(message.id);
                                 }}
                               />
                             );
