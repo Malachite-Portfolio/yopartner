@@ -17,6 +17,7 @@ const titleByPath: Record<string, string> = {
   "/admin/wallet": "Wallet Ops",
   "/admin/payouts": "Payouts",
   "/admin/reviews": "Reviews",
+  "/admin/home-visit-verification": "Home Visit Verification",
   "/admin/verification": "Partner Reviews",
   "/admin/support": "Support inbox",
   "/admin/media": "Media",

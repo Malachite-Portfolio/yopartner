@@ -37,6 +37,7 @@ const links = [
   { label: "Wallet Ops", href: "/admin/wallet", icon: CreditCard },
   { label: "Payouts", href: "/admin/payouts", icon: Receipt },
   { label: "Reviews", href: "/admin/reviews", icon: BadgeCheck },
+  { label: "Home Visit Verification", href: "/admin/home-visit-verification", icon: CircleHelp },
   { label: "Support Inbox", href: "/admin/support", icon: CircleHelp },
   { label: "Media", href: "/admin/media", icon: Image },
   { label: "Client Diaries", href: "/admin/client-diaries", icon: BriefcaseBusiness },

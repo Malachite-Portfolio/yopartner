@@ -38,6 +38,58 @@ export const listCompanions = () => adminGet<Record<string, unknown>>("/api/admi
 export const updateCompanion = (payload: Record<string, unknown>) => adminUpdate("/api/admin/companions", payload);
 export const listUsers = () => adminGet<Record<string, unknown>>("/api/admin/users");
 export const updateUser = (payload: Record<string, unknown>) => adminUpdate("/api/admin/users", payload);
+export type AdminUserModerationStatus = "ACTIVE" | "RESTRICTED" | "TEMP_BANNED" | "BANNED";
+export type AdminPartnerModerationStatus = "ACTIVE" | "RESTRICTED" | "TEMP_BANNED" | "BANNED" | "HIDDEN";
+export type HomeVisitVerificationStatus =
+  | "NOT_SUBMITTED"
+  | "PENDING"
+  | "APPROVED"
+  | "REJECTED"
+  | "NEEDS_INFO"
+  | "SUSPENDED";
+
+type StatusUpdatePayload<TStatus extends string> = {
+  status: TStatus;
+  reason: string;
+  expiresAt?: string;
+  adminEmail?: string;
+};
+
+export async function updateAdminUserStatus(userId: string, payload: StatusUpdatePayload<AdminUserModerationStatus>) {
+  return apiRequest<{ user: Record<string, unknown> }>(`/api/admin/users/${userId}/status`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateAdminPartnerStatus(
+  partnerId: string,
+  payload: StatusUpdatePayload<AdminPartnerModerationStatus>,
+) {
+  return apiRequest<{ companion: Record<string, unknown> }>(`/api/admin/partners/${partnerId}/status`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function listModerationActions(target?: "USER" | "PARTNER" | "HOME_VISIT") {
+  const suffix = target ? `?target=${encodeURIComponent(target)}` : "";
+  return apiRequest<{ actions: Array<Record<string, unknown>> }>(`/api/admin/moderation/actions${suffix}`);
+}
+
+export async function listHomeVisitVerifications() {
+  return apiRequest<{ verifications: Array<Record<string, unknown>> }>("/api/admin/home-visit-verifications");
+}
+
+export async function updateHomeVisitVerificationStatus(
+  companionId: string,
+  payload: StatusUpdatePayload<HomeVisitVerificationStatus>,
+) {
+  return apiRequest<{ verification: Record<string, unknown> }>(`/api/admin/home-visit-verifications/${companionId}/status`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
 
 export type AdminWalletCreditResponse = {
   user: {
