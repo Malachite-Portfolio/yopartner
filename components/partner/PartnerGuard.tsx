@@ -37,10 +37,10 @@ export function PartnerGuard({ children, requireOnboarding = true }: PartnerGuar
       }
 
       const landing = await resolvePartnerLandingRoute();
-      if (landing.route === "/partner/onboarding") {
+      if (landing.route !== "/partner/dashboard") {
         setHasAccess(false);
         setChecking(false);
-        router.replace("/partner/onboarding");
+        router.replace(landing.route);
         return;
       }
 

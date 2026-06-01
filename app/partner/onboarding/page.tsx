@@ -13,7 +13,7 @@ import {
 } from "@/lib/auth/firebasePhoneAuth";
 import { getPartnerApplications, getPartnerProfile as getPartnerProfileApi, submitPartnerApplication } from "@/lib/api/partner";
 import { isApiBaseUrlConfigured } from "@/lib/api/client";
-import { saveLocalPartnerApprovalState } from "@/lib/partnerApproval";
+import { resolvePartnerLandingRoute, saveLocalPartnerApprovalState } from "@/lib/partnerApproval";
 import { uploadPartnerKycFile, type PartnerKycUploadResult } from "@/lib/firebaseKycUpload";
 import {
   completeClientDemoPartnerOnboarding,
@@ -378,6 +378,13 @@ export default function PartnerOnboardingPage() {
 
     let active = true;
     const hydrateExistingApplication = async () => {
+      const landing = await resolvePartnerLandingRoute();
+      if (!active) return;
+      if (landing.route === "/partner/dashboard" || landing.route === "/partner/application-status") {
+        router.replace(landing.route);
+        return;
+      }
+
       const [profileResponse, applicationsResponse] = await Promise.all([getPartnerProfileApi(), getPartnerApplications()]);
       if (!active) return;
 
@@ -399,7 +406,7 @@ export default function PartnerOnboardingPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     if (!IS_DEMO_MODE) return;

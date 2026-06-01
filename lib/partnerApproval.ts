@@ -157,6 +157,27 @@ export function isPartnerApproved(state: PartnerApprovalState) {
   return false;
 }
 
+function normalizeApprovedPartnerState(state: PartnerApprovalState): PartnerApprovalState {
+  return {
+    ...state,
+    approved: true,
+    underReview: false,
+    notSubmitted: false,
+    reviewStatus: "approved",
+    applicationStatus: state.applicationStatus === "NOT_SUBMITTED" ? "APPROVED" : state.applicationStatus ?? "APPROVED",
+    companionStatus: state.companionStatus ?? "ACTIVE",
+    verificationStatus: state.verificationStatus ?? "VERIFIED",
+    kycStatus: state.kycStatus ?? "VERIFIED",
+  };
+}
+
+function shouldRoutePartnerToOnboarding(state: PartnerApprovalState) {
+  if (isPartnerApproved(state)) return false;
+  if (state.applicationStatus === "REJECTED" || state.applicationStatus === "NEEDS_INFO") return true;
+  if (state.applicationStatus === "NOT_SUBMITTED") return true;
+  return state.notSubmitted === true;
+}
+
 export function isPartnerUnderReview(state: PartnerApprovalState) {
   if (typeof state.underReview === "boolean") return state.underReview;
   return (
@@ -210,12 +231,18 @@ export async function fetchPartnerApprovalState(): Promise<PartnerApprovalState>
 
   if (!hasBackendState) {
     if (isPartnerApproved(nextState)) {
+      nextState = normalizeApprovedPartnerState(nextState);
       saveLocalPartnerApprovalState(nextState);
       return nextState;
     }
-    if (nextState.applicationStatus === "NOT_SUBMITTED") {
+    if (shouldRoutePartnerToOnboarding(nextState)) {
       const noApplicationState: PartnerApprovalState = {
-        applicationStatus: "NOT_SUBMITTED",
+        applicationStatus: nextState.applicationStatus === "REJECTED" || nextState.applicationStatus === "NEEDS_INFO"
+          ? nextState.applicationStatus
+          : "NOT_SUBMITTED",
+        approved: false,
+        underReview: false,
+        notSubmitted: nextState.applicationStatus === "NOT_SUBMITTED" || nextState.notSubmitted === true,
         reviewStatus: "under_review",
       };
       saveLocalPartnerApprovalState(noApplicationState);
@@ -235,12 +262,19 @@ export async function fetchPartnerApprovalState(): Promise<PartnerApprovalState>
     return nextState;
   }
 
-  if (nextState.applicationStatus === "NOT_SUBMITTED") {
+  if (isPartnerApproved(nextState)) {
+    nextState = normalizeApprovedPartnerState(nextState);
+  } else if (shouldRoutePartnerToOnboarding(nextState)) {
     nextState = {
-      applicationStatus: "NOT_SUBMITTED",
+      applicationStatus: nextState.applicationStatus === "REJECTED" || nextState.applicationStatus === "NEEDS_INFO"
+        ? nextState.applicationStatus
+        : "NOT_SUBMITTED",
+      approved: false,
+      underReview: false,
+      notSubmitted: nextState.applicationStatus === "NOT_SUBMITTED" || nextState.notSubmitted === true,
       reviewStatus: "under_review",
     };
-  } else if (!isPartnerApproved(nextState)) {
+  } else {
     nextState = mergeState(LOCKED_UNDER_REVIEW_STATE, {
       applicationStatus: nextState.applicationStatus ?? "UNDER_REVIEW",
       kycStatus: nextState.kycStatus ?? "PENDING",
@@ -265,13 +299,16 @@ export async function resolvePartnerLandingRoute(): Promise<{
     if (isPartnerApproved(state)) {
       return { route: "/partner/dashboard", state };
     }
-    if (state.applicationStatus === "NOT_SUBMITTED") {
+    if (shouldRoutePartnerToOnboarding(state)) {
       return { route: "/partner/onboarding", state };
     }
     return { route: "/partner/application-status", state };
   } catch {
     if (isPartnerApproved(localState)) {
       return { route: "/partner/dashboard", state: localState };
+    }
+    if (shouldRoutePartnerToOnboarding(localState)) {
+      return { route: "/partner/onboarding", state: localState };
     }
     return { route: "/partner/application-status", state: localState };
   }
