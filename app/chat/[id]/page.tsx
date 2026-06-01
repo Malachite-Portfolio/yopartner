@@ -212,10 +212,6 @@ export default function ChatPage() {
         });
       }
       await playGiftSound(resolvedGift.sound, isMine ? 0.11 : 0.09);
-      if (resolvedGift.mediaType === "png") {
-        setActiveGiftEffect((current) => (current?.gift.mediaType === "png" ? null : current));
-        return;
-      }
       setActiveGiftEffect({
         id: `${resolvedGift.id}-${Date.now()}`,
         gift: resolvedGift,
@@ -798,18 +794,23 @@ export default function ChatPage() {
                       )
                     ) : (
                       <div className="relative h-full w-full overflow-hidden">
-                        <span className="absolute inset-0 bg-gradient-to-br from-slate-800 to-slate-700" />
-                        <span className="absolute inset-x-4 bottom-3 top-3 rounded-lg border border-white/10 bg-white/5" />
-                        {selectedGift?.mediaType === "png" ? (
-                          <span className="absolute inset-x-0 bottom-1 text-center text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-300">
-                            PNG
-                          </span>
-                        ) : null}
                         {selectedGift?.mediaType === "svga" ? (
-                          <span className="absolute inset-x-0 bottom-1 text-center text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-300">
-                            SVGA
-                          </span>
-                        ) : null}
+                          <>
+                            <span className="absolute inset-0 bg-[radial-gradient(circle_at_35%_30%,rgba(236,72,153,0.45),rgba(59,130,246,0.22)_45%,rgba(15,23,42,0.95)_100%)]" />
+                            <span className="absolute inset-x-2 top-2 h-3 rounded-full bg-white/20 blur-sm" />
+                            <span className="absolute inset-x-0 bottom-1 text-center text-[9px] font-semibold uppercase tracking-[0.08em] text-pink-100">
+                              Animated
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="absolute inset-0 bg-gradient-to-br from-slate-800 to-slate-700" />
+                            <span className="absolute inset-x-4 bottom-3 top-3 rounded-lg border border-white/10 bg-white/5" />
+                            <span className="absolute inset-x-0 bottom-1 text-center text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-300">
+                              PNG
+                            </span>
+                          </>
+                        )}
                       </div>
                     )}
                   </div>
@@ -873,19 +874,21 @@ export default function ChatPage() {
                                     setFailedCardPreviewGiftIds((current) => ({ ...current, [gift.id]: true }));
                                   }}
                                 />
+                              ) : gift.mediaType === "svga" ? (
+                                <div className="relative h-full w-full overflow-hidden">
+                                  <span className="absolute inset-0 bg-[radial-gradient(circle_at_35%_30%,rgba(236,72,153,0.45),rgba(59,130,246,0.22)_45%,rgba(15,23,42,0.95)_100%)]" />
+                                  <span className="absolute inset-x-2 top-2 h-2 rounded-full bg-white/25 blur-sm" />
+                                  <span className="absolute bottom-1 left-1/2 -translate-x-1/2 rounded-full bg-black/35 px-1.5 py-[1px] text-[8px] font-semibold uppercase tracking-[0.08em] text-pink-100">
+                                    Anim
+                                  </span>
+                                </div>
                               ) : (
                                 <div className="relative h-full w-full overflow-hidden">
                                   <span className="absolute inset-0 bg-gradient-to-br from-slate-800 to-slate-700" />
                                   <span className="absolute inset-x-2 bottom-2 top-2 rounded-md border border-white/10 bg-white/5" />
-                                  {gift.mediaType === "svga" ? (
-                                    <span className="absolute inset-x-0 bottom-1 text-center text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-300">
-                                      SVGA
-                                    </span>
-                                  ) : (
-                                    <span className="absolute inset-x-0 bottom-1 text-center text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-300">
-                                      PNG
-                                    </span>
-                                  )}
+                                  <span className="absolute inset-x-0 bottom-1 text-center text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-300">
+                                    PNG
+                                  </span>
                                 </div>
                               )}
                             </div>

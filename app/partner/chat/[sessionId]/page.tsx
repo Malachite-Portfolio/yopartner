@@ -139,10 +139,6 @@ export default function PartnerChatSessionPage() {
       const catalogGift = getCatalogGiftByKey(latestGiftMessage.gift.giftKey);
       if (!catalogGift) return;
       void playGiftSound(catalogGift.sound, latestGiftMessage.isMine ? 0.11 : 0.08);
-      if (catalogGift.mediaType === "png") {
-        setActiveGiftEffect((current) => (current?.gift.mediaType === "png" ? null : current));
-        return;
-      }
       setActiveGiftEffect({
         id: `${catalogGift.id}-${Date.now()}`,
         gift: catalogGift,

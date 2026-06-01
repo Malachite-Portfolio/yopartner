@@ -26,10 +26,11 @@ function GiftOverlayScene({ effect, onClose }: SceneProps) {
   const [hasFailed, setHasFailed] = useState(false);
   const hasClosedRef = useRef(false);
 
+  const isPngGift = effect.gift.mediaType === "png";
   const spotlightPremium = isSpotlightPremiumGift(effect.gift.giftKey);
-  const hardCloseMs = spotlightPremium ? 6000 : 4000;
+  const hardCloseMs = isPngGift ? 1600 : spotlightPremium ? 6000 : 4000;
   const playbackTimeoutMs = spotlightPremium ? 5500 : 3500;
-  const pngDisplayMs = spotlightPremium ? 4200 : 3000;
+  const pngDisplayMs = spotlightPremium ? 1200 : 1100;
   const mediaUrl = getGiftMediaUrl(effect.gift);
   const giftSvgaPath = getGiftSvgaUrl(effect.gift);
   const giftPngPath = getGiftPngUrl(effect.gift);
@@ -77,7 +78,7 @@ function GiftOverlayScene({ effect, onClose }: SceneProps) {
 
   return (
     <div className="pointer-events-none fixed inset-0 z-[120] h-[100dvh] w-screen overflow-hidden" aria-hidden>
-      <span className={`absolute inset-0 ${spotlightPremium ? "bg-black/65" : "bg-black/55"}`} />
+      <span className={`absolute inset-0 ${isPngGift ? "bg-black/45" : spotlightPremium ? "bg-black/65" : "bg-black/55"}`} />
       <span className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.1),rgba(255,255,255,0)_62%)]" />
 
       {!hasFailed ? (
