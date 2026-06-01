@@ -113,6 +113,58 @@ function buildFallbackCompanion(sessionData: SessionRecord): CompanionRouteProfi
   };
 }
 
+function getSvgaTierPreviewStyle(tier: ChatGiftCatalogItem["tier"]) {
+  if (tier === "expensive") {
+    return {
+      bg: "bg-[radial-gradient(circle_at_30%_25%,rgba(251,191,36,0.6),rgba(217,70,239,0.24)_45%,rgba(9,9,11,0.98)_100%)]",
+      chip: "bg-amber-200/20 text-amber-100 border-amber-200/35",
+      label: "Elite",
+      monogram: "E",
+    };
+  }
+  if (tier === "luxury") {
+    return {
+      bg: "bg-[radial-gradient(circle_at_30%_25%,rgba(59,130,246,0.52),rgba(236,72,153,0.2)_50%,rgba(15,23,42,0.98)_100%)]",
+      chip: "bg-sky-200/20 text-sky-100 border-sky-200/35",
+      label: "Luxury",
+      monogram: "L",
+    };
+  }
+  return {
+    bg: "bg-[radial-gradient(circle_at_30%_25%,rgba(236,72,153,0.45),rgba(99,102,241,0.2)_50%,rgba(15,23,42,0.98)_100%)]",
+    chip: "bg-fuchsia-200/20 text-fuchsia-100 border-fuchsia-200/35",
+    label: "Premium",
+    monogram: "P",
+  };
+}
+
+function SvgaGiftThumbnail({ gift, compact = false }: { gift: ChatGiftCatalogItem; compact?: boolean }) {
+  const tierStyle = getSvgaTierPreviewStyle(gift.tier);
+
+  return (
+    <div className="relative h-full w-full overflow-hidden rounded-lg">
+      <span className={`absolute inset-0 ${tierStyle.bg}`} />
+      <span className={`absolute inset-x-2 ${compact ? "top-1.5 h-2" : "top-2 h-3"} rounded-full bg-white/25 blur-sm`} />
+      <span className="absolute inset-0 flex items-center justify-center">
+        <span
+          className={`inline-flex items-center justify-center rounded-full border font-semibold backdrop-blur-sm ${tierStyle.chip} ${
+            compact ? "h-6 w-6 text-[9px]" : "h-9 w-9 text-xs"
+          }`}
+        >
+          {tierStyle.monogram}
+        </span>
+      </span>
+      <span
+        className={`absolute left-1/2 -translate-x-1/2 rounded-full border px-1.5 py-[1px] font-semibold uppercase tracking-[0.08em] ${tierStyle.chip} ${
+          compact ? "bottom-0.5 text-[7px]" : "bottom-1 text-[8px]"
+        }`}
+      >
+        {tierStyle.label}
+      </span>
+    </div>
+  );
+}
+
 export default function ChatPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
@@ -798,13 +850,7 @@ export default function ChatPage() {
                     ) : (
                       <div className="relative h-full w-full overflow-hidden">
                         {selectedGift?.mediaType === "svga" ? (
-                          <>
-                            <span className="absolute inset-0 bg-[radial-gradient(circle_at_35%_30%,rgba(236,72,153,0.45),rgba(59,130,246,0.22)_45%,rgba(15,23,42,0.95)_100%)]" />
-                            <span className="absolute inset-x-2 top-2 h-3 rounded-full bg-white/20 blur-sm" />
-                            <span className="absolute inset-x-0 bottom-1 text-center text-[9px] font-semibold uppercase tracking-[0.08em] text-pink-100">
-                              Animated
-                            </span>
-                          </>
+                          <SvgaGiftThumbnail gift={selectedGift} />
                         ) : (
                           <>
                             <span className="absolute inset-0 bg-gradient-to-br from-slate-800 to-slate-700" />
@@ -878,13 +924,7 @@ export default function ChatPage() {
                                   }}
                                 />
                               ) : gift.mediaType === "svga" ? (
-                                <div className="relative h-full w-full overflow-hidden">
-                                  <span className="absolute inset-0 bg-[radial-gradient(circle_at_35%_30%,rgba(236,72,153,0.45),rgba(59,130,246,0.22)_45%,rgba(15,23,42,0.95)_100%)]" />
-                                  <span className="absolute inset-x-2 top-2 h-2 rounded-full bg-white/25 blur-sm" />
-                                  <span className="absolute bottom-1 left-1/2 -translate-x-1/2 rounded-full bg-black/35 px-1.5 py-[1px] text-[8px] font-semibold uppercase tracking-[0.08em] text-pink-100">
-                                    Anim
-                                  </span>
-                                </div>
+                                <SvgaGiftThumbnail gift={gift} compact />
                               ) : (
                                 <div className="relative h-full w-full overflow-hidden">
                                   <span className="absolute inset-0 bg-gradient-to-br from-slate-800 to-slate-700" />
