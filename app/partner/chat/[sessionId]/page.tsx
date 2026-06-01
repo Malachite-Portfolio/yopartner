@@ -66,6 +66,9 @@ export default function PartnerChatSessionPage() {
   const [activeGiftEffect, setActiveGiftEffect] = useState<GiftOverlayEffect | null>(null);
   const seenGiftMessageIdsRef = useRef<Set<string>>(new Set());
   const hasHydratedGiftFeedRef = useRef(false);
+  const handleGiftOverlayClose = useCallback(() => {
+    setActiveGiftEffect(null);
+  }, []);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -330,7 +333,7 @@ export default function PartnerChatSessionPage() {
               showCallActions={false}
               sessionTimerLabel={timerLabel}
             />
-            <GiftOverlay effect={activeGiftEffect} onClose={() => setActiveGiftEffect(null)} />
+            <GiftOverlay effect={activeGiftEffect} onClose={handleGiftOverlayClose} />
           </>
         )}
       </main>

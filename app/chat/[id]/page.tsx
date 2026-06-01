@@ -144,6 +144,9 @@ export default function ChatPage() {
   const reviewRedirectUrlRef = useRef<string | null>(null);
   const seenGiftMessageIdsRef = useRef<Set<string>>(new Set());
   const hasHydratedGiftFeedRef = useRef(false);
+  const handleGiftOverlayClose = useCallback(() => {
+    setActiveGiftEffect(null);
+  }, []);
 
   const currentPath = useMemo(() => {
     const query = searchParams.toString();
@@ -740,7 +743,7 @@ export default function ChatPage() {
         }}
         giftActionDisabled={isSendingGift}
       />
-      <GiftOverlay effect={activeGiftEffect} onClose={() => setActiveGiftEffect(null)} />
+      <GiftOverlay effect={activeGiftEffect} onClose={handleGiftOverlayClose} />
       {isGiftModalOpen ? (
         <div className="absolute inset-0 z-50 flex items-end justify-center bg-black/70">
           <div className="w-full max-w-lg overflow-hidden rounded-t-3xl border-t border-slate-700 bg-[#0a0f14] text-white shadow-2xl">
