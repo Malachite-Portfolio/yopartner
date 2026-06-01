@@ -100,8 +100,11 @@ export function ChatScreen({
   const [showMenu, setShowMenu] = useState(false);
   const [attachMessage, setAttachMessage] = useState("");
   const [failedGiftPreviewByMessageId, setFailedGiftPreviewByMessageId] = useState<Record<string, boolean>>({});
+  const [giftPreviewRetryNonceByMessageId, setGiftPreviewRetryNonceByMessageId] = useState<Record<string, number>>({});
   const giftPreviewRetryTimerByMessageIdRef = useRef<Record<string, number>>({});
+  const giftPreviewRetryCountByMessageIdRef = useRef<Record<string, number>>({});
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const MAX_GIFT_PREVIEW_RETRIES = 3;
 
   useEffect(() => {
     if (!showMenu) return;
@@ -119,23 +122,45 @@ export function ChatScreen({
         window.clearTimeout(timerId);
       });
       giftPreviewRetryTimerByMessageIdRef.current = {};
+      giftPreviewRetryCountByMessageIdRef.current = {};
     };
   }, []);
 
   const scheduleGiftPreviewRetry = (messageId: string) => {
     setFailedGiftPreviewByMessageId((current) => ({ ...current, [messageId]: true }));
+    const retryCount = (giftPreviewRetryCountByMessageIdRef.current[messageId] ?? 0) + 1;
+    giftPreviewRetryCountByMessageIdRef.current[messageId] = retryCount;
+    if (retryCount > MAX_GIFT_PREVIEW_RETRIES) {
+      return;
+    }
     const existingTimer = giftPreviewRetryTimerByMessageIdRef.current[messageId];
     if (existingTimer) {
       window.clearTimeout(existingTimer);
     }
     giftPreviewRetryTimerByMessageIdRef.current[messageId] = window.setTimeout(() => {
+      setGiftPreviewRetryNonceByMessageId((current) => ({ ...current, [messageId]: (current[messageId] ?? 0) + 1 }));
       setFailedGiftPreviewByMessageId((current) => {
         const next = { ...current };
         delete next[messageId];
         return next;
       });
       delete giftPreviewRetryTimerByMessageIdRef.current[messageId];
-    }, 2200);
+    }, 450);
+  };
+
+  const clearGiftPreviewFailure = (messageId: string) => {
+    const pendingTimer = giftPreviewRetryTimerByMessageIdRef.current[messageId];
+    if (pendingTimer) {
+      window.clearTimeout(pendingTimer);
+      delete giftPreviewRetryTimerByMessageIdRef.current[messageId];
+    }
+    delete giftPreviewRetryCountByMessageIdRef.current[messageId];
+    setFailedGiftPreviewByMessageId((current) => {
+      if (!(messageId in current)) return current;
+      const next = { ...current };
+      delete next[messageId];
+      return next;
+    });
   };
 
   const handleBack = () => {
@@ -291,13 +316,20 @@ export function ChatScreen({
                           }
 
                           if (resolvedGift.mediaType === "png" && !previewFailed) {
+                            const retryNonce = giftPreviewRetryNonceByMessageId[message.id] ?? 0;
+                            const pngPreviewUrl = getGiftPngUrl(resolvedGift);
+                            const retryJoiner = pngPreviewUrl.includes("?") ? "&" : "?";
+                            const previewSrc = retryNonce > 0 ? `${pngPreviewUrl}${retryJoiner}retry=${retryNonce}` : pngPreviewUrl;
                             return (
                               // eslint-disable-next-line @next/next/no-img-element
                               <img
-                                src={getGiftPngUrl(resolvedGift)}
+                                src={previewSrc}
                                 alt={gift?.giftName || resolvedGift.name}
                                 className="h-14 w-14 rounded-xl border border-slate-300/60 bg-white/75 object-contain p-1"
                                 loading="lazy"
+                                onLoad={() => {
+                                  clearGiftPreviewFailure(message.id);
+                                }}
                                 onError={() => {
                                   scheduleGiftPreviewRetry(message.id);
                                 }}

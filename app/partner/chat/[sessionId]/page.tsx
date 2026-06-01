@@ -64,7 +64,7 @@ export default function PartnerChatSessionPage() {
   const [isEndingSession, setIsEndingSession] = useState(false);
   const [clockNow, setClockNow] = useState(() => Date.now());
   const [activeGiftEffect, setActiveGiftEffect] = useState<GiftOverlayEffect | null>(null);
-  const lastSeenGiftMessageIdRef = useRef("");
+  const seenGiftMessageIdsRef = useRef<Set<string>>(new Set());
   const hasHydratedGiftFeedRef = useRef(false);
 
   useEffect(() => {
@@ -93,47 +93,62 @@ export default function PartnerChatSessionPage() {
 
   useEffect(() => {
     if (!sessionId || session?.status !== "LIVE") return;
-    const refresh = async () => {
-      setIsMessagesLoading(true);
+    const refresh = async (options?: { silent?: boolean }) => {
+      if (!options?.silent) {
+        setIsMessagesLoading(true);
+      }
       const response = await getSessionMessages(sessionId);
       if (!response.data) {
-        setIsMessagesLoading(false);
+        if (!options?.silent) {
+          setIsMessagesLoading(false);
+        }
         return;
       }
 
       const nextMessages = response.data;
-      setMessages(nextMessages);
-      setIsMessagesLoading(false);
-
-      const latestGiftMessage = [...nextMessages]
-        .reverse()
-        .find(
-          (message): message is SessionMessageRecord & { gift: NonNullable<SessionMessageRecord["gift"]> } =>
-            message.messageType === "GIFT" && Boolean(message.gift),
-        );
-      if (!latestGiftMessage) return;
-
       if (!hasHydratedGiftFeedRef.current) {
+        const hydratedGiftIds = new Set<string>();
+        nextMessages.forEach((message) => {
+          if (message.messageType === "GIFT" && message.id) {
+            hydratedGiftIds.add(message.id);
+          }
+        });
+        seenGiftMessageIdsRef.current = hydratedGiftIds;
         hasHydratedGiftFeedRef.current = true;
-        lastSeenGiftMessageIdRef.current = latestGiftMessage.id;
-        return;
       }
-      if (!latestGiftMessage.id || latestGiftMessage.id === lastSeenGiftMessageIdRef.current) return;
 
-      lastSeenGiftMessageIdRef.current = latestGiftMessage.id;
+      setMessages(nextMessages);
+      if (!options?.silent) {
+        setIsMessagesLoading(false);
+      }
+
+      const unseenGiftMessages = nextMessages
+        .filter(
+          (message): message is SessionMessageRecord & { gift: NonNullable<SessionMessageRecord["gift"]> } =>
+            message.messageType === "GIFT" && Boolean(message.gift) && !seenGiftMessageIdsRef.current.has(message.id),
+        )
+        .sort((first, second) => +new Date(first.createdAt) - +new Date(second.createdAt));
+
+      if (unseenGiftMessages.length === 0) return;
+
+      unseenGiftMessages.forEach((message) => {
+        seenGiftMessageIdsRef.current.add(message.id);
+      });
+      const latestGiftMessage = unseenGiftMessages[unseenGiftMessages.length - 1];
+      if (!latestGiftMessage?.gift) return;
       const catalogGift = getCatalogGiftByKey(latestGiftMessage.gift.giftKey);
       if (!catalogGift) return;
-      void playGiftSound(catalogGift.sound, 0.08);
+      void playGiftSound(catalogGift.sound, latestGiftMessage.isMine ? 0.11 : 0.08);
       setActiveGiftEffect({
         id: `${catalogGift.id}-${Date.now()}`,
         gift: catalogGift,
-        direction: "received",
+        direction: latestGiftMessage.isMine ? "sent" : "received",
         quantity: latestGiftMessage.gift.quantity && latestGiftMessage.gift.quantity > 1 ? latestGiftMessage.gift.quantity : 1,
       });
     };
-    void refresh();
+    void refresh({ silent: false });
     const timer = window.setInterval(() => {
-      void refresh();
+      void refresh({ silent: true });
     }, 2000);
     return () => window.clearInterval(timer);
   }, [session?.status, sessionId]);
@@ -147,7 +162,7 @@ export default function PartnerChatSessionPage() {
 
   useEffect(() => {
     hasHydratedGiftFeedRef.current = false;
-    lastSeenGiftMessageIdRef.current = "";
+    seenGiftMessageIdsRef.current = new Set();
   }, [sessionId]);
 
   useEffect(() => {
