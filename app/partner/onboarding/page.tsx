@@ -338,9 +338,7 @@ async function waitForFirebaseUser(timeoutMs = 8000) {
 export default function PartnerOnboardingPage() {
   const router = useRouter();
   const isDemoPartnerSession = isClientDemoPartnerSessionActive();
-  const isEditMode =
-    typeof window !== "undefined" &&
-    new URLSearchParams(window.location.search).get("edit") === "true";
+  const [isEditMode, setIsEditMode] = useState<boolean | null>(null);
   const [step, setStep] = useState(0);
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [submitMessage, setSubmitMessage] = useState("");
@@ -368,6 +366,13 @@ export default function PartnerOnboardingPage() {
   });
 
   useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setIsEditMode(new URLSearchParams(window.location.search).get("edit") === "true");
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
     if (!isPartnerLoggedIn() || !getPartnerPhone()) {
       router.replace("/partner/login");
     }
@@ -375,6 +380,7 @@ export default function PartnerOnboardingPage() {
 
   useEffect(() => {
     if (!IS_PRODUCTION_READY_MODE) return;
+    if (isEditMode === null) return;
 
     let active = true;
     const hydrateExistingApplication = async () => {
