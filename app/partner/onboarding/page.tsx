@@ -380,7 +380,7 @@ export default function PartnerOnboardingPage() {
     const hydrateExistingApplication = async () => {
       const landing = await resolvePartnerLandingRoute();
       if (!active) return;
-      if (landing.route === "/partner/dashboard" || landing.route === "/partner/application-status") {
+      if ((landing.route === "/partner/dashboard" && !isEditMode) || landing.route === "/partner/application-status") {
         router.replace(landing.route);
         return;
       }
@@ -406,7 +406,7 @@ export default function PartnerOnboardingPage() {
     return () => {
       active = false;
     };
-  }, [router]);
+  }, [isEditMode, router]);
 
   useEffect(() => {
     if (!IS_DEMO_MODE) return;
