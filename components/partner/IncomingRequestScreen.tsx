@@ -3,6 +3,7 @@
 import { MessageCircle, PhoneCall, PhoneOff } from "lucide-react";
 import { useEffect, useMemo } from "react";
 import type { PartnerIncomingRequest } from "@/lib/api/partner";
+import { useLoopingRingtone } from "@/hooks/useLoopingRingtone";
 
 type IncomingRequestScreenProps = {
   request: PartnerIncomingRequest | null;
@@ -54,6 +55,7 @@ export function IncomingRequestScreen({
   const title = request ? toRequestTitle(request.type) : "";
   const isChat = request?.type === "CHAT";
   const initials = memberLabel.slice(-2).toUpperCase() || "MB";
+  useLoopingRingtone({ enabled: open, kind: "incoming", volume: 0.08 });
 
   useEffect(() => {
     if (!open) return;
@@ -63,19 +65,6 @@ export function IncomingRequestScreen({
       document.body.style.overflow = previousOverflow;
     };
   }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    if (request?.type === "CHAT") return;
-    const audio = new Audio("/sounds/incoming-request.mp3");
-    audio.loop = true;
-    audio.preload = "none";
-    void audio.play().catch(() => undefined);
-    return () => {
-      audio.pause();
-      audio.currentTime = 0;
-    };
-  }, [open, request?.type]);
 
   if (!open || !request) return null;
 

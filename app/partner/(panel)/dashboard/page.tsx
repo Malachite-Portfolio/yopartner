@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { IncomingRequestScreen } from "@/components/partner/IncomingRequestScreen";
 import { requestAudioPermission, requestVideoPermission } from "@/lib/agora";
@@ -110,6 +110,12 @@ function formatRequestType(type: PartnerIncomingRequest["type"]) {
   return "Chat";
 }
 
+function getIncomingNotificationTitle(type: PartnerIncomingRequest["type"]) {
+  if (type === "AUDIO") return "Incoming audio call";
+  if (type === "VIDEO") return "Incoming video call";
+  return "Incoming chat request";
+}
+
 function maskMemberLabel(value: string) {
   const digits = value.replace(/\D/g, "");
   if (digits.length >= 4) return `+91******${digits.slice(-4)}`;
@@ -132,6 +138,11 @@ export default function PartnerDashboardPage() {
   const [requestAction, setRequestAction] = useState<"accept" | "decline" | null>(null);
   const [availabilityActionPending, setAvailabilityActionPending] = useState(false);
   const [endingSessionId, setEndingSessionId] = useState<string | null>(null);
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | "unsupported">(() => {
+    if (typeof window === "undefined" || !("Notification" in window)) return "unsupported";
+    return Notification.permission;
+  });
+  const notifiedRequestIdsRef = useRef<Set<string>>(new Set());
 
   const isApproved = isPartnerApproved(approvalState);
   const labels = getPartnerApprovalLabel(approvalState);
@@ -260,6 +271,30 @@ export default function PartnerDashboardPage() {
       setPartnerOnlineStatus(false);
     }
   }, [isApproved, online]);
+
+  useEffect(() => {
+    if (!overlayRequest || notificationPermission !== "granted") return;
+    if (notifiedRequestIdsRef.current.has(overlayRequest.id)) return;
+    notifiedRequestIdsRef.current.add(overlayRequest.id);
+
+    const notification = new Notification(getIncomingNotificationTitle(overlayRequest.type), {
+      body: `${maskMemberLabel(overlayRequest.memberLabel)} is waiting for a ${formatRequestType(overlayRequest.type).toLowerCase()} session.`,
+      tag: `yopartner-request-${overlayRequest.id}`,
+    });
+    notification.onclick = () => {
+      window.focus();
+      notification.close();
+    };
+  }, [notificationPermission, overlayRequest]);
+
+  const handleEnableNotifications = async () => {
+    if (typeof window === "undefined" || !("Notification" in window)) {
+      setNotificationPermission("unsupported");
+      return;
+    }
+    const permission = await Notification.requestPermission();
+    setNotificationPermission(permission);
+  };
 
   const toggleOnline = async () => {
     if (!isApproved || availabilityActionPending) return;
@@ -404,6 +439,20 @@ export default function PartnerDashboardPage() {
             ) : null}
             {statusMessage ? <p className="mt-3 text-xs text-slate-500">{statusMessage}</p> : null}
             {availabilityError ? <p className="mt-3 text-xs font-medium text-rose-600">{availabilityError}</p> : null}
+            {isApproved && notificationPermission === "default" ? (
+              <button
+                type="button"
+                onClick={() => {
+                  void handleEnableNotifications();
+                }}
+                className="mt-3 rounded-full border border-[#dceae5] bg-white px-3 py-1.5 text-xs font-semibold text-[#0f766e] hover:bg-[#f2fbf8]"
+              >
+                Enable notifications
+              </button>
+            ) : null}
+            {isApproved && notificationPermission === "denied" ? (
+              <p className="mt-3 text-xs text-slate-500">Browser notifications are blocked in this browser.</p>
+            ) : null}
           </div>
           <button
             type="button"

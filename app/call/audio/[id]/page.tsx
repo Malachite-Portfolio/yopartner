@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import type { IAgoraRTCClient, IAgoraRTCRemoteUser, IMicrophoneAudioTrack, IRemoteAudioTrack } from "agora-rtc-sdk-ng";
 import { EndSessionConfirmModal } from "@/components/session/EndSessionConfirmModal";
+import { useLoopingRingtone } from "@/hooks/useLoopingRingtone";
 import { useSessionExitGuard } from "@/hooks/useSessionExitGuard";
 import {
   cancelSession,
@@ -109,6 +110,7 @@ export default function AudioCallPage() {
 
   const isPending = session?.status === "PENDING";
   const isActive = session?.status === "LIVE" || session?.status === "ACCEPTED";
+  useLoopingRingtone({ enabled: isPending, kind: "ringback", volume: 0.06 });
   const callTimerBase = session?.liveStartedAt ?? (isActive && localAudioPublished ? localJoinStartedAt : null);
   const elapsedSeconds = getElapsedSeconds(callTimerBase, clockNow);
 

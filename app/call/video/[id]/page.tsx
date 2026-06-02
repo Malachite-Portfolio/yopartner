@@ -12,6 +12,7 @@ import type {
   IRemoteVideoTrack,
 } from "agora-rtc-sdk-ng";
 import { EndSessionConfirmModal } from "@/components/session/EndSessionConfirmModal";
+import { useLoopingRingtone } from "@/hooks/useLoopingRingtone";
 import { useSessionExitGuard } from "@/hooks/useSessionExitGuard";
 import {
   cancelSession,
@@ -123,6 +124,7 @@ export default function VideoCallPage() {
   const remoteVideoContainerRef = useRef<HTMLDivElement | null>(null);
   const remoteAudioElementRef = useRef<HTMLAudioElement | null>(null);
   const isPending = session?.status === "PENDING";
+  useLoopingRingtone({ enabled: isPending, kind: "ringback", volume: 0.06 });
   const isCallLive = Boolean(session?.liveStartedAt);
   const elapsedSeconds = isCallLive ? getElapsedSeconds(session, clockNow) : 0;
 
