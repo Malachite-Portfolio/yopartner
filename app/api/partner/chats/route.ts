@@ -6,6 +6,14 @@ import { getPartnerCompanion } from "@/lib/server/partner";
 
 export const runtime = "nodejs";
 
+type PartnerChatSession = {
+  id: string;
+  startedAt: Date;
+  status: string;
+  user?: { phone?: string | null } | null;
+  userId?: string | null;
+};
+
 export async function GET(request: Request) {
   const prisma = getPrismaClient();
   if (!prisma) return notImplementedResponse();
@@ -28,7 +36,7 @@ export async function GET(request: Request) {
   });
 
   return NextResponse.json({
-    chats: sessions.map((session) => ({
+    chats: sessions.map((session: PartnerChatSession) => ({
       id: session.id,
       userId: session.userId,
       userPhone: session.user?.phone ?? null,

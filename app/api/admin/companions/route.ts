@@ -11,6 +11,11 @@ import {
 
 export const runtime = "nodejs";
 
+type CompanionPricingFields = {
+  videoPrice: number;
+  visitPrice: number;
+};
+
 export async function GET(request: Request) {
   const prisma = getPrismaClient();
   if (!prisma) return notImplementedResponse();
@@ -24,7 +29,7 @@ export async function GET(request: Request) {
     orderBy: [{ status: "asc" }, { updatedAt: "desc" }],
   });
   return NextResponse.json({
-    companions: companions.map((companion) => ({
+    companions: companions.map((companion: CompanionPricingFields) => ({
       ...companion,
       chatPrice: CHAT_RATE_PER_MIN,
       voicePrice: AUDIO_RATE_PER_MIN,

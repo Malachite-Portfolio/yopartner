@@ -2,7 +2,6 @@ import { ArrowRight, HeartHandshake, MessageCircleHeart, Quote, ShieldCheck, Spa
 import { Outfit } from "next/font/google";
 import Link from "next/link";
 import { ActiveCompanionsCount } from "@/components/home/ActiveCompanionsCount";
-import { LuckyWheel } from "@/components/LuckyWheel";
 
 const outfit = Outfit({
   subsets: ["latin"],
@@ -89,7 +88,6 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-      <LuckyWheel />
 
       <section className="bg-[#EEF4F1] px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
         <div className="mx-auto w-full max-w-[1180px]">

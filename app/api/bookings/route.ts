@@ -6,6 +6,16 @@ import { getFixedPlatformRate } from "@/lib/platformPricing";
 
 export const runtime = "nodejs";
 
+type BookingListItem = {
+  amount: number;
+  bookingId: string;
+  companion?: { name?: string | null } | null;
+  createdAt: Date;
+  id: string;
+  serviceType: string;
+  status: string;
+};
+
 export async function GET(request: Request) {
   const prisma = getPrismaClient();
   if (!prisma) {
@@ -24,7 +34,7 @@ export async function GET(request: Request) {
   });
 
   return NextResponse.json({
-    bookings: bookings.map((item) => ({
+    bookings: bookings.map((item: BookingListItem) => ({
       id: item.id,
       bookingId: item.bookingId,
       companionName: item.companion?.name ?? "Partner",

@@ -5,6 +5,19 @@ import { requireFirebaseUser } from "@/lib/server/auth";
 
 export const runtime = "nodejs";
 
+type UserSessionItem = {
+  amount: number;
+  companion?: { name?: string | null } | null;
+  companionId?: string | null;
+  durationSec: number;
+  endedAt?: Date | null;
+  id: string;
+  sessionId: string;
+  startedAt: Date;
+  status: string;
+  type: string;
+};
+
 export async function GET(request: Request) {
   const prisma = getPrismaClient();
   if (!prisma) return notImplementedResponse();
@@ -21,7 +34,7 @@ export async function GET(request: Request) {
   });
 
   return NextResponse.json({
-    sessions: sessions.map((item) => ({
+    sessions: sessions.map((item: UserSessionItem) => ({
       id: item.id,
       sessionId: item.sessionId,
       companionId: item.companionId,

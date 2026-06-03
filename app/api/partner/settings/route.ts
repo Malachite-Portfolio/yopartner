@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
 import { getPrismaClient } from "@/lib/server/prisma";
 import { notImplementedResponse, parseJsonBody } from "@/lib/server/http";
 import { requireFirebaseUser } from "@/lib/server/auth";
@@ -37,10 +36,11 @@ export async function PATCH(request: Request) {
   }
 
   const key = `${SETTINGS_PREFIX}${auth.user.id}`;
+  const value = body as never;
   await prisma.adminSetting.upsert({
     where: { key },
-    update: { value: body as Prisma.InputJsonValue },
-    create: { key, value: body as Prisma.InputJsonValue },
+    update: { value },
+    create: { key, value },
   });
 
   return NextResponse.json({ success: true });

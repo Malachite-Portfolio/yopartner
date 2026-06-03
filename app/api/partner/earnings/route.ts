@@ -6,6 +6,16 @@ import { getPartnerCompanion } from "@/lib/server/partner";
 
 export const runtime = "nodejs";
 
+type PartnerEarningSession = {
+  amount: number;
+  companionEarning: number;
+  id: string;
+  platformFee: number;
+  startedAt: Date;
+  type: string;
+  user?: { phone?: string | null } | null;
+};
+
 export async function GET(request: Request) {
   const prisma = getPrismaClient();
   if (!prisma) return notImplementedResponse();
@@ -27,7 +37,7 @@ export async function GET(request: Request) {
   });
 
   return NextResponse.json({
-    earnings: sessions.map((row) => ({
+    earnings: sessions.map((row: PartnerEarningSession) => ({
       id: row.id,
       date: row.startedAt.toISOString(),
       session: row.type,

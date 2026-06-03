@@ -5,6 +5,15 @@ import { requireFirebaseUser } from "@/lib/server/auth";
 
 export const runtime = "nodejs";
 
+type WalletTransactionItem = {
+  amount: number;
+  createdAt: Date;
+  description?: string | null;
+  status: string;
+  transactionId: string;
+  type: string;
+};
+
 export async function GET(request: Request) {
   const prisma = getPrismaClient();
   if (!prisma) return notImplementedResponse();
@@ -20,7 +29,7 @@ export async function GET(request: Request) {
   });
 
   return NextResponse.json({
-    transactions: transactions.map((tx) => ({
+    transactions: transactions.map((tx: WalletTransactionItem) => ({
       id: tx.transactionId,
       type: tx.type,
       amount: tx.amount,

@@ -1,4 +1,3 @@
-import type { Companion, PrismaClient, User } from "@prisma/client";
 import {
   AUDIO_RATE_PER_MIN,
   CHAT_RATE_PER_MIN,
@@ -6,7 +5,41 @@ import {
   VIDEO_RATE_PER_MIN,
 } from "@/lib/platformPricing";
 
-export async function getPartnerCompanion(prisma: PrismaClient, user: User) {
+type PartnerUser = {
+  firebaseUid: string;
+};
+
+type PartnerPrismaClient = {
+  companion: {
+    findUnique: (args: { where: { id: string } }) => Promise<PartnerCompanion | null>;
+  };
+};
+
+type PartnerCompanion = CompanionApplicationDefaults & {
+  rating: number;
+  totalEarnings: number;
+  totalSessions: number;
+};
+
+type CompanionApplicationDefaults = {
+  availability: string;
+  category: string | null;
+  chatPrice: number;
+  city: string | null;
+  id: string;
+  languages: string[];
+  name: string;
+  phone: string | null;
+  servicesOffered: string[];
+  status: string;
+  tagline: string | null;
+  verificationStatus: string;
+  videoPrice: number;
+  visitPrice: number;
+  voicePrice: number;
+};
+
+export async function getPartnerCompanion(prisma: PartnerPrismaClient, user: PartnerUser) {
   return prisma.companion.findUnique({
     where: { id: user.firebaseUid },
   });
@@ -29,24 +62,7 @@ export function asNumber(value: unknown, fallback = 0) {
 export function companionFromApplicationPayload(
   payload: Record<string, unknown>,
   defaults: { id: string; name: string; phone?: string | null },
-): Pick<
-  Companion,
-  | "id"
-  | "name"
-  | "phone"
-  | "city"
-  | "tagline"
-  | "category"
-  | "chatPrice"
-  | "voicePrice"
-  | "videoPrice"
-  | "visitPrice"
-  | "languages"
-  | "servicesOffered"
-  | "status"
-  | "availability"
-  | "verificationStatus"
-> {
+): CompanionApplicationDefaults {
   const servicesOffered = toArray(payload.servicesOffered);
   const offersVideo = servicesOffered.some((service) => service.toLowerCase().includes("video"));
   const offersHomeVisit = servicesOffered.some((service) => service.toLowerCase().includes("home"));

@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
 import { getPrismaClient } from "@/lib/server/prisma";
 import { notImplementedResponse, parseJsonBody } from "@/lib/server/http";
 import { requireFirebaseUser } from "@/lib/server/auth";
@@ -60,7 +59,7 @@ export async function POST(request: Request) {
       fullName,
       city: body.bornCity ? String(body.bornCity) : null,
       status: "under_review",
-      payload: body as Prisma.InputJsonValue,
+      payload: body as never,
     },
   });
 

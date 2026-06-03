@@ -1,9 +1,20 @@
-import type { User } from "@prisma/client";
 import { adminAuth, isFirebaseAdminConfigured } from "@/lib/firebase/admin";
 import { getPrismaClient } from "@/lib/server/prisma";
 
+type AuthUser = {
+  createdAt: Date;
+  firebaseUid: string;
+  id: string;
+  lastLoginAt: Date | null;
+  name: string | null;
+  phone: string | null;
+  role: string;
+  status: string;
+  walletBalance: number;
+};
+
 type AuthResult =
-  | { user: User; decoded: { uid: string; phoneNumber?: string | null } }
+  | { user: AuthUser; decoded: { uid: string; phoneNumber?: string | null } }
   | { error: string; status: number };
 
 function getBearerToken(request: Request) {

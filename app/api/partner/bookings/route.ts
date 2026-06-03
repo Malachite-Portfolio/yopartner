@@ -6,6 +6,16 @@ import { getPartnerCompanion } from "@/lib/server/partner";
 
 export const runtime = "nodejs";
 
+type PartnerBookingItem = {
+  amount: number;
+  bookingId: string;
+  createdAt: Date;
+  id: string;
+  serviceType: string;
+  status: string;
+  user: { phone?: string | null };
+};
+
 export async function GET(request: Request) {
   const prisma = getPrismaClient();
   if (!prisma) return notImplementedResponse();
@@ -27,7 +37,7 @@ export async function GET(request: Request) {
   });
 
   return NextResponse.json({
-    bookings: bookings.map((item) => ({
+    bookings: bookings.map((item: PartnerBookingItem) => ({
       id: item.id,
       bookingId: item.bookingId,
       userPhone: item.user.phone,

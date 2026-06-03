@@ -5,6 +5,17 @@ import { AUDIO_RATE_PER_MIN, CHAT_RATE_PER_MIN, VIDEO_RATE_PER_MIN } from "@/lib
 
 export const runtime = "nodejs";
 
+type FeaturedCompanionItem = {
+  availability: string;
+  category?: string | null;
+  id: string;
+  name: string;
+  rating: number;
+  servicesOffered: string[];
+  tagline?: string | null;
+  videoPrice: number;
+};
+
 export async function GET() {
   const prisma = getPrismaClient();
   if (!prisma) {
@@ -18,7 +29,7 @@ export async function GET() {
   });
 
   return NextResponse.json({
-    companions: companions.map((item) => ({
+    companions: companions.map((item: FeaturedCompanionItem) => ({
       id: item.id,
       name: item.name,
       tagline: item.tagline ?? "",

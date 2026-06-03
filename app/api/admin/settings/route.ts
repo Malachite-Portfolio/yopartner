@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
 import { getPrismaClient } from "@/lib/server/prisma";
 import { notImplementedResponse, parseJsonBody } from "@/lib/server/http";
 import { requireAdminUser } from "@/lib/server/auth";
@@ -24,10 +23,11 @@ export async function POST(request: Request) {
   if ("error" in auth) return NextResponse.json({ error: "FORBIDDEN", message: auth.error }, { status: auth.status });
   const body = await parseJsonBody<Record<string, unknown>>(request);
   if (!body) return NextResponse.json({ error: "BAD_REQUEST", message: "Invalid request body." }, { status: 400 });
+  const value = body as never;
   const setting = await prisma.adminSetting.upsert({
     where: { key: SETTINGS_KEY },
-    update: { value: body as Prisma.InputJsonValue },
-    create: { key: SETTINGS_KEY, value: body as Prisma.InputJsonValue },
+    update: { value },
+    create: { key: SETTINGS_KEY, value },
   });
   return NextResponse.json({ settings: setting.value });
 }
