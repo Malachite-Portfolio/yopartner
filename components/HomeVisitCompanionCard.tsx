@@ -1,6 +1,7 @@
 import { ArrowRight, BadgeCheck, ShieldCheck, Star } from "lucide-react";
 import Link from "next/link";
 import type { HomeVisitCompanion } from "@/lib/data";
+import { HOME_VISIT_RATE_PER_HOUR } from "@/lib/platformPricing";
 
 type HomeVisitCompanionCardProps = {
   companion: HomeVisitCompanion;
@@ -58,7 +59,7 @@ export function HomeVisitCompanionCard({ companion }: HomeVisitCompanionCardProp
 
         <div className="mt-auto pt-4">
           <div className="mb-3 rounded-2xl bg-[#f7fbf8] px-3 py-2">
-            <p className="text-xl font-semibold text-slate-900">₹{companion.price}/session</p>
+            <p className="text-xl font-semibold text-slate-900">₹{HOME_VISIT_RATE_PER_HOUR}/hour</p>
             <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Manual approval required</p>
           </div>
 

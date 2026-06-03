@@ -5,6 +5,7 @@ import { HomeVisitBookingFlow } from "@/components/HomeVisitBookingFlow";
 import { getCompanionById } from "@/lib/api/companions";
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { connectCompanions, homeVisitCompanions, type ConnectCompanion, type HomeVisitCompanion } from "@/lib/data";
+import { HOME_VISIT_RATE_PER_HOUR } from "@/lib/platformPricing";
 import { formatINR } from "@/lib/wallet";
 
 type HomeVisitProfilePageProps = {
@@ -22,7 +23,7 @@ function toHomeVisitCompanion(companion: ConnectCompanion): HomeVisitCompanion {
     rating: companion.rating,
     experience: companion.experience,
     verified: true,
-    price: companion.visitPrice,
+    price: HOME_VISIT_RATE_PER_HOUR,
     category: companion.category,
     services: companion.servicesOffered,
     city: companion.bornCity,
@@ -36,7 +37,7 @@ function getHomeVisitSource() {
     .map(toHomeVisitCompanion);
   const byId = new Map<string, HomeVisitCompanion>();
   [...connectHomeVisitCompanions, ...homeVisitCompanions].forEach((item) => {
-    byId.set(item.id, item);
+    byId.set(item.id, { ...item, price: HOME_VISIT_RATE_PER_HOUR });
   });
   return [...byId.values()];
 }
@@ -53,9 +54,9 @@ export default async function HomeVisitProfilePage({ params }: HomeVisitProfileP
         tagline: response.data.tagline,
         image: response.data.image ?? "/images/logo.png",
         rating: response.data.rating || 0,
-        experience: response.data.experience || "Verified companion",
+        experience: response.data.experience || "Verified partner",
         verified: true,
-        price: response.data.visitPrice ?? 0,
+        price: HOME_VISIT_RATE_PER_HOUR,
         category: response.data.category,
         services: response.data.servicesOffered,
         city: "India",
@@ -111,7 +112,7 @@ export default async function HomeVisitProfilePage({ params }: HomeVisitProfileP
                 </div>
                 <div className="rounded-2xl border border-[#dceae5] bg-[#f7fbf8] p-3">
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Home Visit price</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-900">{formatINR(companion.price)} / session</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-900">{formatINR(HOME_VISIT_RATE_PER_HOUR)} / hour</p>
                 </div>
               </div>
             </div>
@@ -138,7 +139,7 @@ export default async function HomeVisitProfilePage({ params }: HomeVisitProfileP
                 href={`/connect-now/${companion.connectProfileId}`}
                 className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-[#dceae5] bg-white px-5 text-sm font-semibold text-slate-700"
               >
-                View companion profile
+                View partner profile
               </Link>
             ) : null}
           </div>

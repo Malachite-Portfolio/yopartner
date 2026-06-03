@@ -9,6 +9,7 @@ import type { ConnectCompanion } from "@/lib/data";
 import { requestAudioPermission, requestVideoPermission } from "@/lib/agora";
 import { formatINRPrice } from "@/lib/priceFormat";
 import { getUserAuthTokenWithRestore } from "@/lib/auth/userAuth";
+import { AUDIO_RATE_PER_MIN, CHAT_RATE_PER_MIN, VIDEO_RATE_PER_MIN } from "@/lib/platformPricing";
 
 type ConnectCompanionCardProps = {
   companion: ConnectCompanion;
@@ -17,7 +18,7 @@ type ConnectCompanionCardProps = {
 const MIN_CHAT_WALLET_BALANCE = 50;
 
 function Initials({ name }: { name: string }) {
-  const text = (name || "Verified Companion")
+  const text = (name || "Verified Partner")
     .split(" ")
     .map((part) => part[0])
     .join("")
@@ -80,15 +81,24 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
   const router = useRouter();
   const [actionError, setActionError] = useState("");
   const [showAddMoneyPrompt, setShowAddMoneyPrompt] = useState(false);
-  const name = companion.name || "Verified Companion";
+  const name = companion.name || "Verified Partner";
   const tagline = companion.tagline || "Calm, respectful conversations";
   const rating = safeNumber(companion.rating) ?? 0;
-  const chatPrice = safeNumber(companion.chatPrice);
-  const voicePrice = safeNumber(companion.voicePrice);
-  const videoPrice = safeNumber(companion.videoPrice);
   const experienceLabel = companion.experience || "1 yrs+";
   const services = safeStringArray(companion.servicesOffered).map((service) => service.toLowerCase());
-  const hasVideo = typeof videoPrice === "number";
+  const hasExplicitServices = services.length > 0;
+  const hasChat = hasExplicitServices
+    ? services.some((service) => service.includes("chat"))
+    : (safeNumber(companion.chatPrice) ?? 0) > 0;
+  const hasAudio = hasExplicitServices
+    ? services.some((service) => service.includes("audio") || service.includes("voice"))
+    : (safeNumber(companion.voicePrice) ?? 0) > 0;
+  const hasVideo = hasExplicitServices
+    ? services.some((service) => service.includes("video"))
+    : typeof safeNumber(companion.videoPrice) === "number";
+  const chatPrice = hasChat ? CHAT_RATE_PER_MIN : undefined;
+  const voicePrice = hasAudio ? AUDIO_RATE_PER_MIN : undefined;
+  const videoPrice = hasVideo ? VIDEO_RATE_PER_MIN : undefined;
   const status = companion.effectiveStatus ?? (companion.isBusy ? "BUSY" : companion.online ? "ONLINE" : "OFFLINE");
   const isBusy = status === "BUSY";
   const profileUrl = `/connect-now/${companion.id}`;
@@ -252,7 +262,7 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
           icon="chat"
           price={chatPrice}
           tone="mint"
-          disabled={isBusy}
+          disabled={isBusy || !hasChat}
           onClick={(event) => {
             void createSessionAndRoute(event, "chat");
           }}
@@ -261,14 +271,14 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
           icon="voice"
           price={voicePrice}
           tone="lavender"
-          disabled={isBusy}
+          disabled={isBusy || !hasAudio}
           onClick={(event) => {
             void createSessionAndRoute(event, "audio");
           }}
         />
         <ActionPriceButton
           icon="video"
-          price={hasVideo ? videoPrice : undefined}
+          price={videoPrice}
           tone="cream"
           disabled={isBusy || !hasVideo}
           onClick={(event) => {

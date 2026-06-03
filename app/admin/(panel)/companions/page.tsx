@@ -13,6 +13,7 @@ import {
 } from "@/lib/api/admin";
 import { clearAdminAuthSession } from "@/lib/adminAuth";
 import { formatDateTime } from "@/lib/adminFormat";
+import { AUDIO_RATE_PER_MIN, CHAT_RATE_PER_MIN, VIDEO_RATE_PER_MIN } from "@/lib/platformPricing";
 
 type PartnerRow = {
   id: string;
@@ -99,9 +100,9 @@ function toPartnerRows(data: unknown): PartnerRow[] {
         companionStatus: asString(record.status, "-"),
         verificationStatus: asString(record.verificationStatus, "-"),
         services: asStringArray(record.servicesOffered).map(formatService),
-        chatPrice: asNumber(record.chatPrice),
-        audioPrice: asNumber(record.audioPrice),
-        videoPrice: asNumber(record.videoPrice),
+        chatPrice: CHAT_RATE_PER_MIN,
+        audioPrice: AUDIO_RATE_PER_MIN,
+        videoPrice: asNumber(record.videoPrice) > 0 ? VIDEO_RATE_PER_MIN : 0,
         online: Boolean(record.isOnline),
         createdAt: asString(record.createdAt),
         updatedAt: asString(record.updatedAt),
@@ -262,7 +263,7 @@ export default function AdminCompanionsPage() {
                 <tr>
                   <th className="px-2 py-2">Name</th>
                   <th className="px-2 py-2">Login phone</th>
-                  <th className="px-2 py-2">Companion Status</th>
+                  <th className="px-2 py-2">Partner Status</th>
                   <th className="px-2 py-2">Moderation</th>
                   <th className="px-2 py-2">Services</th>
                   <th className="px-2 py-2">Pricing</th>

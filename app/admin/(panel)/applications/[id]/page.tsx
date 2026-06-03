@@ -13,6 +13,7 @@ import {
 } from "@/lib/api/admin";
 import { clearAdminAuthSession } from "@/lib/adminAuth";
 import { formatDateTime } from "@/lib/adminFormat";
+import { FIXED_PLATFORM_PRICE_LABELS, HOME_VISIT_RATE_PER_HOUR } from "@/lib/platformPricing";
 
 type RowAction = "approve" | "reject" | "needs_info";
 
@@ -273,11 +274,11 @@ function extractApplication(applicationRaw: unknown): ApplicationDetails {
     hobbies: asStringArray(application.hobbies).length > 0 ? asStringArray(application.hobbies) : asStringArray(payload.hobbies),
     categories,
     services,
-    chatPrice: asString(application.chatPrice ?? payload.chatPrice, "0"),
-    audioPrice: asString(application.audioPrice ?? payload.audioPrice, "0"),
-    videoPrice: asString(application.videoPrice ?? payload.videoPrice, "0"),
+    chatPrice: FIXED_PLATFORM_PRICE_LABELS.chat,
+    audioPrice: FIXED_PLATFORM_PRICE_LABELS.audio,
+    videoPrice: FIXED_PLATFORM_PRICE_LABELS.video,
     homeVisitRequested,
-    homeVisitPrice,
+    homeVisitPrice: homeVisitRequested ? String(HOME_VISIT_RATE_PER_HOUR) : homeVisitPrice,
     selfie,
     aadhaarFront,
     aadhaarBack,
@@ -428,7 +429,7 @@ export default function AdminApplicationDetailsPage() {
   };
 
   const handleApprove = async () => {
-    const confirmed = window.confirm("Approve this partner application? This will activate the companion profile.");
+    const confirmed = window.confirm("Approve this partner application? This will activate the partner profile.");
     if (!confirmed) return;
     await applyStatusAction("APPROVED", "approve", adminNoteDraft.trim() || undefined);
   };
@@ -530,10 +531,10 @@ export default function AdminApplicationDetailsPage() {
         <div>
           <p className="font-semibold text-slate-900">Services and prices</p>
           <p className="mt-1 text-slate-700">{servicesLabel}</p>
-          <p className="mt-1 text-slate-700">Chat: {details.chatPrice}/min | Audio: {details.audioPrice}/min | Video: {details.videoPrice}/min</p>
+          <p className="mt-1 text-slate-700">Chat: {details.chatPrice} | Audio: {details.audioPrice} | Video: {details.videoPrice}</p>
           <p className="mt-1 text-slate-700">
             Home Visit requested: {details.homeVisitRequested ? "Yes" : "No"}
-            {details.homeVisitRequested ? ` (${details.homeVisitPrice === "-" ? "price pending" : `${details.homeVisitPrice}/session`})` : ""}
+            {details.homeVisitRequested ? ` (${FIXED_PLATFORM_PRICE_LABELS.homeVisit})` : ""}
           </p>
           {details.homeVisitRequested ? (
             <p className="mt-1 text-xs text-amber-700">Manual approval required before Home Visit can be activated.</p>

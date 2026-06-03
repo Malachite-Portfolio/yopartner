@@ -16,6 +16,13 @@ import { isApiBaseUrlConfigured } from "@/lib/api/client";
 import { resolvePartnerLandingRoute, saveLocalPartnerApprovalState } from "@/lib/partnerApproval";
 import { uploadPartnerKycFile, type PartnerKycUploadResult } from "@/lib/firebaseKycUpload";
 import {
+  AUDIO_RATE_PER_MIN,
+  CHAT_RATE_PER_MIN,
+  FIXED_PLATFORM_PRICE_LABELS,
+  HOME_VISIT_RATE_PER_HOUR,
+  VIDEO_RATE_PER_MIN,
+} from "@/lib/platformPricing";
+import {
   completeClientDemoPartnerOnboarding,
   isClientDemoPartnerSession,
   isClientDemoPartnerSessionActive,
@@ -67,9 +74,6 @@ type KycUploadState = {
   pan: PartnerKycUploadResult | null;
 };
 
-const MAX_CHAT_AUDIO_VIDEO_PRICE = 10000;
-const MAX_HOME_VISIT_PRICE = 100000;
-
 const stepTitles = [
   "Basic details",
   "Background",
@@ -99,14 +103,6 @@ function sanitizeServices(services: string[]): OnboardingServiceType[] {
   return services.filter((service): service is OnboardingServiceType =>
     allowed.includes(service as OnboardingServiceType),
   );
-}
-
-function parsePrice(value: string) {
-  const normalized = value.trim();
-  if (!/^\d+$/.test(normalized)) return null;
-  const parsed = Number(normalized);
-  if (!Number.isFinite(parsed)) return null;
-  return parsed;
 }
 
 function formatDocumentSelectionStatus(hasDocument: boolean) {
@@ -282,10 +278,10 @@ function toPartnerOnboardingPayload(profile: OnboardingProfile, uploads: KycUplo
     aboutYourself: profile.aboutYourself.trim(),
     servicesOffered: backendSupportedServices,
     homeVisitRequested: profile.servicesOffered.includes("Home Visit"),
-    homeVisitPrice: parsePrice(profile.homeVisitPricePerSession) ?? 0,
-    chatPrice: parsePrice(profile.chatPricePerMinute) ?? 0,
-    audioPrice: parsePrice(profile.audioPricePerMinute) ?? 0,
-    videoPrice: parsePrice(profile.videoPricePerMinute) ?? 0,
+    homeVisitPrice: HOME_VISIT_RATE_PER_HOUR,
+    chatPrice: CHAT_RATE_PER_MIN,
+    audioPrice: AUDIO_RATE_PER_MIN,
+    videoPrice: VIDEO_RATE_PER_MIN,
     categories: profile.categories,
     safetyChecklist,
     selfieUploaded,
@@ -444,7 +440,7 @@ export default function PartnerOnboardingPage() {
       { label: "Services", value: profile.servicesOffered.join(", ") || "-" },
       {
         label: "Pricing",
-        value: `Chat ${profile.chatPricePerMinute || "0"}/min, Audio ${profile.audioPricePerMinute || "0"}/min, Video ${profile.videoPricePerMinute || "0"}/min${profile.servicesOffered.includes("Home Visit") ? `, Home Visit ${profile.homeVisitPricePerSession || "Pending"}/session` : ""}`,
+        value: `Chat ${FIXED_PLATFORM_PRICE_LABELS.chat}, Audio ${FIXED_PLATFORM_PRICE_LABELS.audio}, Video ${FIXED_PLATFORM_PRICE_LABELS.video}${profile.servicesOffered.includes("Home Visit") ? `, Home Visit ${FIXED_PLATFORM_PRICE_LABELS.homeVisit}` : ""}`,
       },
       {
         label: "Home Visit Approval",
@@ -513,31 +509,6 @@ export default function PartnerOnboardingPage() {
       if (profile.servicesOffered.length === 0) nextErrors.servicesOffered = "Select at least one service.";
       if (!profile.servicesOffered.some((service) => service !== "Home Visit")) {
         nextErrors.servicesOffered = "Select at least one of Chat, Audio Call, or Video Call.";
-      }
-      if (!profile.chatPricePerMinute.trim()) nextErrors.chatPricePerMinute = "Chat price is required.";
-      if (!profile.audioPricePerMinute.trim()) nextErrors.audioPricePerMinute = "Audio price is required.";
-      if (!profile.videoPricePerMinute.trim()) nextErrors.videoPricePerMinute = "Video price is required.";
-      if (profile.servicesOffered.includes("Home Visit") && !profile.homeVisitPricePerSession.trim()) {
-        nextErrors.homeVisitPricePerSession = "Home Visit price per session is required.";
-      }
-
-      const chatPrice = parsePrice(profile.chatPricePerMinute);
-      const audioPrice = parsePrice(profile.audioPricePerMinute);
-      const videoPrice = parsePrice(profile.videoPricePerMinute);
-      if (chatPrice === null || chatPrice < 0 || chatPrice > MAX_CHAT_AUDIO_VIDEO_PRICE) {
-        nextErrors.chatPricePerMinute = "Please enter a valid price.";
-      }
-      if (audioPrice === null || audioPrice < 0 || audioPrice > MAX_CHAT_AUDIO_VIDEO_PRICE) {
-        nextErrors.audioPricePerMinute = "Please enter a valid price.";
-      }
-      if (videoPrice === null || videoPrice < 0 || videoPrice > MAX_CHAT_AUDIO_VIDEO_PRICE) {
-        nextErrors.videoPricePerMinute = "Please enter a valid price.";
-      }
-      if (profile.servicesOffered.includes("Home Visit")) {
-        const homeVisitPrice = parsePrice(profile.homeVisitPricePerSession);
-        if (homeVisitPrice === null || homeVisitPrice < 0 || homeVisitPrice > MAX_HOME_VISIT_PRICE) {
-          nextErrors.homeVisitPricePerSession = "Please enter a valid price.";
-        }
       }
       if (profile.categories.length === 0) nextErrors.categories = "Select at least one category.";
     }
@@ -761,13 +732,13 @@ export default function PartnerOnboardingPage() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/images/logo.png" alt="YoPartner" className="h-auto max-h-12 w-auto object-contain" />
           </Link>
-          <p className="text-xs font-semibold uppercase text-slate-500">YoPartner Companion</p>
+          <p className="text-xs font-semibold uppercase text-slate-500">YoPartner Partner</p>
         </div>
       </div>
 
       <div className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
         <div className="mb-6 rounded-3xl border border-[#dceae5] bg-white p-5 shadow-sm">
-          <p className="text-sm font-semibold uppercase text-[#0f766e]">Become a YoPartner companion</p>
+          <p className="text-sm font-semibold uppercase text-[#0f766e]">Become a YoPartner partner</p>
           <h1 className="mt-2 text-3xl font-semibold text-slate-950">Help people feel heard through safe, respectful conversations.</h1>
           <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-600">
             This application helps our safety team understand your background, communication style, KYC readiness, and platform boundaries.
@@ -1010,62 +981,17 @@ export default function PartnerOnboardingPage() {
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <label>
-                  <p className="mb-1.5 text-sm font-medium text-slate-700">Chat price per minute</p>
-                  <input
-                    value={profile.chatPricePerMinute}
-                    onChange={(event) =>
-                      setProfile((current) => ({ ...current, chatPricePerMinute: event.target.value }))
-                    }
-                    className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-[#2563eb]"
-                  />
-                  {errors.chatPricePerMinute ? (
-                    <p className="mt-1 text-xs text-rose-600">{errors.chatPricePerMinute}</p>
-                  ) : null}
-                </label>
-                <label>
-                  <p className="mb-1.5 text-sm font-medium text-slate-700">Audio price per minute</p>
-                  <input
-                    value={profile.audioPricePerMinute}
-                    onChange={(event) =>
-                      setProfile((current) => ({ ...current, audioPricePerMinute: event.target.value }))
-                    }
-                    className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-[#2563eb]"
-                  />
-                  {errors.audioPricePerMinute ? (
-                    <p className="mt-1 text-xs text-rose-600">{errors.audioPricePerMinute}</p>
-                  ) : null}
-                </label>
-                <label>
-                  <p className="mb-1.5 text-sm font-medium text-slate-700">Video price per minute</p>
-                  <input
-                    value={profile.videoPricePerMinute}
-                    onChange={(event) =>
-                      setProfile((current) => ({ ...current, videoPricePerMinute: event.target.value }))
-                    }
-                    className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-[#2563eb]"
-                  />
-                  {errors.videoPricePerMinute ? (
-                    <p className="mt-1 text-xs text-rose-600">{errors.videoPricePerMinute}</p>
-                  ) : null}
-                </label>
-                <label>
-                  <p className="mb-1.5 text-sm font-medium text-slate-700">Home Visit price per session</p>
-                  <input
-                    value={profile.homeVisitPricePerSession}
-                    onChange={(event) =>
-                      setProfile((current) => ({ ...current, homeVisitPricePerSession: event.target.value }))
-                    }
-                    placeholder="499"
-                    className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-[#2563eb]"
-                  />
-                  <p className="mt-1 text-xs text-slate-500">
-                    Available only after additional verification.
-                  </p>
-                  {errors.homeVisitPricePerSession ? (
-                    <p className="mt-1 text-xs text-rose-600">{errors.homeVisitPricePerSession}</p>
-                  ) : null}
-                </label>
+                {[
+                  ["Chat", FIXED_PLATFORM_PRICE_LABELS.chat],
+                  ["Audio call", FIXED_PLATFORM_PRICE_LABELS.audio],
+                  ["Video call", FIXED_PLATFORM_PRICE_LABELS.video],
+                  ["Home visit", FIXED_PLATFORM_PRICE_LABELS.homeVisit],
+                ].map(([label, price]) => (
+                  <div key={label} className="rounded-xl border border-slate-200 px-3 py-3">
+                    <p className="text-sm font-medium text-slate-700">{label}</p>
+                    <p className="mt-1 text-base font-semibold text-slate-950">{price}</p>
+                  </div>
+                ))}
               </div>
 
               {profile.servicesOffered.includes("Home Visit") ? (

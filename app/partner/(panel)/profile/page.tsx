@@ -19,6 +19,7 @@ import {
   deletePartnerProfileMediaByPath,
   uploadPartnerProfileMedia,
 } from "@/lib/firebasePartnerProfileUpload";
+import { FIXED_PLATFORM_PRICE_LABELS } from "@/lib/platformPricing";
 
 type PartnerProfileMediaState = {
   profileImageUrl: string | null;
@@ -43,9 +44,6 @@ type DisplayProfileDetails = {
   profileTagline: string;
   aboutYourself: string;
   servicesOffered: string[];
-  chatRate: string;
-  audioRate: string;
-  videoRate: string;
   categories: string[];
 };
 
@@ -67,12 +65,6 @@ function toStringArray(value: unknown) {
     .filter((item): item is string => typeof item === "string")
     .map((item) => item.trim())
     .filter(Boolean);
-}
-
-function toRate(value: unknown) {
-  if (typeof value === "number" && Number.isFinite(value)) return String(value);
-  if (typeof value === "string" && value.trim()) return value.trim();
-  return "";
 }
 
 function normalizeServiceLabel(service: string) {
@@ -101,9 +93,6 @@ function fromLocalProfile(localProfile: PartnerProfile): DisplayProfileDetails {
     profileTagline: localProfile.profileTagline,
     aboutYourself: localProfile.aboutYourself,
     servicesOffered: localProfile.servicesOffered,
-    chatRate: localProfile.chatPricePerMinute,
-    audioRate: localProfile.audioPricePerMinute,
-    videoRate: localProfile.videoPricePerMinute,
     categories: localProfile.categories,
   };
 }
@@ -144,9 +133,6 @@ function mergeDisplayProfile(
     profileTagline: toStringValue(application?.profileTagline) || toStringValue(companion?.tagline) || base.profileTagline,
     aboutYourself: toStringValue(application?.aboutYourself) || base.aboutYourself,
     servicesOffered: applicationServices.length ? applicationServices : companionServices.length ? companionServices : base.servicesOffered,
-    chatRate: toRate(application?.chatPrice) || toRate(companion?.chatPrice) || base.chatRate,
-    audioRate: toRate(application?.audioPrice) || toRate(companion?.audioPrice) || base.audioRate,
-    videoRate: toRate(application?.videoPrice) || toRate(companion?.videoPrice) || base.videoRate,
     categories: toStringArray(application?.categories).length
       ? toStringArray(application?.categories)
       : companionCategory
@@ -199,7 +185,7 @@ export default function PartnerProfilePage() {
         ["Services Offered", details.servicesOffered.join(", ")],
         [
           "Pricing",
-          `Chat ${details.chatRate || "0"}/min | Audio ${details.audioRate || "0"}/min | Video ${details.videoRate || "0"}/min`,
+          `Chat ${FIXED_PLATFORM_PRICE_LABELS.chat} | Audio ${FIXED_PLATFORM_PRICE_LABELS.audio} | Video ${FIXED_PLATFORM_PRICE_LABELS.video}`,
         ],
         ["Categories", details.categories.join(", ")],
       ] as const,
@@ -485,7 +471,7 @@ export default function PartnerProfilePage() {
             )}
 
             <p className="mt-2 text-[11px] text-slate-500">
-              Up to {MAX_PARTNER_GALLERY_IMAGES} images. These appear on your public companion profile.
+              Up to {MAX_PARTNER_GALLERY_IMAGES} images. These appear on your public partner profile.
             </p>
           </div>
         </div>

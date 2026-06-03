@@ -6,16 +6,19 @@ import { HomeVisitFilters } from "@/components/HomeVisitFilters";
 import { listCompanions, type CompanionItem } from "@/lib/api/companions";
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { homeVisitCompanions, type HomeVisitCompanion } from "@/lib/data";
+import { HOME_VISIT_RATE_PER_HOUR } from "@/lib/platformPricing";
 
 const homeVisitSafetyMessage =
-  "Home Visit is available only for verified companions. Please contact support to enable this service.";
+  "Home Visit is available only for verified partners. Please contact support to enable this service.";
 
 export default function HomeVisitPage() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [companions, setCompanions] = useState<HomeVisitCompanion[]>(() =>
-    IS_PRODUCTION_READY_MODE ? [] : homeVisitCompanions,
+    IS_PRODUCTION_READY_MODE
+      ? []
+      : homeVisitCompanions.map((companion) => ({ ...companion, price: HOME_VISIT_RATE_PER_HOUR })),
   );
   const [isLoading, setIsLoading] = useState(IS_PRODUCTION_READY_MODE);
 
@@ -38,9 +41,9 @@ export default function HomeVisitPage() {
           tagline: item.tagline,
           image: item.image ?? "/images/logo.png",
           rating: item.rating || 0,
-          experience: item.experience || "Verified companion",
+          experience: item.experience || "Verified partner",
           verified: true,
-          price: item.visitPrice ?? 0,
+          price: HOME_VISIT_RATE_PER_HOUR,
           category: item.category,
           services: item.servicesOffered,
           city: "India",
@@ -89,14 +92,14 @@ export default function HomeVisitPage() {
               Verified in-person support
             </h1>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-              Verified in-person companionship for everyday support. Available only after verification and platform approval.
+              Verified in-person partner support for everyday support. Available only after verification and platform approval.
             </p>
             <p className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm leading-6 text-amber-800">
               {homeVisitSafetyMessage}
             </p>
 
             <label className="mt-4 block">
-              <span className="sr-only">Search Home Visit companions</span>
+              <span className="sr-only">Search Home Visit partners</span>
               <input
                 type="text"
                 value={searchTerm}
@@ -139,7 +142,7 @@ export default function HomeVisitPage() {
             </div>
           ) : (
             <div className="rounded-3xl border border-[#dceae5] bg-white px-4 py-10 text-center text-sm text-slate-600">
-              {isLoading ? "Finding verified companions..." : homeVisitSafetyMessage}
+              {isLoading ? "Finding verified partners..." : homeVisitSafetyMessage}
             </div>
           )}
         </section>

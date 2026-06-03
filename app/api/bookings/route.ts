@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createCode, notImplementedResponse, parseJsonBody } from "@/lib/server/http";
 import { getPrismaClient } from "@/lib/server/prisma";
 import { requireFirebaseUser } from "@/lib/server/auth";
+import { getFixedPlatformRate } from "@/lib/platformPricing";
 
 export const runtime = "nodejs";
 
@@ -26,7 +27,7 @@ export async function GET(request: Request) {
     bookings: bookings.map((item) => ({
       id: item.id,
       bookingId: item.bookingId,
-      companionName: item.companion?.name ?? "Companion",
+      companionName: item.companion?.name ?? "Partner",
       serviceType: item.serviceType,
       amount: item.amount,
       status: item.status,
@@ -59,15 +60,10 @@ export async function POST(request: Request) {
 
   const companion = await prisma.companion.findUnique({ where: { id: body.companionId } });
   if (!companion) {
-    return NextResponse.json({ error: "NOT_FOUND", message: "Companion not found." }, { status: 404 });
+    return NextResponse.json({ error: "NOT_FOUND", message: "Partner not found." }, { status: 404 });
   }
 
-  const amount =
-    body.serviceType === "chat"
-      ? companion.chatPrice
-      : body.serviceType === "audio"
-        ? companion.voicePrice
-        : companion.videoPrice;
+  const amount = getFixedPlatformRate(body.serviceType);
 
   const booking = await prisma.booking.create({
     data: {

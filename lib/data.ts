@@ -447,7 +447,7 @@ export const faqs: FAQ[] = [
   {
     question: "How much does a session cost?",
     answer:
-      "Pricing varies by companion, format, and duration. You can view clear per-session rates directly on each profile card.",
+      "YoPartner uses fixed platform prices by service: chat is ₹5/min, audio call is ₹18/min, video call is ₹24/min, and home visit is ₹2000/hour.",
   },
   {
     question: "What if I am not satisfied with my session?",

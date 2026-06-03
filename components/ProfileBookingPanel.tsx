@@ -12,6 +12,12 @@ import { requestAudioPermission, requestVideoPermission } from "@/lib/agora";
 import { getUserAuthTokenWithRestore, subscribeUserAuthState } from "@/lib/auth/userAuth";
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import type { ConnectCompanion } from "@/lib/data";
+import {
+  AUDIO_RATE_PER_MIN,
+  CHAT_RATE_PER_MIN,
+  HOME_VISIT_RATE_PER_HOUR,
+  VIDEO_RATE_PER_MIN,
+} from "@/lib/platformPricing";
 import { formatINR, getWalletBalance, subscribeWalletUpdates } from "@/lib/wallet";
 
 type ProfileBookingPanelProps = {
@@ -25,7 +31,7 @@ type SessionOption = {
   type: SessionType;
   label: string;
   icon: ComponentType<{ size?: number; className?: string }>;
-  unit: "/ min" | "/ session";
+  unit: "/ min" | "/ hour";
   price: number;
   badge: "CHAT" | "AUDIO" | "VIDEO" | "HOME VISIT";
 };
@@ -68,9 +74,9 @@ export function ProfileBookingPanel({ companion, initialType }: ProfileBookingPa
   const router = useRouter();
   const options = useMemo<SessionOption[]>(() => {
     const base: SessionOption[] = [
-      { type: "chat", label: "Chat", icon: MessageSquareText, unit: "/ min", price: companion.chatPrice, badge: "CHAT" },
-      { type: "audio", label: "Audio", icon: PhoneCall, unit: "/ min", price: companion.voicePrice, badge: "AUDIO" },
-      { type: "video", label: "Video", icon: Video, unit: "/ min", price: companion.videoPrice ?? 0, badge: "VIDEO" },
+      { type: "chat", label: "Chat", icon: MessageSquareText, unit: "/ min", price: companion.chatPrice > 0 ? CHAT_RATE_PER_MIN : 0, badge: "CHAT" },
+      { type: "audio", label: "Audio", icon: PhoneCall, unit: "/ min", price: companion.voicePrice > 0 ? AUDIO_RATE_PER_MIN : 0, badge: "AUDIO" },
+      { type: "video", label: "Video", icon: Video, unit: "/ min", price: (companion.videoPrice ?? 0) > 0 ? VIDEO_RATE_PER_MIN : 0, badge: "VIDEO" },
     ];
     const available = base.filter((option) => option.price > 0);
 
@@ -79,8 +85,8 @@ export function ProfileBookingPanel({ companion, initialType }: ProfileBookingPa
         type: "visit",
         label: "Home Visit",
         icon: CheckCircle2,
-        unit: "/ session",
-        price: companion.visitPrice,
+        unit: "/ hour",
+        price: HOME_VISIT_RATE_PER_HOUR,
         badge: "HOME VISIT",
       });
     }

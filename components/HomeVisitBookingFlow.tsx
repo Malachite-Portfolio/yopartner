@@ -8,6 +8,7 @@ import { getWallet } from "@/lib/api/wallet";
 import { getDemoBookings, setDemoBookings } from "@/lib/bookings";
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import type { HomeVisitCompanion } from "@/lib/data";
+import { HOME_VISIT_RATE_PER_HOUR } from "@/lib/platformPricing";
 import { formatINR, getWalletBalance, subscribeWalletUpdates } from "@/lib/wallet";
 
 type HomeVisitBookingFlowProps = {
@@ -17,7 +18,7 @@ type HomeVisitBookingFlowProps = {
 const interestOptions = [
   "Calm conversation",
   "Daily check-in",
-  "Elderly companionship",
+  "Elderly support",
   "Walk support",
   "Meal company",
   "Errand support",
@@ -107,7 +108,7 @@ export function HomeVisitBookingFlow({ companion }: HomeVisitBookingFlowProps) {
 
   const dateOptions = useMemo(() => getDateOptions(), []);
   const visibleInterests = showAllInterests ? interestOptions : interestOptions.slice(0, 6);
-  const requiredAmount = companion.price;
+  const requiredAmount = HOME_VISIT_RATE_PER_HOUR;
   const shortfall = Math.max(requiredAmount - walletBalance, 0);
   const hasSufficientBalance = walletBalance >= requiredAmount;
   const hasDateAndSlot = Boolean(selectedDate && selectedSlot);
@@ -227,10 +228,10 @@ export function HomeVisitBookingFlow({ companion }: HomeVisitBookingFlowProps) {
                   <div className="mt-4 border-t border-blue-200 pt-4">
                     <div className="flex items-center justify-between gap-4">
                       <div>
-                        <p className="text-sm text-slate-600">Session Price</p>
-                        <p className="mt-1 text-xs text-slate-500">60 minutes - visit session</p>
+                        <p className="text-sm text-slate-600">Hourly Price</p>
+                        <p className="mt-1 text-xs text-slate-500">60 minutes - home visit</p>
                       </div>
-                      <p className="text-2xl font-bold text-blue-600">₹{companion.price}</p>
+                      <p className="text-2xl font-bold text-blue-600">{formatINR(requiredAmount)}</p>
                     </div>
                   </div>
                 </article>

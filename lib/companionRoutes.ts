@@ -1,5 +1,6 @@
 import { connectCompanions } from "@/lib/data";
 import { getCompanionById, type CompanionItem } from "@/lib/api/companions";
+import { AUDIO_RATE_PER_MIN, CHAT_RATE_PER_MIN, VIDEO_RATE_PER_MIN } from "@/lib/platformPricing";
 
 export type CompanionRouteProfile = {
   id: string;
@@ -22,9 +23,9 @@ export function getCompanionRouteProfile(id: string): CompanionRouteProfile | nu
       image: directCompanion.image,
       tagline: directCompanion.tagline,
       online: directCompanion.online,
-      chatPrice: directCompanion.chatPrice,
-      voicePrice: directCompanion.voicePrice,
-      videoPrice: directCompanion.videoPrice ?? 20,
+      chatPrice: CHAT_RATE_PER_MIN,
+      voicePrice: AUDIO_RATE_PER_MIN,
+      videoPrice: typeof directCompanion.videoPrice === "number" ? VIDEO_RATE_PER_MIN : 0,
     };
   }
 

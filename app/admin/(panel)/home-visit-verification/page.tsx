@@ -13,6 +13,7 @@ import {
 } from "@/lib/api/admin";
 import { clearAdminAuthSession } from "@/lib/adminAuth";
 import { formatDateTime, formatINR } from "@/lib/adminFormat";
+import { HOME_VISIT_RATE_PER_HOUR } from "@/lib/platformPricing";
 
 type HomeVisitRow = {
   id: string;
@@ -82,7 +83,7 @@ function toRows(data: unknown): HomeVisitRow[] {
         homeVisitStatus: normalizeStatus(record.homeVisitStatus),
         moderationStatus: asString(record.moderationStatus, "-"),
         adminNote: asString(record.adminNote),
-        homeVisitPrice: asNumber(request.homeVisitPrice),
+        homeVisitPrice: asNumber(request.homeVisitPrice) > 0 ? HOME_VISIT_RATE_PER_HOUR : 0,
         city: asString(request.city),
         services: asStringArray(request.categories),
         updatedAt: asString(record.updatedAt),
@@ -219,7 +220,7 @@ export default function AdminHomeVisitVerificationPage() {
         <AdminTableToolbar
           searchValue={search}
           onSearchChange={setSearch}
-          searchPlaceholder="Search companion or phone..."
+          searchPlaceholder="Search partner or phone..."
           filterValue={filter}
           onFilterChange={(value) => setFilter(value as "All" | HomeVisitVerificationStatus)}
           filterOptions={["All", "NOT_SUBMITTED", "PENDING", "APPROVED", "REJECTED", "NEEDS_INFO", "SUSPENDED"]}
@@ -232,7 +233,7 @@ export default function AdminHomeVisitVerificationPage() {
             <table className="min-w-full text-left text-sm">
               <thead className="text-xs uppercase text-slate-500">
                 <tr>
-                  <th className="px-2 py-2">Companion</th>
+                  <th className="px-2 py-2">Partner</th>
                   <th className="px-2 py-2">Phone</th>
                   <th className="px-2 py-2">Home Visit Status</th>
                   <th className="px-2 py-2">Moderation</th>
@@ -319,7 +320,7 @@ export default function AdminHomeVisitVerificationPage() {
         {statusTarget ? (
           <form id="home-visit-status-form" className="space-y-4" onSubmit={handleSubmitStatus}>
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
-              <p><span className="font-semibold text-slate-900">Companion:</span> {statusTarget.row.companionName}</p>
+              <p><span className="font-semibold text-slate-900">Partner:</span> {statusTarget.row.companionName}</p>
               <p><span className="font-semibold text-slate-900">Phone:</span> {statusTarget.row.companionPhone}</p>
               <p><span className="font-semibold text-slate-900">New Status:</span> {statusTarget.status}</p>
             </div>

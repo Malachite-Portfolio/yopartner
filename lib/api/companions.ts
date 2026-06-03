@@ -1,4 +1,10 @@
 import { apiRequest } from "@/lib/api/client";
+import {
+  AUDIO_RATE_PER_MIN,
+  CHAT_RATE_PER_MIN,
+  HOME_VISIT_RATE_PER_HOUR,
+  VIDEO_RATE_PER_MIN,
+} from "@/lib/platformPricing";
 
 export type CompanionFilters = {
   search?: string;
@@ -346,7 +352,7 @@ async function publicBackendRequest<T>(path: string) {
 
 function toCompanionItem(item: RawCompanionItem): CompanionItem {
   const publicProfile = item.publicProfile ?? item.profile ?? item.onboarding;
-  const name = toSafeText(publicProfile?.displayName ?? item.displayName ?? item.name, "Companion");
+  const name = toSafeText(publicProfile?.displayName ?? item.displayName ?? item.name, "Partner");
   const headline = toOptionalText(publicProfile?.headline ?? item.headline);
   const tagline = headline || toOptionalText(item.tagline);
   const about = toOptionalText(publicProfile?.bio ?? item.bio ?? item.about);
@@ -359,17 +365,6 @@ function toCompanionItem(item: RawCompanionItem): CompanionItem {
     publicProfile?.completedSessions ?? item.completedSessions ?? item.sessionsCompleted ?? item.sessions,
     0,
   );
-  const rates = publicProfile?.rates ?? item.rates;
-  const chatPrice = toNumber(rates?.chat ?? item.chatPrice ?? item.chatRate, 0);
-  const voicePrice = toNumber(rates?.audio ?? item.audioPrice ?? item.audioRate ?? item.voicePrice, 0);
-  const videoPrice =
-    rates?.video == null && item.videoPrice == null && item.videoRate == null
-      ? undefined
-      : toNumber(rates?.video ?? item.videoPrice ?? item.videoRate, 0);
-  const visitPrice =
-    rates?.homeVisit == null && item.homeVisitPrice == null && item.visitPrice == null
-      ? undefined
-      : toNumber(rates?.homeVisit ?? item.homeVisitPrice ?? item.visitPrice, 0);
   const image = normalizePublicImageUrl(
     publicProfile?.profileImageUrl ?? item.resolvedProfileImageUrl ?? item.profileImageUrl ?? item.image,
   );
@@ -383,6 +378,35 @@ function toCompanionItem(item: RawCompanionItem): CompanionItem {
         ? galleryFromCompanion
         : galleryFromCompanionUrls;
   const services = normalizeServices(publicProfile?.services ?? item.services ?? item.servicesOffered);
+  const serviceLabels = services.map((service) => service.toLowerCase());
+  const rates = publicProfile?.rates ?? item.rates;
+  const rawChatPrice = toNumber(rates?.chat ?? item.chatPrice ?? item.chatRate, 0);
+  const rawAudioPrice = toNumber(rates?.audio ?? item.audioPrice ?? item.audioRate ?? item.voicePrice, 0);
+  const rawVideoPrice =
+    rates?.video == null && item.videoPrice == null && item.videoRate == null
+      ? undefined
+      : toNumber(rates?.video ?? item.videoPrice ?? item.videoRate, 0);
+  const rawVisitPrice =
+    rates?.homeVisit == null && item.homeVisitPrice == null && item.visitPrice == null
+      ? undefined
+      : toNumber(rates?.homeVisit ?? item.homeVisitPrice ?? item.visitPrice, 0);
+  const hasExplicitServices = services.length > 0;
+  const offersChat = hasExplicitServices
+    ? serviceLabels.some((service) => service.includes("chat"))
+    : rawChatPrice > 0;
+  const offersAudio = hasExplicitServices
+    ? serviceLabels.some((service) => service.includes("audio") || service.includes("voice"))
+    : rawAudioPrice > 0;
+  const offersVideo = hasExplicitServices
+    ? serviceLabels.some((service) => service.includes("video"))
+    : typeof rawVideoPrice === "number" && rawVideoPrice > 0;
+  const offersHomeVisit =
+    serviceLabels.some((service) => service.includes("home") && service.includes("visit")) ||
+    (typeof rawVisitPrice === "number" && rawVisitPrice > 0);
+  const chatPrice = offersChat ? CHAT_RATE_PER_MIN : 0;
+  const voicePrice = offersAudio ? AUDIO_RATE_PER_MIN : 0;
+  const videoPrice = offersVideo ? VIDEO_RATE_PER_MIN : undefined;
+  const visitPrice = offersHomeVisit ? HOME_VISIT_RATE_PER_HOUR : undefined;
   const interests = normalizeStringArray(publicProfile?.interests ?? item.interests);
   const languages = normalizeStringArray(publicProfile?.languages ?? item.languages);
   const city = toOptionalText(publicProfile?.city ?? publicProfile?.serviceArea ?? item.city ?? item.serviceArea);
@@ -394,7 +418,7 @@ function toCompanionItem(item: RawCompanionItem): CompanionItem {
     name,
     headline,
     tagline,
-    category: toSafeText(item.category, "Companion"),
+    category: toSafeText(item.category, "Partner"),
     city: city || null,
     rating,
     reviewCount,
@@ -445,7 +469,7 @@ export async function listCompanions(filters?: CompanionFilters) {
     const message =
       process.env.NODE_ENV !== "production" && result.error.status === 503
         ? result.error.message
-        : "Companions are currently unavailable. Please try again later.";
+        : "Partners are currently unavailable. Please try again later.";
     return {
       data: [],
       error: { ...result.error, message },
@@ -463,7 +487,7 @@ export async function getCompanionById(id: string) {
     const message =
       process.env.NODE_ENV !== "production" && result.error.status === 503
         ? result.error.message
-        : "Companions are currently unavailable. Please try again later.";
+        : "Partners are currently unavailable. Please try again later.";
     return {
       data: null,
       error: { ...result.error, message },
@@ -478,7 +502,7 @@ export async function listFeaturedCompanions() {
   if (result.error) {
     return {
       data: [],
-      error: { ...result.error, message: "Companions are currently unavailable. Please try again later." },
+      error: { ...result.error, message: "Partners are currently unavailable. Please try again later." },
     };
   }
   return { data: (result.data?.companions ?? []).map(toCompanionItem), error: null };
@@ -489,7 +513,7 @@ export async function getCompanionStats() {
   if (result.error) {
     return {
       data: null,
-      error: { ...result.error, message: "Companion stats are currently unavailable. Please try again later." },
+      error: { ...result.error, message: "Partner stats are currently unavailable. Please try again later." },
     };
   }
 

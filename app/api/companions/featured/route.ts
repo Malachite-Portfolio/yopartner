@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getPrismaClient } from "@/lib/server/prisma";
 import { notImplementedResponse } from "@/lib/server/http";
+import { AUDIO_RATE_PER_MIN, CHAT_RATE_PER_MIN, VIDEO_RATE_PER_MIN } from "@/lib/platformPricing";
 
 export const runtime = "nodejs";
 
@@ -21,14 +22,14 @@ export async function GET() {
       id: item.id,
       name: item.name,
       tagline: item.tagline ?? "",
-      category: item.category ?? "Companionship",
+      category: item.category ?? "Partner Support",
       rating: item.rating,
-      experience: "Verified companion",
+      experience: "Verified partner",
       image: undefined,
       online: item.availability === "online",
-      chatPrice: item.chatPrice,
-      voicePrice: item.voicePrice,
-      videoPrice: item.videoPrice || undefined,
+      chatPrice: CHAT_RATE_PER_MIN,
+      voicePrice: AUDIO_RATE_PER_MIN,
+      videoPrice: item.videoPrice > 0 ? VIDEO_RATE_PER_MIN : undefined,
       servicesOffered: item.servicesOffered,
     })),
   });

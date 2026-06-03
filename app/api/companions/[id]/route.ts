@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getPrismaClient } from "@/lib/server/prisma";
 import { notImplementedResponse } from "@/lib/server/http";
+import { AUDIO_RATE_PER_MIN, CHAT_RATE_PER_MIN, VIDEO_RATE_PER_MIN } from "@/lib/platformPricing";
 
 export const runtime = "nodejs";
 
@@ -17,7 +18,7 @@ export async function GET(_: Request, context: RouteContext) {
   const { id } = await context.params;
   const companion = await prisma.companion.findUnique({ where: { id } });
   if (!companion) {
-    return NextResponse.json({ error: "NOT_FOUND", message: "Companion not found." }, { status: 404 });
+    return NextResponse.json({ error: "NOT_FOUND", message: "Partner not found." }, { status: 404 });
   }
 
   return NextResponse.json({
@@ -25,14 +26,14 @@ export async function GET(_: Request, context: RouteContext) {
       id: companion.id,
       name: companion.name,
       tagline: companion.tagline ?? "",
-      category: companion.category ?? "Companionship",
+      category: companion.category ?? "Partner Support",
       rating: companion.rating,
-      experience: "Verified companion",
+      experience: "Verified partner",
       image: undefined,
       online: companion.availability === "online",
-      chatPrice: companion.chatPrice,
-      voicePrice: companion.voicePrice,
-      videoPrice: companion.videoPrice || undefined,
+      chatPrice: CHAT_RATE_PER_MIN,
+      voicePrice: AUDIO_RATE_PER_MIN,
+      videoPrice: companion.videoPrice > 0 ? VIDEO_RATE_PER_MIN : undefined,
       servicesOffered: companion.servicesOffered,
     },
   });

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getPrismaClient } from "@/lib/server/prisma";
 import { notImplementedResponse } from "@/lib/server/http";
+import { AUDIO_RATE_PER_MIN, CHAT_RATE_PER_MIN, VIDEO_RATE_PER_MIN } from "@/lib/platformPricing";
 
 export const runtime = "nodejs";
 
@@ -38,14 +39,14 @@ export async function GET(request: Request) {
       id: item.id,
       name: item.name,
       tagline: item.tagline ?? "",
-      category: item.category ?? "Companionship",
+      category: item.category ?? "Partner Support",
       rating: item.rating,
-      experience: "Verified companion",
+      experience: "Verified partner",
       image: undefined,
       online: item.availability === "online",
-      chatPrice: item.chatPrice,
-      voicePrice: item.voicePrice,
-      videoPrice: item.videoPrice || undefined,
+      chatPrice: CHAT_RATE_PER_MIN,
+      voicePrice: AUDIO_RATE_PER_MIN,
+      videoPrice: item.videoPrice > 0 ? VIDEO_RATE_PER_MIN : undefined,
       servicesOffered: item.servicesOffered,
     })),
   });
@@ -73,16 +74,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "BAD_REQUEST", message: "id and name are required." }, { status: 400 });
   }
 
+  const servicesOffered = Array.isArray(body.servicesOffered) ? body.servicesOffered : [];
+  const offersVideo = servicesOffered.some((service) => service.toLowerCase().includes("video"));
+
   const created = await prisma.companion.upsert({
     where: { id: body.id },
     update: {
       name: body.name,
       city: body.city,
       category: body.category,
-      chatPrice: Math.max(0, Number(body.chatPrice ?? 0)),
-      voicePrice: Math.max(0, Number(body.voicePrice ?? 0)),
-      videoPrice: Math.max(0, Number(body.videoPrice ?? 0)),
-      servicesOffered: Array.isArray(body.servicesOffered) ? body.servicesOffered : [],
+      chatPrice: CHAT_RATE_PER_MIN,
+      voicePrice: AUDIO_RATE_PER_MIN,
+      videoPrice: offersVideo ? VIDEO_RATE_PER_MIN : 0,
+      servicesOffered,
       languages: Array.isArray(body.languages) ? body.languages : [],
     },
     create: {
@@ -90,10 +94,10 @@ export async function POST(request: Request) {
       name: body.name,
       city: body.city,
       category: body.category,
-      chatPrice: Math.max(0, Number(body.chatPrice ?? 0)),
-      voicePrice: Math.max(0, Number(body.voicePrice ?? 0)),
-      videoPrice: Math.max(0, Number(body.videoPrice ?? 0)),
-      servicesOffered: Array.isArray(body.servicesOffered) ? body.servicesOffered : [],
+      chatPrice: CHAT_RATE_PER_MIN,
+      voicePrice: AUDIO_RATE_PER_MIN,
+      videoPrice: offersVideo ? VIDEO_RATE_PER_MIN : 0,
+      servicesOffered,
       languages: Array.isArray(body.languages) ? body.languages : [],
       tagline: "",
     },
