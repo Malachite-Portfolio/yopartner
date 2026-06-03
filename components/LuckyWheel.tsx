@@ -1,18 +1,18 @@
 "use client";
 
 import { Gift, Sparkles, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getUserAuthState, subscribeUserAuthState } from "@/lib/auth/userAuth";
 import { luckyWheelRewards, type LuckyWheelReward } from "@/lib/luckyWheelRewards";
 
 const WHEEL_SIZE = 520;
 const CENTER = WHEEL_SIZE / 2;
-const OUTER_RADIUS = 232;
-const INNER_RADIUS = 54;
+const OUTER_RADIUS = 226;
+const INNER_RADIUS = 48;
 const COLORS = ["#0f766e", "#7c3aed", "#f59e0b", "#14b8a6", "#0b5f5a", "#5b21b6", "#d97706", "#0d9488"];
 const VISIBLE_SEGMENT_COUNT = luckyWheelRewards.length;
 const TOTAL_SEGMENT_COUNT = VISIBLE_SEGMENT_COUNT * 2;
-const SEGMENT_ANGLE = 180 / VISIBLE_SEGMENT_COUNT;
+const SEGMENT_ANGLE = 360 / TOTAL_SEGMENT_COUNT;
 const POINTER_ANGLE = 90;
 const SPIN_MS = 4200;
 const WEEK_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
@@ -75,18 +75,27 @@ function getLandingRotation(currentRotation: number, rewardIndex: number) {
   return currentRotation + 360 * 6 + delta;
 }
 
-function pickRewardIndex() {
-  if (process.env.NODE_ENV !== "production" && canUseStorage()) {
-    const forcedFromUrl = Number(new URLSearchParams(window.location.search).get(FORCE_INDEX_PARAM));
-    if (Number.isInteger(forcedFromUrl) && forcedFromUrl >= 0 && forcedFromUrl < luckyWheelRewards.length) {
-      return forcedFromUrl;
-    }
+function getForcedRewardIndex() {
+  if (typeof window === "undefined") return null;
 
+  const forcedFromUrl = Number(new URLSearchParams(window.location.search).get(FORCE_INDEX_PARAM));
+  if (Number.isInteger(forcedFromUrl) && forcedFromUrl >= 0 && forcedFromUrl < luckyWheelRewards.length) {
+    return forcedFromUrl;
+  }
+
+  if (process.env.NODE_ENV !== "production" && canUseStorage()) {
     const forced = Number(window.localStorage.getItem(FORCE_INDEX_KEY));
     if (Number.isInteger(forced) && forced >= 0 && forced < luckyWheelRewards.length) {
       return forced;
     }
   }
+
+  return null;
+}
+
+function pickRewardIndex() {
+  const forced = getForcedRewardIndex();
+  if (forced !== null) return forced;
 
   return Math.floor(Math.random() * luckyWheelRewards.length);
 }
@@ -109,11 +118,19 @@ function getStorageKey(scope: string) {
   return `yopartner_lucky_wheel_spin_${scope}`;
 }
 
+function getForcedStorageScope() {
+  if (typeof window === "undefined") return null;
+
+  const params = new URLSearchParams(window.location.search);
+  const forcedScope = params.get(FORCE_SCOPE_PARAM);
+  if (forcedScope) return sanitizeStorageScope(forcedScope);
+
+  const forcedIndex = getForcedRewardIndex();
+  return forcedIndex === null ? null : `forced_${forcedIndex}`;
+}
+
 function getInitialStorageScope() {
-  const forcedScope =
-    process.env.NODE_ENV !== "production" && canUseStorage()
-      ? new URLSearchParams(window.location.search).get(FORCE_SCOPE_PARAM)
-      : null;
+  const forcedScope = getForcedStorageScope();
   if (forcedScope) return sanitizeStorageScope(forcedScope);
 
   const authState = getUserAuthState();
@@ -161,6 +178,10 @@ function isEligibleToSpin(record: SpinRecord | null, now = Date.now()) {
   return !record || now - record.lastSpinAt >= WEEK_COOLDOWN_MS;
 }
 
+function easeOutCubic(progress: number) {
+  return 1 - (1 - progress) ** 3;
+}
+
 export function LuckyWheel() {
   const [isOpen, setIsOpen] = useState(false);
   const [rotation, setRotation] = useState(0);
@@ -168,6 +189,7 @@ export function LuckyWheel() {
   const [resultReward, setResultReward] = useState<LuckyWheelReward | null>(null);
   const [storageScope, setStorageScope] = useState(() => getInitialStorageScope());
   const [spinRecord, setSpinRecord] = useState<SpinRecord | null>(() => readSpinRecord(getStorageKey(getInitialStorageScope())));
+  const animationFrameRef = useRef<number | null>(null);
 
   const storageKey = useMemo(() => getStorageKey(storageScope), [storageScope]);
   const canSpin = isEligibleToSpin(spinRecord);
@@ -177,9 +199,10 @@ export function LuckyWheel() {
     () =>
       Array.from({ length: TOTAL_SEGMENT_COUNT }, (_, index) => {
         const reward = luckyWheelRewards[index % luckyWheelRewards.length];
-        const startAngle = 180 - index * SEGMENT_ANGLE;
+        const startAngle = 180 - index * SEGMENT_ANGLE + rotation;
         const endAngle = startAngle - SEGMENT_ANGLE;
-        const labelPoint = polarToPoint(startAngle - SEGMENT_ANGLE / 2, index < VISIBLE_SEGMENT_COUNT ? 156 : 146);
+        const centerAngle = startAngle - SEGMENT_ANGLE / 2;
+        const labelPoint = polarToPoint(centerAngle, 152);
 
         return {
           id: `${reward.id}-${index}`,
@@ -190,7 +213,7 @@ export function LuckyWheel() {
           textY: labelPoint.y,
         };
       }),
-    [],
+    [rotation],
   );
 
   const lights = useMemo(
@@ -204,14 +227,19 @@ export function LuckyWheel() {
 
   useEffect(() => {
     return subscribeUserAuthState((state) => {
-      const forcedScope =
-        process.env.NODE_ENV !== "production" && canUseStorage()
-          ? new URLSearchParams(window.location.search).get(FORCE_SCOPE_PARAM)
-          : null;
+      const forcedScope = getForcedStorageScope();
       const nextScope = forcedScope ? sanitizeStorageScope(forcedScope) : sanitizeStorageScope(state.uid ?? state.phone ?? GUEST_SCOPE);
       setStorageScope(nextScope);
       setSpinRecord(readSpinRecord(getStorageKey(nextScope)));
     });
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (animationFrameRef.current !== null) {
+        window.cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
   }, []);
 
   const spin = () => {
@@ -225,12 +253,30 @@ export function LuckyWheel() {
     setResultReward(null);
     setSpinRecord(nextRecord);
     setIsSpinning(true);
-    setRotation(nextRotation);
 
-    window.setTimeout(() => {
+    const startRotation = rotation;
+    const startedAt = performance.now();
+
+    const animate = (now: number) => {
+      const progress = Math.min((now - startedAt) / SPIN_MS, 1);
+      const animatedRotation = startRotation + (nextRotation - startRotation) * easeOutCubic(progress);
+
+      setRotation(progress === 1 ? nextRotation : animatedRotation);
+
+      if (progress < 1) {
+        animationFrameRef.current = window.requestAnimationFrame(animate);
+        return;
+      }
+
+      animationFrameRef.current = null;
       setResultReward(reward);
       setIsSpinning(false);
-    }, SPIN_MS);
+    };
+
+    if (animationFrameRef.current !== null) {
+      window.cancelAnimationFrame(animationFrameRef.current);
+    }
+    animationFrameRef.current = window.requestAnimationFrame(animate);
   };
 
   const closeModal = () => {
@@ -273,14 +319,14 @@ export function LuckyWheel() {
             <h2 className="mt-3 text-[1.55rem] font-semibold leading-tight text-[#073f39]">Lucky Wheel</h2>
             <p className="mx-auto mt-1 max-w-[320px] text-xs leading-5 text-[#526b66]">Spin once every 7 days for a frontend-only reward preview.</p>
 
-            <div className="relative mx-auto mt-4 h-[238px] w-full max-w-[372px] overflow-hidden px-3 pt-3">
-              <div className="absolute left-1/2 top-1 z-40 flex -translate-x-1/2 flex-col items-center">
+            <div className="relative mx-auto mt-4 h-[252px] w-full max-w-[380px] overflow-hidden px-3 pt-3">
+              <div className="absolute left-1/2 top-0 z-40 flex -translate-x-1/2 flex-col items-center">
                 <span className="h-7 w-9 bg-[#f97316] drop-shadow-[0_7px_9px_rgba(124,45,18,0.25)]" style={{ clipPath: "polygon(50% 100%, 0 0, 100% 0)" }} />
                 <span className="mt-1 h-2.5 w-2.5 rounded-full bg-[#facc15] shadow-[0_0_18px_rgba(250,204,21,0.8)]" />
               </div>
 
-              <div className="absolute left-1/2 top-5 h-[438px] w-[438px] -translate-x-1/2">
-                <svg viewBox={`0 0 ${WHEEL_SIZE} ${WHEEL_SIZE}`} className="h-full w-full overflow-visible" role="img" aria-label="Lucky wheel offers">
+              <div className="absolute left-1/2 top-5 h-[198px] w-[372px] -translate-x-1/2 overflow-hidden sm:h-[216px] sm:w-[408px]">
+                <svg viewBox={`0 0 ${WHEEL_SIZE} ${WHEEL_SIZE}`} className="h-[372px] w-[372px] overflow-visible sm:h-[408px] sm:w-[408px]" role="img" aria-label="Lucky wheel offers">
                   <defs>
                     <filter id="lucky-wheel-glow" x="-30%" y="-30%" width="160%" height="160%">
                       <feGaussianBlur stdDeviation="5" result="blur" />
@@ -290,14 +336,7 @@ export function LuckyWheel() {
                       </feMerge>
                     </filter>
                   </defs>
-                  <g
-                    style={{
-                      transform: `rotate(${rotation}deg)`,
-                      transformBox: "fill-box",
-                      transformOrigin: "center",
-                      transition: isSpinning ? `transform ${SPIN_MS}ms cubic-bezier(0.12, 0.76, 0.14, 1)` : undefined,
-                    }}
-                  >
+                  <g data-wheel-rotation={rotation}>
                     {segments.map((segment) => (
                       <g key={segment.id}>
                         <path d={segment.path} fill={segment.fill} stroke="rgba(255,255,255,0.72)" strokeWidth="3" />
@@ -331,7 +370,7 @@ export function LuckyWheel() {
                 type="button"
                 onClick={spin}
                 disabled={isSpinning || !canSpin}
-                className="absolute bottom-3 left-1/2 z-40 flex h-20 w-20 -translate-x-1/2 items-center justify-center rounded-full border-[6px] border-white bg-[#073f39] text-[0.95rem] font-black uppercase tracking-[0.06em] text-white shadow-[0_15px_30px_rgba(7,63,57,0.34),inset_0_0_0_2px_rgba(250,204,21,0.72)] transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-75 sm:h-[5.5rem] sm:w-[5.5rem]"
+                className="absolute bottom-7 left-1/2 z-40 flex h-[4.5rem] w-[4.5rem] -translate-x-1/2 items-center justify-center rounded-full border-[5px] border-white bg-[#073f39] text-[0.82rem] font-black uppercase tracking-[0.06em] text-white shadow-[0_15px_30px_rgba(7,63,57,0.34),inset_0_0_0_2px_rgba(250,204,21,0.72)] transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-75 sm:h-20 sm:w-20"
                 aria-label="Spin the lucky wheel"
               >
                 {isSpinning ? "..." : "Spin"}
