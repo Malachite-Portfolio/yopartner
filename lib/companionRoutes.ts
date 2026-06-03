@@ -5,6 +5,7 @@ import { AUDIO_RATE_PER_MIN, CHAT_RATE_PER_MIN, VIDEO_RATE_PER_MIN } from "@/lib
 export type CompanionRouteProfile = {
   id: string;
   name: string;
+  isVerifiedPartner: boolean;
   image?: string;
   tagline: string;
   online: boolean;
@@ -20,6 +21,11 @@ export function getCompanionRouteProfile(id: string): CompanionRouteProfile | nu
     return {
       id: directCompanion.id,
       name: directCompanion.name,
+      isVerifiedPartner:
+        directCompanion.isVerifiedPartner ??
+        directCompanion.verification.some((item) =>
+          ["verified", "approved", "cleared", "trained"].includes(item.status.toLowerCase()),
+        ),
       image: directCompanion.image,
       tagline: directCompanion.tagline,
       online: directCompanion.online,
@@ -36,6 +42,7 @@ function fromApiCompanion(item: CompanionItem): CompanionRouteProfile {
   return {
     id: item.id,
     name: item.name,
+    isVerifiedPartner: item.isVerifiedPartner,
     image: item.image,
     tagline: item.tagline || "Calm, respectful conversations",
     online: item.online,

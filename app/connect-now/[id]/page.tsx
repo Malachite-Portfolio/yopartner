@@ -58,6 +58,7 @@ function toProfileCompanion(item: CompanionItem): ConnectCompanion {
   return {
     id: item.id,
     name: item.name,
+    isVerifiedPartner: item.isVerifiedPartner,
     tagline: item.headline || item.tagline || "",
     category: item.category || "Companion",
     city: item.city,

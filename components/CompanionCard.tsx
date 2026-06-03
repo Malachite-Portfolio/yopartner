@@ -1,6 +1,7 @@
 ﻿import { BadgeCheck, MapPin, Star } from "lucide-react";
 import Link from "next/link";
 import type { Companion } from "@/lib/data";
+import { VerifiedPartnerBadge } from "@/components/VerifiedPartnerBadge";
 
 type CompanionCardProps = {
   companion: Companion;
@@ -18,7 +19,10 @@ export function CompanionCard({ companion }: CompanionCardProps) {
       <div className="p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h3 className="text-lg font-semibold text-foreground">{companion.name}</h3>
+            <h3 className="flex min-w-0 items-center gap-1.5 text-lg font-semibold text-foreground">
+              <span className="min-w-0 truncate">{companion.name}</span>
+              {companion.verification.length > 0 ? <VerifiedPartnerBadge /> : null}
+            </h3>
             <p className="mt-1 inline-flex items-center gap-1 text-sm text-muted">
               <MapPin size={14} />
               {companion.city}

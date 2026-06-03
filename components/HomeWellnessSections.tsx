@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { connectCompanions } from "@/lib/data";
+import { VerifiedPartnerBadge } from "@/components/VerifiedPartnerBadge";
 
 const painCards = [
   { title: "Feeling overwhelmed", text: "Slow down with someone calm and present.", icon: Sparkles },
@@ -123,7 +124,14 @@ export function HomeWellnessSections() {
                   alt={companion.name}
                   className="h-44 w-full rounded-3xl object-cover"
                 />
-                <h3 className="mt-4 text-xl font-semibold text-slate-950">{companion.name}</h3>
+                <h3 className="mt-4 flex min-w-0 items-center gap-1.5 text-xl font-semibold text-slate-950">
+                  <span className="min-w-0 truncate">{companion.name}</span>
+                  {companion.verification.some((item) =>
+                    ["verified", "approved", "cleared", "trained"].includes(item.status.toLowerCase()),
+                  ) ? (
+                    <VerifiedPartnerBadge />
+                  ) : null}
+                </h3>
                 <p className="mt-1 text-sm text-slate-600">{companion.tagline}</p>
                 <p className="mt-3 text-xs font-semibold text-[#0f766e]">
                   {companion.languages.slice(0, 2).join(" & ")} | {companion.rating.toFixed(1)} rated

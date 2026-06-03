@@ -2,6 +2,7 @@ import { ArrowRight, BadgeCheck, ShieldCheck, Star } from "lucide-react";
 import Link from "next/link";
 import type { HomeVisitCompanion } from "@/lib/data";
 import { HOME_VISIT_RATE_PER_HOUR } from "@/lib/platformPricing";
+import { VerifiedPartnerBadge } from "@/components/VerifiedPartnerBadge";
 
 type HomeVisitCompanionCardProps = {
   companion: HomeVisitCompanion;
@@ -23,7 +24,10 @@ export function HomeVisitCompanionCard({ companion }: HomeVisitCompanionCardProp
 
           <div className="min-w-0 grow">
             <div className="flex items-start justify-between gap-2">
-              <h3 className="min-w-0 text-lg font-semibold leading-tight text-slate-900">{companion.name}</h3>
+              <h3 className="flex min-w-0 items-center gap-1.5 text-lg font-semibold leading-tight text-slate-900">
+                <span className="min-w-0 truncate">{companion.name}</span>
+                {companion.verified ? <VerifiedPartnerBadge /> : null}
+              </h3>
               {companion.verified ? (
                 <span className="hidden h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-emerald-50 px-2.5 text-xs font-semibold text-emerald-700 sm:inline-flex">
                   <BadgeCheck size={13} />

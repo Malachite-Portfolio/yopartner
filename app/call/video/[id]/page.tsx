@@ -31,6 +31,7 @@ import {
 import { buildAgoraUid, createAgoraClient, normalizeChannelName, requestVideoPermission } from "@/lib/agora";
 import { isActiveSessionStatus } from "@/lib/sessionStatus";
 import { getUserAuthTokenWithRestore } from "@/lib/auth/userAuth";
+import { VerifiedPartnerBadge } from "@/components/VerifiedPartnerBadge";
 
 const AGORA_APP_ID = process.env.NEXT_PUBLIC_AGORA_APP_ID?.trim() ?? "";
 const TERMINAL_SESSION_STATUSES: SessionStatus[] = ["DECLINED", "CANCELLED", "ENDED", "EXPIRED", "COMPLETED", "FAILED", "FLAGGED"];
@@ -899,7 +900,10 @@ export default function VideoCallPage() {
             <ArrowLeft size={18} />
           </button>
           <div className="min-w-0 flex-1 px-3">
-            <p className="truncate text-sm font-semibold">{companion.name}</p>
+            <p className="flex min-w-0 items-center gap-1.5 text-sm font-semibold">
+              <span className="min-w-0 truncate">{companion.name}</span>
+              {companion.isVerifiedPartner ? <VerifiedPartnerBadge /> : null}
+            </p>
             <p className="text-xs text-white/75">{formatTimer(elapsedSeconds)}</p>
           </div>
           <span className="rounded-full border border-cyan-300/40 bg-cyan-400/20 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-cyan-100">
@@ -913,7 +917,10 @@ export default function VideoCallPage() {
               <span className="mx-auto inline-flex h-20 w-20 items-center justify-center rounded-full border border-white/30 bg-white/10 text-2xl font-semibold">
                 {companion.name.slice(0, 1).toUpperCase()}
               </span>
-              <p className="mt-3 text-xl font-semibold">{companion.name}</p>
+              <p className="mt-3 flex min-w-0 items-center justify-center gap-2 text-xl font-semibold">
+                <span className="min-w-0 truncate">{companion.name}</span>
+                {companion.isVerifiedPartner ? <VerifiedPartnerBadge /> : null}
+              </p>
               <p className="mt-1 text-sm text-white/80">
                 {isPending
                   ? "Ringing..."

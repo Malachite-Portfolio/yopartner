@@ -21,6 +21,7 @@ import { resolveCompanionRouteProfile, type CompanionRouteProfile } from "@/lib/
 import { buildAgoraUid, createAgoraClient, normalizeChannelName, requestAudioPermission } from "@/lib/agora";
 import { getUserAuthTokenWithRestore } from "@/lib/auth/userAuth";
 import { isActiveSessionStatus } from "@/lib/sessionStatus";
+import { VerifiedPartnerBadge } from "@/components/VerifiedPartnerBadge";
 
 const AGORA_APP_ID = process.env.NEXT_PUBLIC_AGORA_APP_ID?.trim() ?? "";
 const TERMINAL_SESSION_STATUSES: SessionStatus[] = ["DECLINED", "CANCELLED", "ENDED", "EXPIRED", "COMPLETED", "FAILED", "FLAGGED"];
@@ -794,7 +795,10 @@ export default function AudioCallPage() {
 
         <div className="mt-6 text-center">
           <p className="text-xs uppercase tracking-[0.18em] text-[#0f766e]">Audio Call</p>
-          <h1 className="mt-2 text-[28px] font-semibold leading-tight text-[#0f172a]">{companion.name}</h1>
+          <h1 className="mt-2 flex min-w-0 items-center justify-center gap-2 text-[28px] font-semibold leading-tight text-[#0f172a]">
+            <span className="min-w-0 truncate">{companion.name}</span>
+            {companion.isVerifiedPartner ? <VerifiedPartnerBadge size="md" /> : null}
+          </h1>
           <p className="mt-2 text-base text-[#334155]">
             {isPending
               ? "Ringing..."

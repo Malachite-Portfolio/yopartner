@@ -1,5 +1,6 @@
 import { Star } from "lucide-react";
 import type { ConnectCompanion } from "@/lib/data";
+import { VerifiedPartnerBadge } from "@/components/VerifiedPartnerBadge";
 
 type ProfileHeroCardProps = {
   companion: ConnectCompanion;
@@ -30,6 +31,12 @@ function displayValue(value: string | number | undefined | null) {
 }
 
 export function ProfileHeroCard({ companion }: ProfileHeroCardProps) {
+  const isVerifiedPartner =
+    companion.isVerifiedPartner ??
+    companion.verification.some((item) =>
+      ["verified", "approved", "cleared", "trained"].includes(item.status.toLowerCase()),
+    );
+
   return (
     <section className="rounded-[22px] border border-[#e6e2eb] bg-white p-5 shadow-[0_10px_35px_rgba(43,31,63,0.07)] sm:p-7">
       <div className="grid gap-6 md:grid-cols-[210px_minmax(0,1fr)_120px] md:items-start">
@@ -49,7 +56,10 @@ export function ProfileHeroCard({ companion }: ProfileHeroCardProps) {
         </div>
 
         <div className="min-w-0 text-center md:text-left">
-          <h1 className="text-[32px] font-semibold leading-tight text-[#201a2f] sm:text-[36px]">{companion.name}</h1>
+          <h1 className="flex min-w-0 items-center justify-center gap-2 text-[32px] font-semibold leading-tight text-[#201a2f] sm:text-[36px] md:justify-start">
+            <span className="min-w-0 truncate">{companion.name}</span>
+            {isVerifiedPartner ? <VerifiedPartnerBadge size="md" /> : null}
+          </h1>
           {companion.tagline ? <p className="mt-1 text-xl font-semibold text-[#a45413]">{companion.tagline}</p> : null}
           <p className="mt-1 text-base text-[#7a6760]">{companion.category}</p>
 

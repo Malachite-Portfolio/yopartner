@@ -7,6 +7,7 @@ import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { connectCompanions, homeVisitCompanions, type ConnectCompanion, type HomeVisitCompanion } from "@/lib/data";
 import { HOME_VISIT_RATE_PER_HOUR } from "@/lib/platformPricing";
 import { formatINR } from "@/lib/wallet";
+import { VerifiedPartnerBadge } from "@/components/VerifiedPartnerBadge";
 
 type HomeVisitProfilePageProps = {
   params: Promise<{ id: string }>;
@@ -16,6 +17,11 @@ function toHomeVisitCompanion(companion: ConnectCompanion): HomeVisitCompanion {
   return {
     id: companion.id,
     name: companion.name,
+    isVerifiedPartner:
+      companion.isVerifiedPartner ??
+      companion.verification.some((item) =>
+        ["verified", "approved", "cleared", "trained"].includes(item.status.toLowerCase()),
+      ),
     tagline: companion.tagline,
     image:
       companion.image ??
@@ -51,6 +57,7 @@ export default async function HomeVisitProfilePage({ params }: HomeVisitProfileP
       companion = {
         id: response.data.id,
         name: response.data.name,
+        isVerifiedPartner: response.data.isVerifiedPartner,
         tagline: response.data.tagline,
         image: response.data.image ?? "/images/logo.png",
         rating: response.data.rating || 0,
@@ -85,7 +92,10 @@ export default async function HomeVisitProfilePage({ params }: HomeVisitProfileP
 
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-2xl font-semibold text-slate-950 sm:text-3xl">{companion.name}</h1>
+                <h1 className="flex min-w-0 items-center gap-2 text-2xl font-semibold text-slate-950 sm:text-3xl">
+                  <span className="min-w-0 truncate">{companion.name}</span>
+                  {(companion.isVerifiedPartner ?? companion.verified) ? <VerifiedPartnerBadge size="md" /> : null}
+                </h1>
                 {companion.verified ? (
                   <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
                     <BadgeCheck size={14} />

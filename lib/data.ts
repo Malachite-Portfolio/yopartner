@@ -78,6 +78,7 @@ export type FAQ = {
 export type ConnectCompanion = {
   id: string;
   name: string;
+  isVerifiedPartner?: boolean;
   tagline: string;
   category: string;
   city?: string | null;
@@ -123,6 +124,7 @@ export type ConnectCompanion = {
 export type HomeVisitCompanion = {
   id: string;
   name: string;
+  isVerifiedPartner?: boolean;
   tagline: string;
   image: string;
   rating: number;

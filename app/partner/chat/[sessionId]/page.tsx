@@ -184,6 +184,7 @@ export default function PartnerChatSessionPage() {
     () => ({
       id: sessionId,
       name: memberName,
+      isVerifiedPartner: false,
       tagline: "Private session",
       online: session?.status === "LIVE",
       chatPrice: 0,

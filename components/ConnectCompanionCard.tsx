@@ -10,6 +10,7 @@ import { requestAudioPermission, requestVideoPermission } from "@/lib/agora";
 import { formatINRPrice } from "@/lib/priceFormat";
 import { getUserAuthTokenWithRestore } from "@/lib/auth/userAuth";
 import { AUDIO_RATE_PER_MIN, CHAT_RATE_PER_MIN, VIDEO_RATE_PER_MIN } from "@/lib/platformPricing";
+import { VerifiedPartnerBadge } from "@/components/VerifiedPartnerBadge";
 
 type ConnectCompanionCardProps = {
   companion: ConnectCompanion;
@@ -109,6 +110,11 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
     "Verified",
   ].filter((chip): chip is string => Boolean(chip));
   const metaChips = Array.from(new Set(rawMetaChips)).slice(0, 2);
+  const isVerifiedPartner =
+    companion.isVerifiedPartner ??
+    companion.verification.some((item) =>
+      ["verified", "approved", "cleared", "trained"].includes(item.status.toLowerCase()),
+    );
 
   const createSessionAndRoute = async (
     event: React.MouseEvent<HTMLButtonElement>,
@@ -228,7 +234,10 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <div>
-              <h3 className="line-clamp-1 text-[19px] font-medium leading-tight text-[#172533] md:text-[21px]">{name}</h3>
+              <h3 className="flex min-w-0 items-center gap-1.5 text-[19px] font-medium leading-tight text-[#172533] md:text-[21px]">
+                <span className="min-w-0 truncate">{name}</span>
+                {isVerifiedPartner ? <VerifiedPartnerBadge /> : null}
+              </h3>
               <p className="mt-0.5 line-clamp-1 text-[13px] leading-4 text-[#637382]">{tagline}</p>
             </div>
             <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#e6e9ee] px-2 py-0.5 text-[11px] font-medium text-[#4f5c69]">

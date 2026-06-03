@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { getCatalogGiftByKey, getGiftPngUrl } from "@/lib/chat/giftCatalog";
 import type { CompanionRouteProfile } from "@/lib/companionRoutes";
+import { VerifiedPartnerBadge } from "@/components/VerifiedPartnerBadge";
 
 export type ChatScreenMessage = {
   id: string;
@@ -211,7 +212,10 @@ export function ChatScreen({
           )}
 
           <div className="min-w-0">
-            <p className="truncate text-[17px] font-semibold leading-none">{companion.name}</p>
+            <p className="flex min-w-0 items-center gap-1.5 text-[17px] font-semibold leading-none">
+              <span className="min-w-0 truncate">{companion.name}</span>
+              {companion.isVerifiedPartner ? <VerifiedPartnerBadge /> : null}
+            </p>
             <p className="mt-1 text-[12px] text-[#0f766e]">
               {composerDisabled ? "Session ended" : "Private session"}
               {sessionTimerLabel ? ` • ${sessionTimerLabel}` : ""}

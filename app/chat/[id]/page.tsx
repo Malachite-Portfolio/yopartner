@@ -99,6 +99,7 @@ function buildFallbackCompanion(sessionData: SessionRecord): CompanionRouteProfi
   return {
     id: sessionData.companionId,
     name: sessionData.companion?.name?.trim() || "Companion",
+    isVerifiedPartner: false,
     tagline: "Private session",
     online: sessionData.status === "LIVE",
     chatPrice: 0,

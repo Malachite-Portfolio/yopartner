@@ -10,6 +10,7 @@ import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import type { HomeVisitCompanion } from "@/lib/data";
 import { HOME_VISIT_RATE_PER_HOUR } from "@/lib/platformPricing";
 import { formatINR, getWalletBalance, subscribeWalletUpdates } from "@/lib/wallet";
+import { VerifiedPartnerBadge } from "@/components/VerifiedPartnerBadge";
 
 type HomeVisitBookingFlowProps = {
   companion: HomeVisitCompanion;
@@ -207,7 +208,10 @@ export function HomeVisitBookingFlow({ companion }: HomeVisitBookingFlowProps) {
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={companion.image} alt={companion.name} className="h-20 w-20 shrink-0 rounded-full object-cover" />
                       <div className="min-w-0">
-                        <h3 className="text-lg font-semibold text-slate-950">{companion.name}</h3>
+                        <h3 className="flex min-w-0 items-center gap-1.5 text-lg font-semibold text-slate-950">
+                          <span className="min-w-0 truncate">{companion.name}</span>
+                          {companion.verified ? <VerifiedPartnerBadge /> : null}
+                        </h3>
                         <p className="mt-1 text-sm text-slate-600">{companion.tagline}</p>
                         <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-600">
                           <span className="inline-flex items-center gap-0.5 text-amber-500">

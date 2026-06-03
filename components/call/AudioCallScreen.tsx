@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import type { CompanionRouteProfile } from "@/lib/companionRoutes";
+import { VerifiedPartnerBadge } from "@/components/VerifiedPartnerBadge";
 
 function formatTimer(seconds: number) {
   const mins = Math.floor(seconds / 60)
@@ -88,7 +89,10 @@ export function AudioCallScreen({ companion }: { companion: CompanionRouteProfil
 
         <div className="mt-6 text-center">
           <p className="text-xs uppercase tracking-[0.2em] text-[#0f766e]">Audio Call</p>
-          <h1 className="mt-2 text-[28px] font-semibold leading-tight">{companion.name}</h1>
+          <h1 className="mt-2 flex min-w-0 items-center justify-center gap-2 text-[28px] font-semibold leading-tight">
+            <span className="min-w-0 truncate">{companion.name}</span>
+            {companion.isVerifiedPartner ? <VerifiedPartnerBadge size="md" /> : null}
+          </h1>
           <p className="mt-2 text-base text-[#334155]">{elapsedSeconds === 0 ? "Calling..." : "Connected"}</p>
           <p className="mt-1 text-3xl font-semibold tabular-nums">{formatTimer(elapsedSeconds)}</p>
         </div>

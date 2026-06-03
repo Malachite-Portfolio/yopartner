@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import type { CompanionRouteProfile } from "@/lib/companionRoutes";
+import { VerifiedPartnerBadge } from "@/components/VerifiedPartnerBadge";
 
 function formatTimer(seconds: number) {
   const mins = Math.floor(seconds / 60)
@@ -78,7 +79,10 @@ export function VideoCallScreen({ companion }: { companion: CompanionRouteProfil
             <ArrowLeft size={18} />
           </button>
           <div className="min-w-0 flex-1 px-3">
-            <p className="truncate text-base font-semibold">{companion.name}</p>
+            <p className="flex min-w-0 items-center gap-1.5 text-base font-semibold">
+              <span className="min-w-0 truncate">{companion.name}</span>
+              {companion.isVerifiedPartner ? <VerifiedPartnerBadge /> : null}
+            </p>
             <p className="text-xs text-white/75">{formatTimer(elapsedSeconds)}</p>
           </div>
           <span className="rounded-full border border-cyan-300/40 bg-cyan-400/20 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-cyan-100">

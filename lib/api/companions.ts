@@ -15,6 +15,7 @@ export type CompanionFilters = {
 export type CompanionItem = {
   id: string;
   name: string;
+  isVerifiedPartner: boolean;
   headline?: string;
   tagline: string;
   category: string;
@@ -71,6 +72,9 @@ type RawPublicProfile = {
   city?: string | null;
   serviceArea?: string | null;
   verificationBadges?: unknown;
+  verificationStatus?: string | null;
+  status?: string | null;
+  approved?: boolean | null;
   rating?: number | string | null;
   reviewCount?: number | string | null;
   completedSessions?: number | string | null;
@@ -118,6 +122,9 @@ type RawCompanionItem = {
   interests?: unknown;
   serviceAreas?: unknown;
   verificationBadges?: unknown;
+  verificationStatus?: string | null;
+  status?: string | null;
+  approved?: boolean | null;
   sessions?: number | string | null;
   sessionsCompleted?: number | string | null;
   completedSessions?: number | string | null;
@@ -258,6 +265,49 @@ function normalizeReviews(value: unknown) {
     .filter((item): item is NonNullable<typeof item> => Boolean(item));
 }
 
+function isApprovedStatus(value: unknown) {
+  const normalized = String(value ?? "").trim().toUpperCase();
+  return normalized === "VERIFIED" || normalized === "APPROVED";
+}
+
+function isRejectedOrPendingStatus(value: unknown) {
+  const normalized = String(value ?? "").trim().toUpperCase();
+  return (
+    normalized === "PENDING" ||
+    normalized === "UNDER_REVIEW" ||
+    normalized === "UNDER-REVIEW" ||
+    normalized === "REJECTED" ||
+    normalized === "FAILED" ||
+    normalized === "NEEDS_REVIEW" ||
+    normalized === "NEEDS-REVIEW" ||
+    normalized === "SUSPENDED"
+  );
+}
+
+function isVerifiedPublicCompanion(
+  item: RawCompanionItem,
+  publicProfile?: RawPublicProfile | null,
+  assumePublicVerified = false,
+) {
+  if (typeof item.approved === "boolean") return item.approved;
+  if (typeof publicProfile?.approved === "boolean") return publicProfile.approved;
+
+  const verificationStatus = publicProfile?.verificationStatus ?? item.verificationStatus;
+  if (isApprovedStatus(verificationStatus)) return true;
+  if (isRejectedOrPendingStatus(verificationStatus)) return false;
+
+  const status = publicProfile?.status ?? item.status;
+  if (isApprovedStatus(status)) return true;
+  if (isRejectedOrPendingStatus(status)) return false;
+
+  const verificationBadges = normalizeStringArray(publicProfile?.verificationBadges ?? item.verificationBadges);
+  if (verificationBadges.length > 0) return true;
+
+  if (toOptionalText(item.experience).toLowerCase().includes("verified")) return true;
+
+  return assumePublicVerified;
+}
+
 function describeCompanionPayload(value: unknown) {
   if (!isRecord(value)) return typeof value;
   return Object.keys(value).slice(0, 12);
@@ -350,7 +400,7 @@ async function publicBackendRequest<T>(path: string) {
   }
 }
 
-function toCompanionItem(item: RawCompanionItem): CompanionItem {
+function toCompanionItem(item: RawCompanionItem, options?: { assumePublicVerified?: boolean }): CompanionItem {
   const publicProfile = item.publicProfile ?? item.profile ?? item.onboarding;
   const name = toSafeText(publicProfile?.displayName ?? item.displayName ?? item.name, "Partner");
   const headline = toOptionalText(publicProfile?.headline ?? item.headline);
@@ -412,10 +462,12 @@ function toCompanionItem(item: RawCompanionItem): CompanionItem {
   const city = toOptionalText(publicProfile?.city ?? publicProfile?.serviceArea ?? item.city ?? item.serviceArea);
   const verificationBadges = normalizeStringArray(publicProfile?.verificationBadges ?? item.verificationBadges);
   const reviews = normalizeReviews(publicProfile?.reviews ?? item.reviews);
+  const isVerifiedPartner = isVerifiedPublicCompanion(item, publicProfile, options?.assumePublicVerified);
 
   return {
     id: String(item.id || name.toLowerCase().replace(/\s+/g, "-")),
     name,
+    isVerifiedPartner,
     headline,
     tagline,
     category: toSafeText(item.category, "Partner"),
@@ -475,7 +527,10 @@ export async function listCompanions(filters?: CompanionFilters) {
       error: { ...result.error, message },
     };
   }
-  return { data: (result.data?.companions ?? []).map(toCompanionItem), error: null };
+  return {
+    data: (result.data?.companions ?? []).map((item) => toCompanionItem(item, { assumePublicVerified: true })),
+    error: null,
+  };
 }
 
 export async function getCompanionById(id: string) {
@@ -505,7 +560,10 @@ export async function listFeaturedCompanions() {
       error: { ...result.error, message: "Partners are currently unavailable. Please try again later." },
     };
   }
-  return { data: (result.data?.companions ?? []).map(toCompanionItem), error: null };
+  return {
+    data: (result.data?.companions ?? []).map((item) => toCompanionItem(item, { assumePublicVerified: true })),
+    error: null,
+  };
 }
 
 export async function getCompanionStats() {
