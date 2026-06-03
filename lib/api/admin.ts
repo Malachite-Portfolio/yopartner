@@ -1,4 +1,5 @@
 import { apiRequest } from "@/lib/api/client";
+import { getStoredAdminToken } from "@/lib/adminAuth";
 
 async function adminGet<T>(path: string) {
   return apiRequest<T>(path);
@@ -29,6 +30,45 @@ export async function updateAdminApplicationStatus(
 
 export async function getAdminApplicationById(id: string) {
   return apiRequest<{ application: Record<string, unknown> }>(`/api/admin/applications/${id}`);
+}
+
+export type AdminKycDocumentType = "selfie" | "aadhaarFront" | "aadhaarBack" | "pan";
+
+export async function fetchAdminKycDocumentPreview(applicationId: string, documentType: AdminKycDocumentType) {
+  const token = getStoredAdminToken();
+  if (!token) {
+    return {
+      data: null,
+      error: { status: 401, message: "Admin login required." },
+    };
+  }
+
+  const response = await fetch(
+    `/api/admin/kyc-documents/${encodeURIComponent(applicationId)}/${documentType}/preview`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    },
+  );
+
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => ({}))) as { message?: string; error?: string };
+    return {
+      data: null,
+      error: {
+        status: response.status,
+        message: payload.message || payload.error || "Unable to load KYC document preview.",
+      },
+    };
+  }
+
+  return {
+    data: {
+      blob: await response.blob(),
+      contentType: response.headers.get("content-type") ?? "",
+    },
+    error: null,
+  };
 }
 
 export const getAdminDashboard = () => adminGet<Record<string, unknown>>("/api/admin/dashboard");

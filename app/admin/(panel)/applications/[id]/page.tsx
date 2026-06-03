@@ -6,8 +6,10 @@ import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { AdminStatusBadge } from "@/components/admin/AdminStatusBadge";
 import {
+  fetchAdminKycDocumentPreview,
   getAdminApplicationById,
   listApplications,
+  type AdminKycDocumentType,
   type AdminApplicationUpdateStatus,
   updateAdminApplicationStatus,
 } from "@/lib/api/admin";
@@ -30,7 +32,13 @@ type SafetyRow = {
 type DocumentInfo = {
   uploaded: boolean;
   fileName: string;
-  url: string;
+};
+
+type PreviewState = {
+  documentType: AdminKycDocumentType;
+  label: string;
+  objectUrl: string;
+  contentType: string;
 };
 
 type ApplicationDetails = {
@@ -123,7 +131,6 @@ function getDocumentInfo(...values: unknown[]): DocumentInfo {
       return {
         uploaded: true,
         fileName: isUrl ? "" : normalized,
-        url: isUrl ? normalized : "",
       };
     }
     if (typeof value === "object") {
@@ -134,7 +141,6 @@ function getDocumentInfo(...values: unknown[]): DocumentInfo {
       return {
         uploaded: true,
         fileName,
-        url,
       };
     }
   }
@@ -142,7 +148,6 @@ function getDocumentInfo(...values: unknown[]): DocumentInfo {
   return {
     uploaded: false,
     fileName: "",
-    url: "",
   };
 }
 
@@ -163,7 +168,6 @@ function getDocumentInfoFromFields(
     return {
       uploaded: true,
       fileName: fileName || fromFallback.fileName,
-      url: url || fromFallback.url,
     };
   }
 
@@ -233,12 +237,10 @@ function extractApplication(applicationRaw: unknown): ApplicationDetails {
     if (!aadhaarFront.uploaded && legacyAadhaar.uploaded) {
       aadhaarFront.uploaded = true;
       aadhaarFront.fileName = aadhaarFront.fileName || legacyAadhaar.fileName;
-      aadhaarFront.url = aadhaarFront.url || legacyAadhaar.url;
     }
     if (!aadhaarBack.uploaded && legacyAadhaar.uploaded) {
       aadhaarBack.uploaded = true;
       aadhaarBack.fileName = aadhaarBack.fileName || legacyAadhaar.fileName;
-      aadhaarBack.url = aadhaarBack.url || legacyAadhaar.url;
     }
   }
 
@@ -316,6 +318,9 @@ export default function AdminApplicationDetailsPage() {
   const [successMessage, setSuccessMessage] = useState("");
   const [rowActionLoading, setRowActionLoading] = useState<RowAction | null>(null);
   const [adminNoteDraft, setAdminNoteDraft] = useState("");
+  const [preview, setPreview] = useState<PreviewState | null>(null);
+  const [previewLoading, setPreviewLoading] = useState<AdminKycDocumentType | null>(null);
+  const [previewError, setPreviewError] = useState("");
 
   const loadDetails = useCallback(async () => {
     if (!id) {
@@ -386,6 +391,12 @@ export default function AdminApplicationDetailsPage() {
     };
   }, [loadDetails]);
 
+  useEffect(() => {
+    return () => {
+      if (preview?.objectUrl) URL.revokeObjectURL(preview.objectUrl);
+    };
+  }, [preview]);
+
   const servicesLabel = useMemo(() => {
     if (!details) return "-";
     return details.services.length > 0 ? details.services.join(", ") : "-";
@@ -443,6 +454,64 @@ export default function AdminApplicationDetailsPage() {
   const handleNeedsInfo = async () => {
     await applyStatusAction("NEEDS_INFO", "needs_info", adminNoteDraft.trim() || undefined);
   };
+
+  const closePreview = () => {
+    if (preview?.objectUrl) URL.revokeObjectURL(preview.objectUrl);
+    setPreview(null);
+    setPreviewError("");
+  };
+
+  const handleViewDocument = async (documentType: AdminKycDocumentType, label: string) => {
+    if (!details) return;
+    setPreviewLoading(documentType);
+    setPreviewError("");
+
+    const response = await fetchAdminKycDocumentPreview(details.id, documentType);
+    setPreviewLoading(null);
+
+    if (response.error) {
+      if (response.error.status === 401) {
+        clearAdminAuthSession();
+        router.replace("/admin/login");
+        return;
+      }
+      setPreviewError(response.error.message || "Unable to load KYC document preview.");
+      return;
+    }
+
+    if (!response.data) {
+      setPreviewError("Unable to load KYC document preview.");
+      return;
+    }
+
+    if (preview?.objectUrl) URL.revokeObjectURL(preview.objectUrl);
+    setPreview({
+      documentType,
+      label,
+      objectUrl: URL.createObjectURL(response.data.blob),
+      contentType: response.data.contentType,
+    });
+  };
+
+  const renderDocumentCard = (label: string, documentType: AdminKycDocumentType, document: DocumentInfo) => (
+    <div>
+      <p><span className="font-semibold text-slate-900">{label}:</span> {document.uploaded ? "Uploaded" : "Missing"}</p>
+      {document.uploaded ? (
+        <button
+          type="button"
+          onClick={() => {
+            void handleViewDocument(documentType, label);
+          }}
+          disabled={previewLoading !== null}
+          className="mt-1 rounded-lg border border-[#0f766e]/20 bg-[#eef8f5] px-2.5 py-1 text-xs font-semibold text-[#0f766e] disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {previewLoading === documentType ? "Loading..." : `View ${label}`}
+        </button>
+      ) : document.fileName ? (
+        <p className="text-xs text-slate-600">{document.fileName} | Storage pending connection.</p>
+      ) : null}
+    </div>
+  );
 
   if (loading) {
     return (
@@ -543,47 +612,16 @@ export default function AdminApplicationDetailsPage() {
 
         <h3 className="text-base font-semibold text-slate-900">KYC documents</h3>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-          <div>
-            <p><span className="font-semibold text-slate-900">Selfie:</span> {details.selfie.uploaded ? "Uploaded" : "Missing"}</p>
-            {details.selfie.url ? (
-              <a href={details.selfie.url} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-[#0f766e] underline">
-                View Document
-              </a>
-            ) : details.selfie.fileName ? (
-              <p className="text-xs text-slate-600">{details.selfie.fileName} | Storage pending connection.</p>
-            ) : null}
-          </div>
-          <div>
-            <p><span className="font-semibold text-slate-900">Aadhaar Front:</span> {details.aadhaarFront.uploaded ? "Uploaded" : "Missing"}</p>
-            {details.aadhaarFront.url ? (
-              <a href={details.aadhaarFront.url} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-[#0f766e] underline">
-                View Document
-              </a>
-            ) : details.aadhaarFront.fileName ? (
-              <p className="text-xs text-slate-600">{details.aadhaarFront.fileName} | Storage pending connection.</p>
-            ) : null}
-          </div>
-          <div>
-            <p><span className="font-semibold text-slate-900">Aadhaar Back:</span> {details.aadhaarBack.uploaded ? "Uploaded" : "Missing"}</p>
-            {details.aadhaarBack.url ? (
-              <a href={details.aadhaarBack.url} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-[#0f766e] underline">
-                View Document
-              </a>
-            ) : details.aadhaarBack.fileName ? (
-              <p className="text-xs text-slate-600">{details.aadhaarBack.fileName} | Storage pending connection.</p>
-            ) : null}
-          </div>
-          <div>
-            <p><span className="font-semibold text-slate-900">PAN:</span> {details.pan.uploaded ? "Uploaded" : "Missing"}</p>
-            {details.pan.url ? (
-              <a href={details.pan.url} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-[#0f766e] underline">
-                View Document
-              </a>
-            ) : details.pan.fileName ? (
-              <p className="text-xs text-slate-600">{details.pan.fileName} | Storage pending connection.</p>
-            ) : null}
-          </div>
+          {renderDocumentCard("Selfie", "selfie", details.selfie)}
+          {renderDocumentCard("Aadhaar Front", "aadhaarFront", details.aadhaarFront)}
+          {renderDocumentCard("Aadhaar Back", "aadhaarBack", details.aadhaarBack)}
+          {renderDocumentCard("PAN", "pan", details.pan)}
         </div>
+        {previewError ? (
+          <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">
+            {previewError}
+          </p>
+        ) : null}
 
         <div>
           <p className="font-semibold text-slate-900">Safety checklist</p>
@@ -639,6 +677,45 @@ export default function AdminApplicationDetailsPage() {
           </button>
         </div>
       </article>
+
+      {preview ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`${preview.label} preview`}
+        >
+          <div className="flex max-h-[92vh] w-full max-w-4xl flex-col rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
+              <p className="text-sm font-semibold text-slate-900">{preview.label}</p>
+              <button
+                type="button"
+                onClick={closePreview}
+                className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                Close
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-auto bg-slate-100 p-4">
+              {preview.contentType.toLowerCase().startsWith("image/") ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={preview.objectUrl}
+                  alt={`${preview.label} preview`}
+                  className="mx-auto max-h-[76vh] max-w-full rounded-lg bg-white object-contain"
+                />
+              ) : (
+                <iframe
+                  src={preview.objectUrl}
+                  title={`${preview.label} preview`}
+                  sandbox=""
+                  className="h-[76vh] w-full rounded-lg border border-slate-200 bg-white"
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
