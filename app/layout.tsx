@@ -2,6 +2,7 @@
 import { Manrope } from "next/font/google";
 import { AppHeader } from "@/components/AppHeader";
 import { Footer } from "@/components/Footer";
+import { LuckyWheelLauncher } from "@/components/LuckyWheelLauncher";
 import "./globals.css";
 
 const manrope = Manrope({
@@ -41,6 +42,7 @@ export default function RootLayout({
           <main className="flex-1">{children}</main>
           <Footer />
         </div>
+        <LuckyWheelLauncher />
       </body>
     </html>
   );
