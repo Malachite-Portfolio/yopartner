@@ -320,18 +320,24 @@ async function waitForFirebaseUser(timeoutMs = 8000) {
 
   return new Promise<User | null>((resolve) => {
     let settled = false;
-    let unsubscribe: () => void = () => undefined;
+    let pendingUnsubscribe = false;
+    let unsubscribe: (() => void) | null = null;
+    const timeout = window.setTimeout(() => finish(null), timeoutMs);
 
     const finish = (user: User | null) => {
       if (settled) return;
       settled = true;
       window.clearTimeout(timeout);
-      unsubscribe();
+      if (unsubscribe) {
+        unsubscribe();
+      } else {
+        pendingUnsubscribe = true;
+      }
       resolve(user);
     };
 
-    const timeout = window.setTimeout(() => finish(null), timeoutMs);
     unsubscribe = onAuthStateChanged(auth, (user) => finish(user));
+    if (pendingUnsubscribe) unsubscribe();
   });
 }
 

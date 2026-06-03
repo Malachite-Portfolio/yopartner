@@ -1,4 +1,5 @@
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import { getCurrentFirebaseUser, subscribeFirebaseAuthState } from "@/lib/auth/firebasePhoneAuth";
 import { firebaseStorage } from "@/lib/firebase/client";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -13,7 +14,7 @@ type PartnerKycType = "selfie" | "aadhaar-front" | "aadhaar-back" | "pan";
 
 type UploadPartnerKycFileParams = {
   file: File;
-  uid: string;
+  uid?: string;
   type: PartnerKycType;
 };
 
@@ -48,6 +49,64 @@ function validateFile(file: File) {
   }
 }
 
+async function waitForFirebaseUser(timeoutMs = 10000) {
+  const existing = getCurrentFirebaseUser();
+  if (existing) return existing;
+  if (typeof window === "undefined") return null;
+
+  return new Promise<ReturnType<typeof getCurrentFirebaseUser>>((resolve) => {
+    let settled = false;
+    let pendingUnsubscribe = false;
+    let unsubscribe: (() => void) | null = null;
+    const timer = window.setTimeout(() => {
+      finish(getCurrentFirebaseUser());
+    }, timeoutMs);
+
+    const finish = (value: ReturnType<typeof getCurrentFirebaseUser>) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timer);
+      if (unsubscribe) {
+        unsubscribe();
+      } else {
+        pendingUnsubscribe = true;
+      }
+      resolve(value);
+    };
+
+    unsubscribe = subscribeFirebaseAuthState((user) => {
+      finish(user);
+    });
+
+    if (pendingUnsubscribe) unsubscribe();
+  });
+}
+
+function toUploadError(error: unknown, context: { uid: string | null; storagePath: string }) {
+  const code = typeof error === "object" && error && "code" in error ? String((error as { code?: unknown }).code ?? "") : "";
+  const message = typeof error === "object" && error && "message" in error ? String((error as { message?: unknown }).message ?? "") : "";
+
+  if (process.env.NODE_ENV !== "production") {
+    console.warn("[partner-kyc-upload] firebase storage upload failed", {
+      code,
+      message,
+      uid: context.uid,
+      storagePath: context.storagePath,
+    });
+  }
+
+  if (code === "storage/unauthorized") {
+    return new Error("KYC upload is blocked by Firebase Storage rules. Please publish the partner KYC storage rule and try again.");
+  }
+  if (code === "storage/unauthenticated") {
+    return new Error("Please login again as a partner before uploading KYC documents.");
+  }
+  if (error instanceof Error && error.message.trim().length > 0) {
+    return error;
+  }
+  return new Error("Unable to upload verification documents right now.");
+}
+
 export async function uploadPartnerKycFile(
   params: UploadPartnerKycFileParams,
 ): Promise<PartnerKycUploadResult> {
@@ -55,21 +114,34 @@ export async function uploadPartnerKycFile(
   if (!firebaseStorage) {
     throw new Error("Document upload is not configured.");
   }
-  if (!uid || uid.trim().length === 0) {
+
+  const authUser = (await waitForFirebaseUser()) ?? getCurrentFirebaseUser();
+  const authUid = authUser?.uid?.trim();
+  if (!authUser || !authUid) {
     throw new Error("Your login session could not be verified. Please login again as a partner.");
+  }
+  const requestedUid = uid?.trim();
+  if (requestedUid && requestedUid !== authUid) {
+    throw new Error("Your login session does not match the selected KYC upload path. Please login again as a partner.");
   }
 
   validateFile(file);
 
   const cleanName = sanitizeFileName(file.name || "document");
   const timestamp = Date.now();
-  const storagePath = `YoPartner/partner-kyc/${uid}/${type}/${timestamp}-${cleanName}`;
+  const storagePath = `YoPartner/partner-kyc/${authUid}/${type}/${timestamp}-${cleanName}`;
   const kycRef = ref(firebaseStorage, storagePath);
 
-  await uploadBytes(kycRef, file, {
-    contentType: file.type,
-  });
-  const downloadUrl = await getDownloadURL(kycRef);
+  let downloadUrl = "";
+  try {
+    await authUser.getIdToken(true);
+    await uploadBytes(kycRef, file, {
+      contentType: file.type,
+    });
+    downloadUrl = await getDownloadURL(kycRef);
+  } catch (error) {
+    throw toUploadError(error, { uid: authUid, storagePath });
+  }
 
   return {
     fileName: cleanName,

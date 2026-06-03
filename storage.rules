@@ -1,0 +1,35 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function isAdmin() {
+      return signedIn() && request.auth.token.admin == true;
+    }
+
+    match /YoPartner/partner-kyc/{uid}/{allPaths=**} {
+      allow read, write: if isOwner(uid) || isAdmin();
+    }
+
+    match /YoPartner/partner-profile/{uid}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isOwner(uid) || isAdmin();
+    }
+
+    match /user-profile-images/{uid}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isOwner(uid) || isAdmin();
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

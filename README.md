@@ -48,9 +48,8 @@ Recommended Firebase Storage rules direction:
 
 ```txt
 match /YoPartner/partner-kyc/{uid}/{allPaths=**} {
-  allow write: if request.auth != null && request.auth.uid == uid;
-  allow read: if request.auth != null;
+  allow read, write: if request.auth != null && request.auth.uid == uid;
 }
 ```
 
-Admin document viewing uses tokenized download URLs from `getDownloadURL`.
+Admin/backend document review should use Admin SDK/server-side access or an explicit admin custom claim. Do not expose KYC document URLs from public companion APIs.
