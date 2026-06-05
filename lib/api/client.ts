@@ -73,6 +73,7 @@ function isBackendManagedApiPath(path: string) {
     path.startsWith("/api/payments") ||
     path.startsWith("/api/reviews") ||
     path.startsWith("/api/users") ||
+    path.startsWith("/api/lucky-wheel") ||
     path.startsWith("/api/partner") ||
     path.startsWith("/api/admin")
   );
