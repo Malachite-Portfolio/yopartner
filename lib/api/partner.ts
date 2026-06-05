@@ -76,6 +76,14 @@ export type PartnerEarningsPayload = {
   summary?: Record<string, unknown>;
 };
 
+export type PartnerPayoutSummaryPayload = {
+  summary: Record<string, unknown>;
+};
+
+export type PartnerPayoutsPayload = {
+  payouts: Record<string, unknown>[];
+};
+
 export async function submitPartnerApplication(payload: Record<string, unknown>) {
   return apiRequest<{ success: boolean; message?: string }>("/api/partner/applications", {
     method: "POST",
@@ -135,6 +143,31 @@ export async function getPartnerEarnings() {
     },
     error: null,
   };
+}
+
+export async function getPartnerPayoutSummary() {
+  const result = await apiRequest<PartnerPayoutSummaryPayload>("/api/partner/payouts/summary");
+  if (result.error) return { data: null, error: result.error };
+  return { data: result.data?.summary ?? {}, error: null };
+}
+
+export async function getPartnerPayouts() {
+  const result = await apiRequest<PartnerPayoutsPayload>("/api/partner/payouts");
+  if (result.error) return { data: [], error: result.error };
+  return { data: result.data?.payouts ?? [], error: null };
+}
+
+export async function requestPartnerPayout(payload: { amount: number; note?: string }) {
+  const result = await apiRequest<{
+    payout: Record<string, unknown>;
+    summary: Record<string, unknown>;
+    message?: string;
+  }>("/api/partner/payouts/request", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  if (result.error) return { data: null, error: result.error };
+  return { data: result.data ?? null, error: null };
 }
 
 export async function getPartnerRequests() {

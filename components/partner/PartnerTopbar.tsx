@@ -17,6 +17,7 @@ const titleMap: Record<string, string> = {
   "/partner/chats": "Conversations",
   "/partner/bookings": "Requests",
   "/partner/earnings": "Earnings",
+  "/partner/payouts": "Payouts",
   "/partner/profile": "My Profile",
   "/partner/application-status": "Safety & KYC",
   "/partner/settings": "Settings",
