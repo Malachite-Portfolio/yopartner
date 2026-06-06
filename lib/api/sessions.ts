@@ -34,6 +34,17 @@ export type SessionRecord = {
   endedByUserId?: string | null;
   lastHeartbeatAt?: string | null;
   amount?: number;
+  reward?: {
+    appliedRewardId: string;
+    appliedRewardType:
+      | "FREE_CALL_MINUTES"
+      | "FREE_CHAT_MINUTES"
+      | "VIDEO_DISCOUNT_PERCENT"
+      | "TALK_TIME_CREDIT"
+      | string;
+    freeSeconds: number | null;
+    shouldAutoEndAtFreeLimit: boolean;
+  } | null;
   user?: {
     id: string;
     name?: string | null;

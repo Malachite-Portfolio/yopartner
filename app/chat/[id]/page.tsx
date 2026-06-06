@@ -125,6 +125,7 @@ export default function ChatPage() {
   const [isMessagesLoading, setIsMessagesLoading] = useState(false);
   const [messageError, setMessageError] = useState("");
   const [isEndingSession, setIsEndingSession] = useState(false);
+  const [sessionEndNotice, setSessionEndNotice] = useState("");
   const [clockNow, setClockNow] = useState(() => Date.now());
   const [walletBalance, setWalletBalance] = useState(0);
   const [isGiftModalOpen, setIsGiftModalOpen] = useState(false);
@@ -139,6 +140,7 @@ export default function ChatPage() {
   const reviewRedirectUrlRef = useRef<string | null>(null);
   const seenGiftMessageIdsRef = useRef<Set<string>>(new Set());
   const hasHydratedGiftFeedRef = useRef(false);
+  const autoEndedRewardRef = useRef(false);
   const handleGiftOverlayClose = useCallback(() => {
     setActiveGiftEffect(null);
   }, []);
@@ -381,7 +383,54 @@ export default function ChatPage() {
   useEffect(() => {
     seenGiftMessageIdsRef.current = new Set();
     hasHydratedGiftFeedRef.current = false;
+    autoEndedRewardRef.current = false;
   }, [session?.id]);
+
+  useEffect(() => {
+    const freeSeconds = session?.reward?.freeSeconds ?? null;
+    if (
+      !session?.id ||
+      session.status !== "LIVE" ||
+      !session.reward?.shouldAutoEndAtFreeLimit ||
+      !freeSeconds ||
+      isEndingSession
+    ) {
+      return;
+    }
+
+    const baseTime = session.liveStartedAt || session.startedAt || session.acceptedAt;
+    const baseMs = baseTime ? new Date(baseTime).getTime() : Number.NaN;
+    if (Number.isNaN(baseMs)) return;
+    const elapsed = Math.max(0, Math.floor((clockNow - baseMs) / 1000));
+    if (elapsed < freeSeconds || autoEndedRewardRef.current) return;
+
+    autoEndedRewardRef.current = true;
+    setSessionEndNotice("Your free chat time is over. Please add money to continue.");
+    setIsEndingSession(true);
+
+    void (async () => {
+      try {
+        const response = await endSession(session.id);
+        if (response.data) {
+          setSession(response.data);
+          return;
+        }
+        setMessageError(response.error?.message || "Your free chat time is over. Please add money to continue.");
+      } finally {
+        setIsEndingSession(false);
+      }
+    })();
+  }, [
+    clockNow,
+    isEndingSession,
+    session?.acceptedAt,
+    session?.id,
+    session?.liveStartedAt,
+    session?.reward?.freeSeconds,
+    session?.reward?.shouldAutoEndAtFreeLimit,
+    session?.startedAt,
+    session?.status,
+  ]);
 
   useEffect(() => {
     if (!hasHydratedGiftFeedRef.current || messages.length === 0) return;
@@ -676,7 +725,9 @@ export default function ChatPage() {
                   ? "This chat session is no longer active."
                 : "This chat session is not active right now."}
           </p>
-          <p className="mt-2 text-xs text-slate-500">Session ended. Redirecting to Connect Now...</p>
+          <p className="mt-2 text-xs text-slate-500">
+            {sessionEndNotice || "Session ended. Redirecting to Connect Now..."}
+          </p>
           <button
             type="button"
             onClick={() => router.push("/connect-now")}

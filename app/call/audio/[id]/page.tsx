@@ -60,6 +60,7 @@ export default function AudioCallPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [isCancelling, setIsCancelling] = useState(false);
+  const [sessionEndNotice, setSessionEndNotice] = useState("");
   const [clockNow, setClockNow] = useState(() => Date.now());
 
   const [isMuted, setIsMuted] = useState(false);
@@ -108,6 +109,7 @@ export default function AudioCallPage() {
   const localAudioTrackRef = useRef<IMicrophoneAudioTrack | null>(null);
   const remoteAudioTrackRef = useRef<IRemoteAudioTrack | null>(null);
   const remoteAudioElementRef = useRef<HTMLAudioElement | null>(null);
+  const autoEndedRewardRef = useRef(false);
 
   const isPending = session?.status === "PENDING";
   const isActive = session?.status === "LIVE" || session?.status === "ACCEPTED";
@@ -666,6 +668,39 @@ export default function AudioCallPage() {
     }
   }, [cleanupAgora, isCancelling, session?.id]);
 
+  useEffect(() => {
+    const freeSeconds = session?.reward?.freeSeconds ?? null;
+    if (!session?.id || !isActive || !session.reward?.shouldAutoEndAtFreeLimit || !freeSeconds || isCancelling) return;
+    if (elapsedSeconds < freeSeconds || autoEndedRewardRef.current) return;
+
+    autoEndedRewardRef.current = true;
+    setSessionEndNotice("Your free call time is over. Please add money to continue.");
+    setIsCancelling(true);
+
+    void (async () => {
+      try {
+        const responsePromise = endSession(session.id);
+        await cleanupAgora();
+        const response = await responsePromise;
+        if (response.data) {
+          setSession(response.data);
+          return;
+        }
+        setError(response.error?.message || "Your free call time is over. Please add money to continue.");
+      } finally {
+        setIsCancelling(false);
+      }
+    })();
+  }, [
+    cleanupAgora,
+    elapsedSeconds,
+    isActive,
+    isCancelling,
+    session?.id,
+    session?.reward?.freeSeconds,
+    session?.reward?.shouldAutoEndAtFreeLimit,
+  ]);
+
   const navigateAfterExit = useCallback(() => {
     router.push("/connect-now");
   }, [router]);
@@ -714,7 +749,9 @@ export default function AudioCallPage() {
       <main className="flex h-[100dvh] min-h-[100dvh] items-center justify-center bg-[#0f1d4d] p-4 text-white">
         <div className="w-full max-w-md rounded-2xl border border-white/20 bg-white/10 p-6 text-center">
           <p className="text-base font-semibold">This call has ended.</p>
-          <p className="mt-2 text-xs text-cyan-100">Session ended. Redirecting to Connect Now...</p>
+          <p className="mt-2 text-xs text-cyan-100">
+            {sessionEndNotice || "Session ended. Redirecting to Connect Now..."}
+          </p>
           <button
             type="button"
             onClick={() => router.push("/connect-now")}
