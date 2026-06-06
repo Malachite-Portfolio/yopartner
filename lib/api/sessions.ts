@@ -45,6 +45,11 @@ export type SessionRecord = {
     freeSeconds: number | null;
     shouldAutoEndAtFreeLimit: boolean;
   } | null;
+  billingLimit?: {
+    maxAllowedSeconds: number | null;
+    warningAtSeconds: number | null;
+    autoEndAt: string | null;
+  } | null;
   user?: {
     id: string;
     name?: string | null;

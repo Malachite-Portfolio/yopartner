@@ -116,6 +116,21 @@ export default function AudioCallPage() {
   useLoopingRingtone({ enabled: isPending, kind: "ringback", volume: 0.06 });
   const callTimerBase = session?.liveStartedAt ?? (isActive && localAudioPublished ? localJoinStartedAt : null);
   const elapsedSeconds = getElapsedSeconds(callTimerBase, clockNow);
+  const prepaidMaxAllowedSeconds =
+    session?.billingLimit?.maxAllowedSeconds ??
+    (session?.reward?.shouldAutoEndAtFreeLimit ? session.reward.freeSeconds : null);
+  const prepaidWarningAtSeconds =
+    prepaidMaxAllowedSeconds && prepaidMaxAllowedSeconds > 0
+      ? session?.billingLimit?.warningAtSeconds ?? Math.max(0, prepaidMaxAllowedSeconds - 30)
+      : null;
+  const balanceWarning =
+    isActive &&
+    prepaidMaxAllowedSeconds &&
+    prepaidWarningAtSeconds !== null &&
+    elapsedSeconds >= prepaidWarningAtSeconds &&
+    elapsedSeconds < prepaidMaxAllowedSeconds
+      ? "Your balance is almost over. Add money to continue."
+      : "";
 
   const syncRemoteUsersDebug = useCallback((client: IAgoraRTCClient) => {
     setRemoteUserCount(client.remoteUsers.length);
@@ -669,12 +684,15 @@ export default function AudioCallPage() {
   }, [cleanupAgora, isCancelling, session?.id]);
 
   useEffect(() => {
-    const freeSeconds = session?.reward?.freeSeconds ?? null;
-    if (!session?.id || !isActive || !session.reward?.shouldAutoEndAtFreeLimit || !freeSeconds || isCancelling) return;
-    if (elapsedSeconds < freeSeconds || autoEndedRewardRef.current) return;
+    const maxAllowedSeconds =
+      session?.billingLimit?.maxAllowedSeconds ??
+      (session?.reward?.shouldAutoEndAtFreeLimit ? session.reward.freeSeconds : null);
+    if (!session?.id || !isActive || !maxAllowedSeconds || isCancelling) return;
+
+    if (elapsedSeconds < maxAllowedSeconds || autoEndedRewardRef.current) return;
 
     autoEndedRewardRef.current = true;
-    setSessionEndNotice("Your free call time is over. Please add money to continue.");
+    setSessionEndNotice("Your available balance is over. Please add money to continue.");
     setIsCancelling(true);
 
     void (async () => {
@@ -686,7 +704,7 @@ export default function AudioCallPage() {
           setSession(response.data);
           return;
         }
-        setError(response.error?.message || "Your free call time is over. Please add money to continue.");
+        setError(response.error?.message || "Your available balance is over. Please add money to continue.");
       } finally {
         setIsCancelling(false);
       }
@@ -696,6 +714,7 @@ export default function AudioCallPage() {
     elapsedSeconds,
     isActive,
     isCancelling,
+    session?.billingLimit?.maxAllowedSeconds,
     session?.id,
     session?.reward?.freeSeconds,
     session?.reward?.shouldAutoEndAtFreeLimit,
@@ -825,6 +844,12 @@ export default function AudioCallPage() {
         ) : null}
 
         {error ? <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">{error}</p> : null}
+
+        {balanceWarning ? (
+          <p className="mt-3 rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs text-cyan-700">
+            {balanceWarning}
+          </p>
+        ) : null}
 
         {speakerMessage ? (
           <p className="mt-3 rounded-xl border border-slate-200 bg-white/80 px-3 py-2 text-xs text-slate-600">{speakerMessage}</p>

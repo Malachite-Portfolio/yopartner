@@ -316,7 +316,7 @@ export default function ChatPage() {
       }
       if (created.error) {
         if (created.error.code === "INSUFFICIENT_WALLET_BALANCE") {
-          setErrorMessage("Minimum ₹50 wallet balance is required to start a chat.");
+          setErrorMessage(created.error.message || "Please add money to continue.");
           setShowAddMoneyPrompt(true);
         } else {
           setErrorMessage(created.error.message || "Unable to create chat session.");
@@ -387,12 +387,13 @@ export default function ChatPage() {
   }, [session?.id]);
 
   useEffect(() => {
-    const freeSeconds = session?.reward?.freeSeconds ?? null;
+    const maxAllowedSeconds =
+      session?.billingLimit?.maxAllowedSeconds ??
+      (session?.reward?.shouldAutoEndAtFreeLimit ? session.reward.freeSeconds : null);
     if (
       !session?.id ||
       session.status !== "LIVE" ||
-      !session.reward?.shouldAutoEndAtFreeLimit ||
-      !freeSeconds ||
+      !maxAllowedSeconds ||
       isEndingSession
     ) {
       return;
@@ -402,10 +403,11 @@ export default function ChatPage() {
     const baseMs = baseTime ? new Date(baseTime).getTime() : Number.NaN;
     if (Number.isNaN(baseMs)) return;
     const elapsed = Math.max(0, Math.floor((clockNow - baseMs) / 1000));
-    if (elapsed < freeSeconds || autoEndedRewardRef.current) return;
+
+    if (elapsed < maxAllowedSeconds || autoEndedRewardRef.current) return;
 
     autoEndedRewardRef.current = true;
-    setSessionEndNotice("Your free chat time is over. Please add money to continue.");
+    setSessionEndNotice("Your available balance is over. Please add money to continue.");
     setIsEndingSession(true);
 
     void (async () => {
@@ -415,7 +417,7 @@ export default function ChatPage() {
           setSession(response.data);
           return;
         }
-        setMessageError(response.error?.message || "Your free chat time is over. Please add money to continue.");
+        setMessageError(response.error?.message || "Your available balance is over. Please add money to continue.");
       } finally {
         setIsEndingSession(false);
       }
@@ -424,6 +426,7 @@ export default function ChatPage() {
     clockNow,
     isEndingSession,
     session?.acceptedAt,
+    session?.billingLimit?.maxAllowedSeconds,
     session?.id,
     session?.liveStartedAt,
     session?.reward?.freeSeconds,
@@ -745,6 +748,20 @@ export default function ChatPage() {
   const baseMs = baseTime ? new Date(baseTime).getTime() : Number.NaN;
   const elapsedSeconds = Number.isNaN(baseMs) ? 0 : Math.max(0, Math.floor((clockNow - baseMs) / 1000));
   const timerLabel = `${String(Math.floor(elapsedSeconds / 60)).padStart(2, "0")}:${String(elapsedSeconds % 60).padStart(2, "0")}`;
+  const prepaidMaxAllowedSeconds =
+    session.billingLimit?.maxAllowedSeconds ??
+    (session.reward?.shouldAutoEndAtFreeLimit ? session.reward.freeSeconds : null);
+  const prepaidWarningAtSeconds =
+    prepaidMaxAllowedSeconds && prepaidMaxAllowedSeconds > 0
+      ? session.billingLimit?.warningAtSeconds ?? Math.max(0, prepaidMaxAllowedSeconds - 30)
+      : null;
+  const balanceWarning =
+    prepaidMaxAllowedSeconds &&
+    prepaidWarningAtSeconds !== null &&
+    elapsedSeconds >= prepaidWarningAtSeconds &&
+    elapsedSeconds < prepaidMaxAllowedSeconds
+      ? "Your balance is almost over. Add money to continue."
+      : "";
 
   return (
     <main className="h-[100dvh] min-h-[100dvh] overflow-hidden bg-[#eef3f8]">
@@ -752,6 +769,11 @@ export default function ChatPage() {
       {messageError ? (
         <div className="absolute left-1/2 top-3 z-50 -translate-x-1/2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
           {messageError}
+        </div>
+      ) : null}
+      {balanceWarning && !messageError ? (
+        <div className="absolute left-1/2 top-3 z-50 -translate-x-1/2 rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs text-cyan-800">
+          {balanceWarning}
         </div>
       ) : null}
       <ChatScreen

@@ -74,6 +74,7 @@ export default function VideoCallPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [isCancelling, setIsCancelling] = useState(false);
+  const [sessionEndNotice, setSessionEndNotice] = useState("");
   const [clockNow, setClockNow] = useState(() => Date.now());
   const [isMuted, setIsMuted] = useState(false);
   const [isCameraOn, setIsCameraOn] = useState(true);
@@ -124,10 +125,24 @@ export default function VideoCallPage() {
   const localVideoContainerRef = useRef<HTMLDivElement | null>(null);
   const remoteVideoContainerRef = useRef<HTMLDivElement | null>(null);
   const remoteAudioElementRef = useRef<HTMLAudioElement | null>(null);
+  const autoEndedBillingRef = useRef(false);
   const isPending = session?.status === "PENDING";
   useLoopingRingtone({ enabled: isPending, kind: "ringback", volume: 0.06 });
   const isCallLive = Boolean(session?.liveStartedAt);
   const elapsedSeconds = isCallLive ? getElapsedSeconds(session, clockNow) : 0;
+  const prepaidMaxAllowedSeconds = session?.billingLimit?.maxAllowedSeconds ?? null;
+  const prepaidWarningAtSeconds =
+    prepaidMaxAllowedSeconds && prepaidMaxAllowedSeconds > 0
+      ? session?.billingLimit?.warningAtSeconds ?? Math.max(0, prepaidMaxAllowedSeconds - 30)
+      : null;
+  const balanceWarning =
+    (session?.status === "LIVE" || session?.status === "ACCEPTED") &&
+    prepaidMaxAllowedSeconds &&
+    prepaidWarningAtSeconds !== null &&
+    elapsedSeconds >= prepaidWarningAtSeconds &&
+    elapsedSeconds < prepaidMaxAllowedSeconds
+      ? "Your balance is almost over. Add money to continue."
+      : "";
 
   const notifyMediaReady = useCallback(async () => {
     if (!session?.id) return;
@@ -771,6 +786,41 @@ export default function VideoCallPage() {
     }
   }, [cleanupAgora, isCancelling, session?.id]);
 
+  useEffect(() => {
+    const maxAllowedSeconds = session?.billingLimit?.maxAllowedSeconds ?? null;
+    if (!session?.id || (session.status !== "LIVE" && session.status !== "ACCEPTED") || !maxAllowedSeconds || isCancelling) {
+      return;
+    }
+
+    if (elapsedSeconds < maxAllowedSeconds || autoEndedBillingRef.current) return;
+
+    autoEndedBillingRef.current = true;
+    setSessionEndNotice("Your available balance is over. Please add money to continue.");
+    setIsCancelling(true);
+
+    void (async () => {
+      try {
+        const responsePromise = endSession(session.id);
+        await cleanupAgora();
+        const response = await responsePromise;
+        if (response.data) {
+          setSession(response.data);
+          return;
+        }
+        setError(response.error?.message || "Your available balance is over. Please add money to continue.");
+      } finally {
+        setIsCancelling(false);
+      }
+    })();
+  }, [
+    cleanupAgora,
+    elapsedSeconds,
+    isCancelling,
+    session?.billingLimit?.maxAllowedSeconds,
+    session?.id,
+    session?.status,
+  ]);
+
   const navigateAfterExit = useCallback(() => {
     router.push("/connect-now");
   }, [router]);
@@ -819,7 +869,9 @@ export default function VideoCallPage() {
       <main className="flex h-[100dvh] min-h-[100dvh] items-center justify-center bg-[#0b1224] p-4 text-white">
         <div className="w-full max-w-md rounded-2xl border border-white/20 bg-white/10 p-6 text-center">
           <p className="text-base font-semibold">This call has ended.</p>
-          <p className="mt-2 text-xs text-cyan-100">Session ended. Redirecting to Connect Now...</p>
+          <p className="mt-2 text-xs text-cyan-100">
+            {sessionEndNotice || "Session ended. Redirecting to Connect Now..."}
+          </p>
           <button
             type="button"
             onClick={() => router.push("/connect-now")}
@@ -878,6 +930,11 @@ export default function VideoCallPage() {
         {error ? (
           <p className="mb-3 rounded-xl border border-amber-300/80 bg-amber-100/15 px-3 py-2 text-xs text-amber-100">
             {error}
+          </p>
+        ) : null}
+        {balanceWarning ? (
+          <p className="mb-3 rounded-xl border border-cyan-300/70 bg-cyan-100/15 px-3 py-2 text-xs text-cyan-100">
+            {balanceWarning}
           </p>
         ) : null}
         {cameraSwitchMessage ? (
