@@ -17,6 +17,7 @@ type ConnectCompanionCardProps = {
 };
 
 const MIN_CHAT_WALLET_BALANCE = 50;
+const USE_CLIENT_WALLET_PRECHECK = false;
 
 function Initials({ name }: { name: string }) {
   const text = (name || "Verified Partner")
@@ -41,6 +42,18 @@ function safeNumber(value: unknown) {
 function safeStringArray(value: unknown) {
   if (!Array.isArray(value)) return [];
   return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+}
+
+function getStatusDotClass(status: string) {
+  if (status === "BUSY") return "bg-amber-400 shadow-[0_0_0_3px_rgba(251,191,36,0.2)]";
+  if (status === "ONLINE") return "bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.18)]";
+  return "bg-[#96a2b1]";
+}
+
+function getStatusBadgeClass(status: string) {
+  if (status === "BUSY") return "bg-amber-50 text-amber-700";
+  if (status === "ONLINE") return "bg-emerald-50 text-emerald-700";
+  return "bg-slate-100 text-slate-700";
 }
 
 function ActionPriceButton({
@@ -137,7 +150,7 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
       return;
     }
 
-    if (serviceType === "chat") {
+    if (USE_CLIENT_WALLET_PRECHECK && serviceType === "chat") {
       const walletResponse = await getWallet();
       if (walletResponse.error) {
         setActionError(walletResponse.error.message || "Unable to verify wallet balance right now.");
@@ -180,6 +193,12 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
     }
 
     if (sessionResponse.error?.code === "INSUFFICIENT_WALLET_BALANCE") {
+      setActionError(sessionResponse.error.message || "Please add money to continue.");
+      setShowAddMoneyPrompt(true);
+      return;
+    }
+
+    if (USE_CLIENT_WALLET_PRECHECK && sessionResponse.error?.code === "INSUFFICIENT_WALLET_BALANCE") {
       setActionError("Minimum ₹50 wallet balance is required to start a chat.");
       setShowAddMoneyPrompt(true);
       return;
@@ -225,9 +244,7 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
             <Initials name={name} />
           )}
           <span
-            className={`absolute -bottom-1 right-1 h-3.5 w-3.5 rounded-full border-2 border-[#f5f7fa] ${
-              status === "ONLINE" ? "bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.18)]" : "bg-[#96a2b1]"
-            }`}
+            className={`absolute -bottom-1 right-1 h-3.5 w-3.5 rounded-full border-2 border-[#f5f7fa] ${getStatusDotClass(status)}`}
           />
         </div>
 
@@ -240,8 +257,8 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
               </h3>
               <p className="mt-0.5 line-clamp-1 text-[13px] leading-4 text-[#637382]">{tagline}</p>
             </div>
-            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#e6e9ee] px-2 py-0.5 text-[11px] font-medium text-[#4f5c69]">
-              <span className="h-2.5 w-2.5 rounded-full bg-[#9ba8b6]" />
+            <span className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${getStatusBadgeClass(status)}`}>
+              <span className={`h-2.5 w-2.5 rounded-full ${getStatusDotClass(status)}`} />
               {status === "ONLINE" ? "Online" : status === "BUSY" ? "Busy" : "Offline"}
             </span>
           </div>

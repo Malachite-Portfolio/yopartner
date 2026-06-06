@@ -5,7 +5,6 @@ import type { ComponentType } from "react";
 import { BarChart3, CheckCircle2, MessageSquareText, PhoneCall, RefreshCw, Video, Wallet } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createBooking } from "@/lib/api/bookings";
 import { createSession } from "@/lib/api/sessions";
 import { getWallet } from "@/lib/api/wallet";
 import { requestAudioPermission, requestVideoPermission } from "@/lib/agora";
@@ -37,6 +36,7 @@ type SessionOption = {
 };
 
 const MIN_CHAT_WALLET_BALANCE = 50;
+const USE_PROFILE_CLIENT_WALLET_PRECHECK = false;
 
 function SessionCard({
   option,
@@ -154,7 +154,7 @@ export function ProfileBookingPanel({ companion, initialType }: ProfileBookingPa
       router.push(`/home-visit/${companion.id}?booking=1`);
       return;
     }
-    if (!hasSufficientBalance) {
+    if (USE_PROFILE_CLIENT_WALLET_PRECHECK && !hasSufficientBalance) {
       if (selectedType === "chat") {
         setActionMessage("Minimum ₹50 wallet balance is required to start a chat.");
         setShowAddMoneyPrompt(true);
@@ -188,19 +188,9 @@ export function ProfileBookingPanel({ companion, initialType }: ProfileBookingPa
         }
       }
 
-      const response = await createBooking({
-        companionId: companion.id,
-        serviceType: selectedType,
-      });
-      if (response.error) {
-        setActionMessage(response.error.message || "Unable to create booking right now. Please try again.");
-        return;
-      }
-
       const sessionResponse = await createSession({
         companionId: companion.id,
         serviceType: selectedType,
-        bookingId: response.data?.booking.id,
       });
 
       if (sessionResponse.error?.status === 401) {
@@ -321,7 +311,7 @@ export function ProfileBookingPanel({ companion, initialType }: ProfileBookingPa
               <p className="mt-4 text-[32px] font-semibold leading-none">
                 {formatINR(walletBalance)} <span className="text-base font-medium text-[#8490a4]">available</span>
               </p>
-              {!hasSufficientBalance ? (
+              {USE_PROFILE_CLIENT_WALLET_PRECHECK && !hasSufficientBalance ? (
                 <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4">
                   <p className="font-semibold text-red-700">Insufficient Balance</p>
                   {selectedType === "chat" ? (
@@ -362,11 +352,17 @@ export function ProfileBookingPanel({ companion, initialType }: ProfileBookingPa
 
         <button
           type="button"
-          disabled={authChecked && loggedIn && !hasSufficientBalance}
+          disabled={USE_PROFILE_CLIENT_WALLET_PRECHECK && authChecked && loggedIn && !hasSufficientBalance}
           onClick={handlePrimaryAction}
           className="mt-6 h-14 w-full rounded-xl bg-emerald-600 text-base font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-70"
         >
-          {!authChecked ? "Checking..." : loggedIn && !hasSufficientBalance ? "Insufficient Balance" : loggedIn ? primaryActionLabel : "Login to Continue"}
+          {!authChecked
+            ? "Checking..."
+            : USE_PROFILE_CLIENT_WALLET_PRECHECK && loggedIn && !hasSufficientBalance
+              ? "Insufficient Balance"
+              : loggedIn
+                ? primaryActionLabel
+                : "Login to Continue"}
         </button>
       </section>
 
