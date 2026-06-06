@@ -113,7 +113,7 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
   const chatPrice = hasChat ? CHAT_RATE_PER_MIN : undefined;
   const voicePrice = hasAudio ? AUDIO_RATE_PER_MIN : undefined;
   const videoPrice = hasVideo ? VIDEO_RATE_PER_MIN : undefined;
-  const status = companion.effectiveStatus ?? (companion.isBusy ? "BUSY" : companion.online ? "ONLINE" : "OFFLINE");
+  const status = String(companion.effectiveStatus ?? (companion.isBusy ? "BUSY" : companion.online ? "ONLINE" : "OFFLINE")).toUpperCase();
   const isBusy = status === "BUSY";
   const profileUrl = `/connect-now/${companion.id}`;
   const rawMetaChips = [
