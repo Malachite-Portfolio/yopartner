@@ -26,11 +26,11 @@ export default function HomePage() {
         <div className="absolute inset-x-0 top-0 h-[30%] bg-[linear-gradient(180deg,rgba(255,255,255,0.68)_0%,rgba(255,255,255,0.28)_48%,rgba(255,255,255,0)_100%)]" />
 
         <div className="relative z-10 mx-auto flex min-h-[640px] w-full max-w-[1180px] flex-col items-center px-4 pt-8 text-center sm:min-h-[720px] sm:px-6 sm:pt-10 lg:min-h-[760px] lg:px-8">
-          <div className="mx-auto max-w-[1040px]">
-            <h1 className="text-[1.65rem] font-semibold leading-[1.14] text-black drop-shadow-[0_1px_18px_rgba(255,255,255,0.78)] sm:text-[2.25rem] lg:whitespace-nowrap lg:text-[2.55rem]">
+          <div className="mx-auto max-w-[1040px] rounded-[24px] bg-white/55 px-5 py-4 shadow-[0_14px_36px_rgba(15,23,42,0.08)] backdrop-blur-sm sm:px-7 sm:py-5 lg:px-9">
+            <h1 className="text-[1.35rem] font-semibold leading-[1.16] text-black drop-shadow-[0_1px_14px_rgba(255,255,255,0.72)] sm:text-[1.85rem] lg:whitespace-nowrap lg:text-[2.15rem]">
               You Don&apos;t Have To Go Through It Alone.
             </h1>
-            <p className="mt-2 text-[1.65rem] font-medium leading-tight text-black drop-shadow-[0_1px_16px_rgba(255,255,255,0.78)] sm:text-[2rem] lg:text-[2.35rem]">
+            <p className="mt-2 text-[1.22rem] font-medium leading-tight text-black drop-shadow-[0_1px_12px_rgba(255,255,255,0.72)] sm:text-[1.5rem] lg:text-[1.75rem]">
               Hum Hai Na...
             </p>
           </div>
