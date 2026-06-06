@@ -26,8 +26,8 @@ export default function HomePage() {
         <div className="absolute inset-x-0 top-0 h-[30%] bg-[linear-gradient(180deg,rgba(255,255,255,0.68)_0%,rgba(255,255,255,0.28)_48%,rgba(255,255,255,0)_100%)]" />
 
         <div className="relative z-10 mx-auto flex min-h-[640px] w-full max-w-[1180px] flex-col items-center px-4 pt-8 text-center sm:min-h-[720px] sm:px-6 sm:pt-10 lg:min-h-[760px] lg:px-8">
-          <div className="mx-auto max-w-[820px]">
-            <h1 className="text-[1.9rem] font-semibold leading-[1.14] text-black drop-shadow-[0_1px_18px_rgba(255,255,255,0.78)] sm:text-[2.45rem] lg:text-[2.85rem]">
+          <div className="mx-auto max-w-[1040px]">
+            <h1 className="text-[1.65rem] font-semibold leading-[1.14] text-black drop-shadow-[0_1px_18px_rgba(255,255,255,0.78)] sm:text-[2.25rem] lg:whitespace-nowrap lg:text-[2.55rem]">
               You Don&apos;t Have To Go Through It Alone.
             </h1>
             <p className="mt-2 text-[1.65rem] font-medium leading-tight text-black drop-shadow-[0_1px_16px_rgba(255,255,255,0.78)] sm:text-[2rem] lg:text-[2.35rem]">
@@ -37,7 +37,7 @@ export default function HomePage() {
 
           <Link
             href="/connect-now"
-            className="mt-52 inline-flex min-h-12 items-center justify-center rounded-full bg-[#0969f4] px-7 py-3 text-base font-semibold !text-white shadow-[0_14px_26px_rgba(9,105,244,0.28)] transition hover:-translate-y-0.5 hover:bg-[#075bd2] focus:outline-none focus:ring-4 focus:ring-[#0969f4]/25 sm:mt-64 sm:min-h-14 sm:px-10 sm:text-lg lg:mt-72"
+            className="mt-56 inline-flex min-h-12 items-center justify-center rounded-full bg-[#0969f4] px-7 py-3 text-base font-semibold !text-white shadow-[0_14px_26px_rgba(9,105,244,0.28)] transition hover:-translate-y-0.5 hover:bg-[#075bd2] focus:outline-none focus:ring-4 focus:ring-[#0969f4]/25 sm:mt-72 sm:min-h-14 sm:px-10 sm:text-lg lg:mt-80"
           >
             Talk Now – Starts at ₹5/min
           </Link>
