@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { IncomingRequestScreen } from "@/components/partner/IncomingRequestScreen";
+import { hasRingtoneUnlockPreference, unlockRingtoneAudio } from "@/hooks/useLoopingRingtone";
 import { requestAudioPermission, requestVideoPermission } from "@/lib/agora";
 import {
   acceptPartnerRequest,
@@ -55,6 +56,8 @@ const lockedState: PartnerApprovalState = {
   verificationStatus: "PENDING",
   reviewStatus: "under_review",
 };
+
+const PARTNER_NOTIFICATION_PREF_KEY = "yopartner_partner_notifications_enabled";
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
@@ -116,6 +119,28 @@ function getIncomingNotificationTitle(type: PartnerIncomingRequest["type"]) {
   return "Incoming chat request";
 }
 
+function getStoredBoolean(key: string) {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(key) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function setStoredBoolean(key: string, value: boolean) {
+  if (typeof window === "undefined") return;
+  try {
+    if (value) {
+      window.localStorage.setItem(key, "1");
+    } else {
+      window.localStorage.removeItem(key);
+    }
+  } catch {
+    // Preferences are best-effort; alerts continue to work for this tab.
+  }
+}
+
 function maskMemberLabel(value: string) {
   const digits = value.replace(/\D/g, "");
   if (digits.length >= 4) return `+91******${digits.slice(-4)}`;
@@ -135,9 +160,15 @@ export default function PartnerDashboardPage() {
   const [statusMessage, setStatusMessage] = useState("");
   const [availabilityError, setAvailabilityError] = useState("");
   const [requestMessage, setRequestMessage] = useState("");
+  const [alertSetupMessage, setAlertSetupMessage] = useState("");
   const [requestAction, setRequestAction] = useState<"accept" | "decline" | null>(null);
   const [availabilityActionPending, setAvailabilityActionPending] = useState(false);
   const [endingSessionId, setEndingSessionId] = useState<string | null>(null);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(() =>
+    getStoredBoolean(PARTNER_NOTIFICATION_PREF_KEY) ||
+    (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted"),
+  );
+  const [ringtoneEnabled, setRingtoneEnabled] = useState(hasRingtoneUnlockPreference);
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | "unsupported">(() => {
     if (typeof window === "undefined" || !("Notification" in window)) return "unsupported";
     return Notification.permission;
@@ -147,9 +178,9 @@ export default function PartnerDashboardPage() {
   const isApproved = isPartnerApproved(approvalState);
   const labels = getPartnerApprovalLabel(approvalState);
   const overlayRequest = useMemo(() => {
-    if (!isApproved) return null;
+    if (!isApproved || !online) return null;
     return pendingRequests[0] ?? null;
-  }, [isApproved, pendingRequests]);
+  }, [isApproved, online, pendingRequests]);
 
   const loadDashboard = useCallback(async () => {
     const [approval, dashboardResponse] = await Promise.all([
@@ -277,23 +308,57 @@ export default function PartnerDashboardPage() {
     if (notifiedRequestIdsRef.current.has(overlayRequest.id)) return;
     notifiedRequestIdsRef.current.add(overlayRequest.id);
 
-    const notification = new Notification(getIncomingNotificationTitle(overlayRequest.type), {
-      body: `${maskMemberLabel(overlayRequest.memberLabel)} is waiting for a ${formatRequestType(overlayRequest.type).toLowerCase()} session.`,
-      tag: `yopartner-request-${overlayRequest.id}`,
-    });
-    notification.onclick = () => {
-      window.focus();
-      notification.close();
-    };
+    try {
+      const notification = new Notification(getIncomingNotificationTitle(overlayRequest.type), {
+        body: "Tap to open YoPartner dashboard",
+        tag: `yopartner-request-${overlayRequest.id}`,
+      });
+      notification.onclick = () => {
+        window.focus();
+        notification.close();
+      };
+    } catch {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("[partner-alerts] Browser notification could not be shown.");
+      }
+    }
   }, [notificationPermission, overlayRequest]);
 
-  const handleEnableNotifications = async () => {
+  const handleEnableAlerts = async () => {
+    setAlertSetupMessage("");
+
+    let nextPermission = notificationPermission;
     if (typeof window === "undefined" || !("Notification" in window)) {
+      nextPermission = "unsupported";
       setNotificationPermission("unsupported");
+    } else {
+      nextPermission = Notification.permission;
+      if (nextPermission === "default") {
+        nextPermission = await Notification.requestPermission();
+      }
+      setNotificationPermission(nextPermission);
+      if (nextPermission === "granted") {
+        setNotificationsEnabled(true);
+        setStoredBoolean(PARTNER_NOTIFICATION_PREF_KEY, true);
+      }
+    }
+
+    const ringtoneReady = await unlockRingtoneAudio("incoming");
+    setRingtoneEnabled(ringtoneReady || hasRingtoneUnlockPreference());
+
+    if (nextPermission === "denied" && ringtoneReady) {
+      setAlertSetupMessage("Notifications are blocked. Ringtone alerts are enabled while this dashboard is open.");
       return;
     }
-    const permission = await Notification.requestPermission();
-    setNotificationPermission(permission);
+    if (nextPermission === "unsupported" && ringtoneReady) {
+      setAlertSetupMessage("This browser does not support notifications. Ringtone alerts are enabled while the dashboard is open.");
+      return;
+    }
+    if (!ringtoneReady) {
+      setAlertSetupMessage("Tap to enable ringtone again if your browser blocks audio until a stronger gesture.");
+      return;
+    }
+    setAlertSetupMessage("Notifications and ringtone alerts are enabled for this dashboard.");
   };
 
   const toggleOnline = async () => {
@@ -389,7 +454,11 @@ export default function PartnerDashboardPage() {
         request={overlayRequest}
         accepting={requestAction === "accept"}
         declining={requestAction === "decline"}
+        ringtoneEnabled={ringtoneEnabled}
         message={requestMessage}
+        onEnableRingtone={() => {
+          void handleEnableAlerts();
+        }}
         onAccept={() => {
           void handleAccept();
         }}
@@ -439,16 +508,22 @@ export default function PartnerDashboardPage() {
             ) : null}
             {statusMessage ? <p className="mt-3 text-xs text-slate-500">{statusMessage}</p> : null}
             {availabilityError ? <p className="mt-3 text-xs font-medium text-rose-600">{availabilityError}</p> : null}
-            {isApproved && notificationPermission === "default" ? (
-              <button
-                type="button"
-                onClick={() => {
-                  void handleEnableNotifications();
-                }}
-                className="mt-3 rounded-full border border-[#dceae5] bg-white px-3 py-1.5 text-xs font-semibold text-[#0f766e] hover:bg-[#f2fbf8]"
-              >
-                Enable notifications
-              </button>
+            {alertSetupMessage ? <p className="mt-3 text-xs text-slate-500">{alertSetupMessage}</p> : null}
+            {isApproved && ((notificationPermission === "default" && !notificationsEnabled) || !ringtoneEnabled) ? (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    void handleEnableAlerts();
+                  }}
+                  className="rounded-full border border-[#dceae5] bg-white px-3 py-1.5 text-xs font-semibold text-[#0f766e] hover:bg-[#f2fbf8]"
+                >
+                  Enable notifications
+                </button>
+                {!ringtoneEnabled ? (
+                  <span className="text-xs text-slate-500">Also enables the incoming request ringtone.</span>
+                ) : null}
+              </div>
             ) : null}
             {isApproved && notificationPermission === "denied" ? (
               <p className="mt-3 text-xs text-slate-500">Browser notifications are blocked in this browser.</p>

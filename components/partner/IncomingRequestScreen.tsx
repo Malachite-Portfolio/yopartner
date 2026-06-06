@@ -9,7 +9,9 @@ type IncomingRequestScreenProps = {
   request: PartnerIncomingRequest | null;
   accepting: boolean;
   declining: boolean;
+  ringtoneEnabled: boolean;
   message?: string;
+  onEnableRingtone: () => void;
   onAccept: () => void;
   onDecline: () => void;
 };
@@ -45,7 +47,9 @@ export function IncomingRequestScreen({
   request,
   accepting,
   declining,
+  ringtoneEnabled,
   message,
+  onEnableRingtone,
   onAccept,
   onDecline,
 }: IncomingRequestScreenProps) {
@@ -55,7 +59,7 @@ export function IncomingRequestScreen({
   const title = request ? toRequestTitle(request.type) : "";
   const isChat = request?.type === "CHAT";
   const initials = memberLabel.slice(-2).toUpperCase() || "MB";
-  useLoopingRingtone({ enabled: open, kind: "incoming", volume: 0.08 });
+  useLoopingRingtone({ enabled: open && ringtoneEnabled && !accepting && !declining, kind: "incoming", volume: 0.08 });
 
   useEffect(() => {
     if (!open) return;
@@ -88,6 +92,15 @@ export function IncomingRequestScreen({
 
           {message ? (
             <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">{message}</p>
+          ) : null}
+          {!ringtoneEnabled ? (
+            <button
+              type="button"
+              onClick={onEnableRingtone}
+              className="mt-3 min-h-11 w-full rounded-xl border border-[#99d8cf] bg-white px-3 py-2 text-sm font-semibold text-[#0f766e]"
+            >
+              Tap to enable ringtone
+            </button>
           ) : null}
 
           <div className="mt-3 grid grid-cols-2 gap-3">
@@ -141,6 +154,15 @@ export function IncomingRequestScreen({
           <p className="mb-3 w-full rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-center text-xs text-amber-700">
             {message}
           </p>
+        ) : null}
+        {!ringtoneEnabled ? (
+          <button
+            type="button"
+            onClick={onEnableRingtone}
+            className="mb-3 min-h-11 w-full rounded-xl border border-[#99d8cf] bg-white/90 px-3 py-2 text-sm font-semibold text-[#0f766e]"
+          >
+            Tap to enable ringtone
+          </button>
         ) : null}
 
         <div className="shrink-0 rounded-[24px] border border-white/70 bg-white/80 p-3 shadow-[0_18px_42px_rgba(15,23,42,0.2)] backdrop-blur">

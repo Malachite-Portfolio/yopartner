@@ -10,6 +10,8 @@ type RingtoneOptions = {
   volume?: number;
 };
 
+export const RINGTONE_UNLOCK_STORAGE_KEY = "yopartner_ringtone_unlocked";
+
 const RINGTONE_SOURCES: Record<ToneKind, string> = {
   ringback: "/sounds/outgoing-ringback.wav",
   incoming: "/sounds/incoming-ringtone.wav",
@@ -22,12 +24,61 @@ const MIN_AUDIBLE_VOLUME: Record<ToneKind, number> = {
 
 let activeAudio: HTMLAudioElement | null = null;
 let activeOwner: symbol | null = null;
+let ringtoneUnlocked = false;
 
 function cleanupAudio(audio: HTMLAudioElement) {
   audio.pause();
   audio.currentTime = 0;
   audio.src = "";
   audio.load();
+}
+
+function saveRingtoneUnlockPreference() {
+  ringtoneUnlocked = true;
+  try {
+    window.localStorage.setItem(RINGTONE_UNLOCK_STORAGE_KEY, "1");
+  } catch {
+    // Local storage can be disabled; the in-memory unlock still helps this tab.
+  }
+}
+
+export function hasRingtoneUnlockPreference() {
+  if (ringtoneUnlocked) return true;
+  if (typeof window === "undefined") return false;
+  try {
+    ringtoneUnlocked = window.localStorage.getItem(RINGTONE_UNLOCK_STORAGE_KEY) === "1";
+  } catch {
+    ringtoneUnlocked = false;
+  }
+  return ringtoneUnlocked;
+}
+
+export async function unlockRingtoneAudio(kind: ToneKind = "incoming") {
+  if (typeof window === "undefined") return false;
+
+  const AudioContextCtor =
+    window.AudioContext ?? (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+
+  try {
+    if (AudioContextCtor) {
+      const context = new AudioContextCtor();
+      if (context.state === "suspended") {
+        await context.resume();
+      }
+      await context.close().catch(() => undefined);
+    }
+
+    const audio = new Audio(RINGTONE_SOURCES[kind]);
+    audio.preload = "auto";
+    audio.muted = true;
+    audio.volume = 0;
+    await audio.play();
+    cleanupAudio(audio);
+    saveRingtoneUnlockPreference();
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function useLoopingRingtone({ enabled, kind = "incoming", volume = 0.08 }: RingtoneOptions) {
