@@ -84,6 +84,23 @@ export type PartnerPayoutsPayload = {
   payouts: Record<string, unknown>[];
 };
 
+export type PartnerPushStatusPayload = {
+  enabled: boolean;
+  configured: boolean;
+  publicKey: string | null;
+  activeSubscriptions: number;
+};
+
+export type SerializedPushSubscription = {
+  endpoint: string;
+  expirationTime?: number | null;
+  keys: {
+    p256dh: string;
+    auth: string;
+  };
+  userAgent?: string;
+};
+
 export async function submitPartnerApplication(payload: Record<string, unknown>) {
   return apiRequest<{ success: boolean; message?: string }>("/api/partner/applications", {
     method: "POST",
@@ -168,6 +185,38 @@ export async function requestPartnerPayout(payload: { amount: number; note?: str
   });
   if (result.error) return { data: null, error: result.error };
   return { data: result.data ?? null, error: null };
+}
+
+export async function getPartnerPushNotificationStatus() {
+  const result = await apiRequest<PartnerPushStatusPayload>("/api/notifications/status");
+  if (result.error) return { data: null, error: result.error };
+  return {
+    data: {
+      enabled: Boolean(result.data?.enabled),
+      configured: Boolean(result.data?.configured),
+      publicKey: result.data?.publicKey ?? null,
+      activeSubscriptions: Number(result.data?.activeSubscriptions ?? 0),
+    },
+    error: null,
+  };
+}
+
+export async function savePartnerPushSubscription(payload: SerializedPushSubscription) {
+  const result = await apiRequest<{ message?: string }>("/api/notifications/push-subscriptions", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  if (result.error) return { data: null, error: result.error };
+  return { data: result.data ?? {}, error: null };
+}
+
+export async function deletePartnerPushSubscription(endpoint?: string) {
+  const result = await apiRequest<{ revoked: number; message?: string }>("/api/notifications/push-subscriptions", {
+    method: "DELETE",
+    body: JSON.stringify(endpoint ? { endpoint } : {}),
+  });
+  if (result.error) return { data: null, error: result.error };
+  return { data: result.data ?? { revoked: 0 }, error: null };
 }
 
 export async function getPartnerRequests() {

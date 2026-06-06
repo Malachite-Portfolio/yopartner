@@ -8,6 +8,7 @@ import { requestAudioPermission, requestVideoPermission } from "@/lib/agora";
 import {
   acceptPartnerRequest,
   declinePartnerRequest,
+  getPartnerPushNotificationStatus,
   heartbeatPartnerPresence,
   getPartnerDashboard,
   markPartnerPresenceOffline,
@@ -30,6 +31,12 @@ import {
   setPartnerOnlineStatus,
 } from "@/lib/partnerAuth";
 import { defaultPartnerProfile, type PartnerProfile } from "@/lib/partnerData";
+import {
+  disablePartnerPushNotifications,
+  enablePartnerPushNotifications,
+  isPartnerPushFeatureEnabled,
+  isPushNotificationSupported,
+} from "@/lib/pushNotifications";
 
 type DashboardStats = {
   peopleSupportedToday: number;
@@ -58,6 +65,7 @@ const lockedState: PartnerApprovalState = {
 };
 
 const PARTNER_NOTIFICATION_PREF_KEY = "yopartner_partner_notifications_enabled";
+const PARTNER_PUSH_FEATURE_ENABLED = isPartnerPushFeatureEnabled();
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
@@ -169,6 +177,10 @@ export default function PartnerDashboardPage() {
     (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted"),
   );
   const [ringtoneEnabled, setRingtoneEnabled] = useState(hasRingtoneUnlockPreference);
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushPublicKey, setPushPublicKey] = useState<string | null>(null);
+  const [pushActionPending, setPushActionPending] = useState(false);
+  const [pushSetupMessage, setPushSetupMessage] = useState("");
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | "unsupported">(() => {
     if (typeof window === "undefined" || !("Notification" in window)) return "unsupported";
     return Notification.permission;
@@ -177,6 +189,7 @@ export default function PartnerDashboardPage() {
 
   const isApproved = isPartnerApproved(approvalState);
   const labels = getPartnerApprovalLabel(approvalState);
+  const pushSupported = PARTNER_PUSH_FEATURE_ENABLED && isPushNotificationSupported();
   const overlayRequest = useMemo(() => {
     if (!isApproved || !online) return null;
     return pendingRequests[0] ?? null;
@@ -304,6 +317,28 @@ export default function PartnerDashboardPage() {
   }, [isApproved, online]);
 
   useEffect(() => {
+    if (!isApproved || !PARTNER_PUSH_FEATURE_ENABLED || !pushSupported) return;
+
+    let cancelled = false;
+    void getPartnerPushNotificationStatus().then((response) => {
+      if (cancelled) return;
+      if (response.error) {
+        setPushSetupMessage(response.error.message || "Could not check push notification status.");
+        return;
+      }
+      setPushPublicKey(response.data?.publicKey ?? null);
+      setPushEnabled(Boolean(response.data?.configured && response.data.activeSubscriptions > 0));
+      if (response.data && !response.data.configured) {
+        setPushSetupMessage("Closed-browser push is not configured yet.");
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isApproved, pushSupported]);
+
+  useEffect(() => {
     if (!overlayRequest || notificationPermission !== "granted") return;
     if (notifiedRequestIdsRef.current.has(overlayRequest.id)) return;
     notifiedRequestIdsRef.current.add(overlayRequest.id);
@@ -359,6 +394,33 @@ export default function PartnerDashboardPage() {
       return;
     }
     setAlertSetupMessage("Notifications and ringtone alerts are enabled for this dashboard.");
+  };
+
+  const handleEnablePush = async () => {
+    if (pushActionPending) return;
+    setPushSetupMessage("");
+    setPushActionPending(true);
+    const result = await enablePartnerPushNotifications(pushPublicKey);
+    setPushActionPending(false);
+    setPushSetupMessage(result.message);
+    if (result.permission && result.permission !== "unsupported") {
+      setNotificationPermission(result.permission);
+    }
+    if (result.ok) {
+      setPushEnabled(true);
+    }
+  };
+
+  const handleDisablePush = async () => {
+    if (pushActionPending) return;
+    setPushSetupMessage("");
+    setPushActionPending(true);
+    const result = await disablePartnerPushNotifications();
+    setPushActionPending(false);
+    setPushSetupMessage(result.message);
+    if (result.ok) {
+      setPushEnabled(false);
+    }
   };
 
   const toggleOnline = async () => {
@@ -509,6 +571,10 @@ export default function PartnerDashboardPage() {
             {statusMessage ? <p className="mt-3 text-xs text-slate-500">{statusMessage}</p> : null}
             {availabilityError ? <p className="mt-3 text-xs font-medium text-rose-600">{availabilityError}</p> : null}
             {alertSetupMessage ? <p className="mt-3 text-xs text-slate-500">{alertSetupMessage}</p> : null}
+            {pushSetupMessage ? <p className="mt-3 text-xs text-slate-500">{pushSetupMessage}</p> : null}
+            {isApproved && PARTNER_PUSH_FEATURE_ENABLED && !pushSupported ? (
+              <p className="mt-3 text-xs text-slate-500">Closed-browser push is not supported by this browser.</p>
+            ) : null}
             {isApproved && ((notificationPermission === "default" && !notificationsEnabled) || !ringtoneEnabled) ? (
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <button
@@ -523,6 +589,25 @@ export default function PartnerDashboardPage() {
                 {!ringtoneEnabled ? (
                   <span className="text-xs text-slate-500">Also enables the incoming request ringtone.</span>
                 ) : null}
+              </div>
+            ) : null}
+            {isApproved && PARTNER_PUSH_FEATURE_ENABLED ? (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    void (pushEnabled ? handleDisablePush() : handleEnablePush());
+                  }}
+                  disabled={pushActionPending || !pushSupported}
+                  className="rounded-full border border-[#dceae5] bg-white px-3 py-1.5 text-xs font-semibold text-[#0f766e] hover:bg-[#f2fbf8] disabled:cursor-not-allowed disabled:text-slate-400"
+                >
+                  {pushActionPending
+                    ? "Updating push..."
+                    : pushEnabled
+                      ? "Disable push notifications"
+                      : "Enable push notifications"}
+                </button>
+                <span className="text-xs text-slate-500">For closed or inactive browser alerts where supported.</span>
               </div>
             ) : null}
             {isApproved && notificationPermission === "denied" ? (

@@ -74,6 +74,7 @@ function isBackendManagedApiPath(path: string) {
     path.startsWith("/api/reviews") ||
     path.startsWith("/api/users") ||
     path.startsWith("/api/lucky-wheel") ||
+    path.startsWith("/api/notifications") ||
     path.startsWith("/api/partner") ||
     path.startsWith("/api/admin")
   );
@@ -129,6 +130,7 @@ function normalizeToken(raw: string | null | undefined) {
 }
 
 function resolveScope(path = ""): AuthScope {
+  if (path.startsWith("/api/notifications")) return "partner";
   if (path.startsWith("/api/partner")) return "partner";
   if (path.startsWith("/api/admin")) return "admin";
   return "user";
