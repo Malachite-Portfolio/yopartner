@@ -26,7 +26,7 @@ export default function HomePage() {
         <div className="absolute inset-x-0 top-0 h-[30%] bg-[linear-gradient(180deg,rgba(255,255,255,0.68)_0%,rgba(255,255,255,0.28)_48%,rgba(255,255,255,0)_100%)]" />
 
         <div className="relative z-10 mx-auto flex min-h-[640px] w-full max-w-[1180px] flex-col items-center px-4 pt-8 text-center sm:min-h-[720px] sm:px-6 sm:pt-10 lg:min-h-[760px] lg:px-8">
-          <div className="mx-auto max-w-[1040px] rounded-[24px] bg-white/55 px-5 py-4 shadow-[0_14px_36px_rgba(15,23,42,0.08)] backdrop-blur-sm sm:px-7 sm:py-5 lg:px-9">
+          <div className="mx-auto max-w-[1040px]">
             <h1 className="text-[1.35rem] font-semibold leading-[1.16] text-black drop-shadow-[0_1px_14px_rgba(255,255,255,0.72)] sm:text-[1.85rem] lg:whitespace-nowrap lg:text-[2.15rem]">
               You Don&apos;t Have To Go Through It Alone.
             </h1>
@@ -37,7 +37,7 @@ export default function HomePage() {
 
           <Link
             href="/connect-now"
-            className="mt-56 inline-flex min-h-12 items-center justify-center rounded-full bg-[#0969f4] px-7 py-3 text-base font-semibold !text-white shadow-[0_14px_26px_rgba(9,105,244,0.28)] transition hover:-translate-y-0.5 hover:bg-[#075bd2] focus:outline-none focus:ring-4 focus:ring-[#0969f4]/25 sm:mt-72 sm:min-h-14 sm:px-10 sm:text-lg lg:mt-80"
+            className="mt-64 inline-flex min-h-12 items-center justify-center rounded-full bg-[#0969f4] px-7 py-3 text-base font-semibold !text-white shadow-[0_14px_26px_rgba(9,105,244,0.28)] transition hover:-translate-y-0.5 hover:bg-[#075bd2] focus:outline-none focus:ring-4 focus:ring-[#0969f4]/25 sm:mt-80 sm:min-h-14 sm:px-10 sm:text-lg lg:mt-[26rem]"
           >
             Talk Now – Starts at ₹5/min
           </Link>
