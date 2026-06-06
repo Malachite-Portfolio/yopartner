@@ -1,7 +1,6 @@
-import { ArrowRight, HeartHandshake, MessageCircleHeart, Quote, ShieldCheck, Sparkles, Users } from "lucide-react";
+import { HeartHandshake, MessageCircleHeart, Quote, ShieldCheck, Sparkles } from "lucide-react";
 import { Outfit } from "next/font/google";
 import Link from "next/link";
-import { ActiveCompanionsCount } from "@/components/home/ActiveCompanionsCount";
 
 const outfit = Outfit({
   subsets: ["latin"],
@@ -9,83 +8,39 @@ const outfit = Outfit({
 });
 
 const statPills = ["ID + Background Verified", "Private by Design", "Secure In-App Sessions"];
-const heroBenefits = [
-  "Chat companionship",
-  "Voice call companionship",
-  "Video companionship",
-  "Home visit companionship",
-];
 
 export default function HomePage() {
   return (
     <div className={`${outfit.variable} overflow-hidden bg-[#FFFDF8] font-[var(--font-outfit-home)] text-[#0f2f2c]`}>
-      <section className="relative px-4 pb-16 pt-[7.25rem] sm:px-6 lg:px-8 lg:pb-24 lg:pt-[8rem]">
-        <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_15%_15%,rgba(227,255,254,0.62),transparent_28%),radial-gradient(circle_at_83%_18%,rgba(199,210,254,0.28),transparent_24%),linear-gradient(90deg,#FFFDF8_0%,#F7FCF9_52%,#FFFDF8_100%)]" />
-        <div className="mx-auto grid w-full max-w-[1180px] items-center gap-12 lg:grid-cols-[1.02fr_0.98fr]">
-          <div className="max-w-[620px]">
-            <span className="inline-flex items-center gap-2 rounded-full border border-[#d6e7de] bg-white/80 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.13em] text-[#40605b]">
-              <Users size={13} />
-              India&apos;s Premium Companionship Platform
-            </span>
+      <section className="relative min-h-[640px] overflow-hidden bg-[#f4f6ef] sm:min-h-[720px] lg:min-h-[760px]">
+        <video
+          className="absolute inset-0 h-full w-full object-cover"
+          src="/yp video_1.mp4"
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          aria-hidden="true"
+        />
+        <div className="absolute inset-x-0 top-0 h-[30%] bg-[linear-gradient(180deg,rgba(255,255,255,0.68)_0%,rgba(255,255,255,0.28)_48%,rgba(255,255,255,0)_100%)]" />
 
-            <h1 className="mt-6 text-[2.65rem] font-semibold leading-[1.04] text-[#00433d] sm:text-[3.2rem] lg:text-[3.8rem]">
-              Verified companions for real conversations.
+        <div className="relative z-10 mx-auto flex min-h-[640px] w-full max-w-[1180px] flex-col items-center px-4 pt-8 text-center sm:min-h-[720px] sm:px-6 sm:pt-10 lg:min-h-[760px] lg:px-8">
+          <div className="mx-auto max-w-[820px]">
+            <h1 className="text-[1.9rem] font-semibold leading-[1.14] text-black drop-shadow-[0_1px_18px_rgba(255,255,255,0.78)] sm:text-[2.45rem] lg:text-[2.85rem]">
+              You Don&apos;t Have To Go Through It Alone.
             </h1>
-
-            <p className="mt-5 max-w-[560px] text-[15px] leading-7 text-[#4f6661] sm:text-[16px]">
-              YoPartner helps you connect through chat, voice calls, video sessions, and home visit companionship.
-              Built for social companionship, quality time, and trusted human connection.
+            <p className="mt-2 text-[1.65rem] font-medium leading-tight text-black drop-shadow-[0_1px_16px_rgba(255,255,255,0.78)] sm:text-[2rem] lg:text-[2.35rem]">
+              Hum Hai Na...
             </p>
-
-            <div className="mt-5 flex flex-wrap gap-2.5">
-              {heroBenefits.map((benefit) => (
-                <span key={benefit} className="rounded-full border border-[#d6e7de] bg-white/85 px-3 py-1 text-[11px] font-medium text-[#315851]">
-                  {benefit}
-                </span>
-              ))}
-            </div>
-
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Link
-                href="/connect-now"
-                className="inline-flex h-11 items-center gap-2 rounded-full bg-[#00433d] px-6 text-sm font-semibold !text-white shadow-[0_12px_30px_rgba(0,67,61,0.24)] transition hover:-translate-y-0.5 hover:bg-[#005c55]"
-              >
-                Start Connecting
-                <ArrowRight size={15} className="text-white" />
-              </Link>
-              <Link
-                href="/how-it-works"
-                className="inline-flex h-11 items-center rounded-full border border-[#cadcd4] bg-white/70 px-6 text-sm font-medium text-[#244d47] transition hover:-translate-y-0.5 hover:bg-white"
-              >
-                How It Works
-              </Link>
-            </div>
           </div>
 
-          <div className="relative mx-auto h-[390px] w-full max-w-[470px] sm:h-[440px] lg:h-[470px] lg:max-w-[500px]">
-            <article className="absolute left-[4%] top-[22%] h-[250px] w-[44%] overflow-hidden rounded-[24px] border border-white/90 bg-white shadow-[0_16px_48px_rgba(0,67,61,0.18)] sm:h-[290px]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="https://i.pinimg.com/736x/bb/5b/42/bb5b4215d43654b0fe2fe868d7022d38.jpg"
-                alt="Companion portrait"
-                className="h-full w-full object-cover"
-              />
-            </article>
-
-            <article className="absolute right-[2%] top-[5%] h-[290px] w-[46%] overflow-hidden rounded-[24px] border border-white/90 bg-white shadow-[0_16px_48px_rgba(0,67,61,0.2)] sm:h-[340px]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="https://photolive.in/wp-content/uploads/2025/10/Cute-Girl-Pic-for-Dp-5.jpg"
-                alt="Companion portrait"
-                className="h-full w-full object-cover"
-              />
-            </article>
-
-            <div className="absolute left-[10%] top-[56%] w-[260px] rounded-[24px] border border-white/80 bg-white/78 p-4 shadow-[0_14px_36px_rgba(0,67,61,0.2)] backdrop-blur-md sm:left-[14%]">
-              <ActiveCompanionsCount />
-              <p className="mt-1 text-xs leading-5 text-[#5b716c]">Online now for secure, private, real-time sessions.</p>
-            </div>
-          </div>
+          <Link
+            href="/connect-now"
+            className="mt-52 inline-flex min-h-12 items-center justify-center rounded-full bg-[#0969f4] px-7 py-3 text-base font-semibold !text-white shadow-[0_14px_26px_rgba(9,105,244,0.28)] transition hover:-translate-y-0.5 hover:bg-[#075bd2] focus:outline-none focus:ring-4 focus:ring-[#0969f4]/25 sm:mt-64 sm:min-h-14 sm:px-10 sm:text-lg lg:mt-72"
+          >
+            Talk Now – Starts at ₹5/min
+          </Link>
         </div>
       </section>
 
