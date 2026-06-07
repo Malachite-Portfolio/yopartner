@@ -34,6 +34,7 @@ export type SessionRecord = {
   endedByUserId?: string | null;
   lastHeartbeatAt?: string | null;
   amount?: number;
+  durationSeconds?: number;
   reward?: {
     appliedRewardId: string;
     appliedRewardType:
@@ -44,11 +45,15 @@ export type SessionRecord = {
       | string;
     freeSeconds: number | null;
     shouldAutoEndAtFreeLimit: boolean;
+    walletCannotContinue?: boolean;
   } | null;
   billingLimit?: {
     maxAllowedSeconds: number | null;
     warningAtSeconds: number | null;
     autoEndAt: string | null;
+    billingLimitSeconds?: number | null;
+    remainingSeconds?: number | null;
+    shouldAutoEnd?: boolean;
   } | null;
   user?: {
     id: string;

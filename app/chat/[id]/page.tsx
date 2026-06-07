@@ -39,6 +39,9 @@ import { isActiveSessionStatus, isTerminalSessionStatus } from "@/lib/sessionSta
 import { getUserAuthTokenWithRestore } from "@/lib/auth/userAuth";
 import { WALLET_UPDATED_EVENT } from "@/lib/wallet";
 
+const FREE_CHAT_TIME_OVER_MESSAGE = "Your free chat time is over. Please add money to continue.";
+const SESSION_TIME_OVER_MESSAGE = "Your available balance is over. Please add money to continue.";
+
 function toLoginUrl(returnUrl: string) {
   return `/login?returnUrl=${encodeURIComponent(returnUrl)}`;
 }
@@ -149,6 +152,10 @@ export default function ChatPage() {
     const query = searchParams.toString();
     return query ? `/chat/${routeId}?${query}` : `/chat/${routeId}`;
   }, [routeId, searchParams]);
+  const sessionLimitMessage =
+    session?.reward?.appliedRewardType === "FREE_CHAT_MINUTES" && session.reward.shouldAutoEndAtFreeLimit
+      ? FREE_CHAT_TIME_OVER_MESSAGE
+      : SESSION_TIME_OVER_MESSAGE;
   const selectedGift = useMemo(
     () => CHAT_GIFT_CATALOG.find((gift) => gift.id === selectedGiftId) ?? CHAT_GIFT_CATALOG[0],
     [selectedGiftId],
@@ -407,7 +414,7 @@ export default function ChatPage() {
     if (elapsed < maxAllowedSeconds || autoEndedRewardRef.current) return;
 
     autoEndedRewardRef.current = true;
-    setSessionEndNotice("Your available balance is over. Please add money to continue.");
+    setSessionEndNotice(sessionLimitMessage);
     setIsEndingSession(true);
 
     void (async () => {
@@ -417,7 +424,7 @@ export default function ChatPage() {
           setSession(response.data);
           return;
         }
-        setMessageError(response.error?.message || "Your available balance is over. Please add money to continue.");
+        setMessageError(response.error?.message || sessionLimitMessage);
       } finally {
         setIsEndingSession(false);
       }
@@ -429,10 +436,12 @@ export default function ChatPage() {
     session?.billingLimit?.maxAllowedSeconds,
     session?.id,
     session?.liveStartedAt,
+    session?.reward?.appliedRewardType,
     session?.reward?.freeSeconds,
     session?.reward?.shouldAutoEndAtFreeLimit,
     session?.startedAt,
     session?.status,
+    sessionLimitMessage,
   ]);
 
   useEffect(() => {

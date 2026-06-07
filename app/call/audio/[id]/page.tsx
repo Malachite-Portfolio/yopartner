@@ -25,6 +25,8 @@ import { VerifiedPartnerBadge } from "@/components/VerifiedPartnerBadge";
 
 const AGORA_APP_ID = process.env.NEXT_PUBLIC_AGORA_APP_ID?.trim() ?? "";
 const TERMINAL_SESSION_STATUSES: SessionStatus[] = ["DECLINED", "CANCELLED", "ENDED", "EXPIRED", "COMPLETED", "FAILED", "FLAGGED"];
+const FREE_CALL_TIME_OVER_MESSAGE = "Your free call time is over. Please add money to continue.";
+const SESSION_TIME_OVER_MESSAGE = "Your available balance is over. Please add money to continue.";
 
 function isTerminalStatus(status?: SessionStatus) {
   return Boolean(status && TERMINAL_SESSION_STATUSES.includes(status));
@@ -114,11 +116,18 @@ export default function AudioCallPage() {
   const isPending = session?.status === "PENDING";
   const isActive = session?.status === "LIVE" || session?.status === "ACCEPTED";
   useLoopingRingtone({ enabled: isPending, kind: "ringback", volume: 0.06 });
-  const callTimerBase = session?.liveStartedAt ?? (isActive && localAudioPublished ? localJoinStartedAt : null);
+  const callTimerBase =
+    session?.liveStartedAt ??
+    (session?.status === "LIVE" ? session?.startedAt : null) ??
+    (isActive && localAudioPublished ? localJoinStartedAt : null);
   const elapsedSeconds = getElapsedSeconds(callTimerBase, clockNow);
   const prepaidMaxAllowedSeconds =
     session?.billingLimit?.maxAllowedSeconds ??
     (session?.reward?.shouldAutoEndAtFreeLimit ? session.reward.freeSeconds : null);
+  const sessionLimitMessage =
+    session?.reward?.appliedRewardType === "FREE_CALL_MINUTES" && session.reward.shouldAutoEndAtFreeLimit
+      ? FREE_CALL_TIME_OVER_MESSAGE
+      : SESSION_TIME_OVER_MESSAGE;
   const prepaidWarningAtSeconds =
     prepaidMaxAllowedSeconds && prepaidMaxAllowedSeconds > 0
       ? session?.billingLimit?.warningAtSeconds ?? Math.max(0, prepaidMaxAllowedSeconds - 30)
@@ -692,7 +701,7 @@ export default function AudioCallPage() {
     if (elapsedSeconds < maxAllowedSeconds || autoEndedRewardRef.current) return;
 
     autoEndedRewardRef.current = true;
-    setSessionEndNotice("Your available balance is over. Please add money to continue.");
+    setSessionEndNotice(sessionLimitMessage);
     setIsCancelling(true);
 
     void (async () => {
@@ -704,7 +713,7 @@ export default function AudioCallPage() {
           setSession(response.data);
           return;
         }
-        setError(response.error?.message || "Your available balance is over. Please add money to continue.");
+        setError(response.error?.message || sessionLimitMessage);
       } finally {
         setIsCancelling(false);
       }
@@ -716,8 +725,10 @@ export default function AudioCallPage() {
     isCancelling,
     session?.billingLimit?.maxAllowedSeconds,
     session?.id,
+    session?.reward?.appliedRewardType,
     session?.reward?.freeSeconds,
     session?.reward?.shouldAutoEndAtFreeLimit,
+    sessionLimitMessage,
   ]);
 
   const navigateAfterExit = useCallback(() => {
