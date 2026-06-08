@@ -37,7 +37,7 @@ export default function HomePage() {
 
           <Link
             href="/connect-now"
-            className="mt-64 inline-flex min-h-12 items-center justify-center rounded-full bg-[#0969f4] px-7 py-3 text-base font-semibold !text-white shadow-[0_14px_26px_rgba(9,105,244,0.28)] transition hover:-translate-y-0.5 hover:bg-[#075bd2] focus:outline-none focus:ring-4 focus:ring-[#0969f4]/25 sm:mt-[22rem] sm:min-h-14 sm:px-10 sm:text-lg lg:mt-[30rem]"
+            className="mt-[22rem] inline-flex min-h-12 items-center justify-center rounded-full bg-[#0969f4] px-7 py-3 text-base font-semibold !text-white shadow-[0_14px_26px_rgba(9,105,244,0.28)] transition hover:-translate-y-0.5 hover:bg-[#075bd2] focus:outline-none focus:ring-4 focus:ring-[#0969f4]/25 sm:mt-[22rem] sm:min-h-14 sm:px-10 sm:text-lg lg:mt-[30rem]"
           >
             Talk Now – Starts at ₹5/min
           </Link>
