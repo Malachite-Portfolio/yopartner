@@ -45,13 +45,13 @@ function safeStringArray(value: unknown) {
 }
 
 function getStatusDotClass(status: string) {
-  if (status === "BUSY") return "bg-amber-400 shadow-[0_0_0_3px_rgba(251,191,36,0.2)]";
+  if (status === "BUSY") return "bg-red-500 shadow-[0_0_0_3px_rgba(239,68,68,0.2)]";
   if (status === "ONLINE") return "bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.18)]";
   return "bg-[#96a2b1]";
 }
 
 function getStatusBadgeClass(status: string) {
-  if (status === "BUSY") return "bg-amber-50 text-amber-700";
+  if (status === "BUSY") return "bg-red-50 text-red-700";
   if (status === "ONLINE") return "bg-emerald-50 text-emerald-700";
   return "bg-slate-100 text-slate-700";
 }
@@ -314,7 +314,7 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
         />
       </div>
 
-      {isBusy ? <p className="mt-2 text-xs font-medium text-amber-700">Currently busy in another session.</p> : null}
+      {isBusy ? <p className="mt-2 text-xs font-medium text-red-700">Currently busy in another session.</p> : null}
       {actionError ? <p className="mt-2 text-xs font-medium text-rose-600">{actionError}</p> : null}
       {showAddMoneyPrompt ? (
         <button

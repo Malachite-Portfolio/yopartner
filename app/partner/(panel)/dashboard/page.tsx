@@ -546,7 +546,7 @@ export default function PartnerDashboardPage() {
                     effectiveStatus === "ONLINE"
                       ? "bg-emerald-50 text-emerald-700"
                       : effectiveStatus === "BUSY"
-                        ? "bg-amber-50 text-amber-700"
+                        ? "bg-red-50 text-red-700"
                         : "bg-slate-100 text-slate-700"
                   }`}
                 >

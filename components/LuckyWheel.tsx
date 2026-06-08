@@ -143,13 +143,13 @@ export function LuckyWheel({ disabled = false, isSpinning, onSpin, rotation }: L
   }, [isSpinning, rotation]);
 
   return (
-    <div className="relative mx-auto h-[252px] w-full max-w-[380px] overflow-hidden px-3 pt-3">
+    <div className="relative mx-auto h-[272px] w-full max-w-[380px] overflow-hidden px-3 pt-3">
       <div className="absolute left-1/2 top-0 z-40 flex -translate-x-1/2 flex-col items-center">
         <span className="h-7 w-9 bg-[#f97316] drop-shadow-[0_7px_9px_rgba(124,45,18,0.25)]" style={{ clipPath: "polygon(50% 100%, 0 0, 100% 0)" }} />
         <span className="mt-1 h-2.5 w-2.5 rounded-full bg-[#facc15] shadow-[0_0_18px_rgba(250,204,21,0.8)]" />
       </div>
 
-      <div className="absolute left-1/2 top-5 h-[198px] w-[372px] -translate-x-1/2 overflow-hidden sm:h-[216px] sm:w-[408px]">
+      <div className="absolute left-1/2 top-4 h-[198px] w-[372px] -translate-x-1/2 overflow-hidden sm:h-[216px] sm:w-[408px]">
         <svg viewBox={`0 0 ${WHEEL_SIZE} ${WHEEL_SIZE}`} className="h-[372px] w-[372px] overflow-visible sm:h-[408px] sm:w-[408px]" role="img" aria-label="Lucky wheel offers">
           <defs>
             <filter id="lucky-wheel-glow" x="-30%" y="-30%" width="160%" height="160%">
@@ -190,11 +190,12 @@ export function LuckyWheel({ disabled = false, isSpinning, onSpin, rotation }: L
         </svg>
       </div>
 
+      <div className="absolute bottom-1 left-1/2 z-30 h-[5.8rem] w-[5.8rem] -translate-x-1/2 rounded-full border border-[#f5d897] bg-[#fffdf8] shadow-[0_14px_28px_rgba(7,63,57,0.18)] sm:h-[6.3rem] sm:w-[6.3rem]" />
       <button
         type="button"
         onClick={onSpin}
         disabled={isSpinning || disabled}
-        className="absolute bottom-7 left-1/2 z-40 flex h-[4.5rem] w-[4.5rem] -translate-x-1/2 items-center justify-center rounded-full border-[5px] border-white bg-[#073f39] text-[0.82rem] font-black uppercase tracking-[0.06em] text-white shadow-[0_15px_30px_rgba(7,63,57,0.34),inset_0_0_0_2px_rgba(250,204,21,0.72)] transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-75 sm:h-20 sm:w-20"
+        className="absolute bottom-4 left-1/2 z-40 flex h-[4.5rem] w-[4.5rem] -translate-x-1/2 items-center justify-center rounded-full border-[5px] border-white bg-[#073f39] text-[0.82rem] font-black uppercase tracking-[0.06em] text-white shadow-[0_15px_30px_rgba(7,63,57,0.34),inset_0_0_0_2px_rgba(250,204,21,0.72)] transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-75 sm:h-20 sm:w-20"
         aria-label="Spin the lucky wheel"
       >
         {isSpinning ? "..." : "Spin"}
