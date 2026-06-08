@@ -19,7 +19,6 @@ import {
   AUDIO_RATE_PER_MIN,
   CHAT_RATE_PER_MIN,
   FIXED_PLATFORM_PRICE_LABELS,
-  HOME_VISIT_RATE_PER_HOUR,
   VIDEO_RATE_PER_MIN,
 } from "@/lib/platformPricing";
 import {
@@ -61,7 +60,7 @@ import {
   type PartnerServiceType,
 } from "@/lib/partnerData";
 
-type OnboardingServiceType = PartnerServiceType;
+type OnboardingServiceType = Exclude<PartnerServiceType, "Home Visit">;
 type OnboardingProfile = Omit<PartnerProfile, "servicesOffered"> & {
   servicesOffered: OnboardingServiceType[];
 };
@@ -109,7 +108,7 @@ function hasAnyValue(profile: PartnerProfile) {
 }
 
 function sanitizeServices(services: string[]): OnboardingServiceType[] {
-  const allowed: OnboardingServiceType[] = ["Chat", "Audio Call", "Video Call", "Home Visit"];
+  const allowed: OnboardingServiceType[] = ["Chat", "Audio Call", "Video Call"];
   return services.filter((service): service is OnboardingServiceType =>
     allowed.includes(service as OnboardingServiceType),
   );
@@ -164,8 +163,7 @@ function toOnboardingServices(value: unknown): OnboardingServiceType[] {
       if (normalized === "CHAT") return "Chat";
       if (normalized === "AUDIO") return "Audio Call";
       if (normalized === "VIDEO") return "Video Call";
-      if (normalized === "HOME_VISIT" || normalized === "HOME VISIT") return "Home Visit";
-      if (item === "Chat" || item === "Audio Call" || item === "Video Call" || item === "Home Visit") return item;
+      if (item === "Chat" || item === "Audio Call" || item === "Video Call") return item;
       return "";
     })
     .filter((item): item is OnboardingServiceType => Boolean(item));
@@ -254,7 +252,6 @@ function toPartnerOnboardingPayload(
   liveVideoUpload: PartnerKycUploadResult | null,
 ) {
   const backendSupportedServices = profile.servicesOffered
-    .filter((service): service is Exclude<OnboardingServiceType, "Home Visit"> => service !== "Home Visit")
     .map((service) => {
       if (service === "Chat") return "CHAT";
       if (service === "Audio Call") return "AUDIO";
@@ -294,8 +291,6 @@ function toPartnerOnboardingPayload(
     profileTagline: profile.profileTagline.trim(),
     aboutYourself: profile.aboutYourself.trim(),
     servicesOffered: backendSupportedServices,
-    homeVisitRequested: profile.servicesOffered.includes("Home Visit"),
-    homeVisitPrice: HOME_VISIT_RATE_PER_HOUR,
     chatPrice: CHAT_RATE_PER_MIN,
     audioPrice: AUDIO_RATE_PER_MIN,
     videoPrice: VIDEO_RATE_PER_MIN,
@@ -499,13 +494,7 @@ export default function PartnerOnboardingPage() {
       { label: "Services", value: profile.servicesOffered.join(", ") || "-" },
       {
         label: "Pricing",
-        value: `Chat ${FIXED_PLATFORM_PRICE_LABELS.chat}, Audio ${FIXED_PLATFORM_PRICE_LABELS.audio}, Video ${FIXED_PLATFORM_PRICE_LABELS.video}${profile.servicesOffered.includes("Home Visit") ? `, Home Visit ${FIXED_PLATFORM_PRICE_LABELS.homeVisit}` : ""}`,
-      },
-      {
-        label: "Home Visit Approval",
-        value: profile.servicesOffered.includes("Home Visit")
-          ? "Requested (manual admin verification required)"
-          : "Not requested",
+        value: `Chat ${FIXED_PLATFORM_PRICE_LABELS.chat}, Audio ${FIXED_PLATFORM_PRICE_LABELS.audio}, Video ${FIXED_PLATFORM_PRICE_LABELS.video}`,
       },
       { label: "Categories", value: profile.categories.join(", ") || "-" },
       {
@@ -570,9 +559,6 @@ export default function PartnerOnboardingPage() {
 
     if (stepIndex === 4) {
       if (profile.servicesOffered.length === 0) nextErrors.servicesOffered = "Select at least one service.";
-      if (!profile.servicesOffered.some((service) => service !== "Home Visit")) {
-        nextErrors.servicesOffered = "Select at least one of Chat, Audio Call, or Video Call.";
-      }
       if (profile.categories.length === 0) nextErrors.categories = "Select at least one category.";
     }
 
@@ -1175,7 +1161,7 @@ export default function PartnerOnboardingPage() {
               <div>
                 <p className="mb-2 text-sm font-medium text-slate-700">Services offered</p>
                 <div className="grid gap-2 sm:grid-cols-2">
-                  {(["Chat", "Audio Call", "Video Call", "Home Visit"] as OnboardingServiceType[]).map(
+                  {(["Chat", "Audio Call", "Video Call"] as OnboardingServiceType[]).map(
                     (service) => (
                       <label
                         key={service}
@@ -1198,9 +1184,6 @@ export default function PartnerOnboardingPage() {
                     ),
                   )}
                 </div>
-                <p className="mt-2 text-xs text-slate-500">
-                  Home Visit is optional and available only after additional verification and platform approval.
-                </p>
                 {errors.servicesOffered ? (
                   <p className="mt-1 text-xs text-rose-600">{errors.servicesOffered}</p>
                 ) : null}
@@ -1211,7 +1194,6 @@ export default function PartnerOnboardingPage() {
                   ["Chat", FIXED_PLATFORM_PRICE_LABELS.chat],
                   ["Audio call", FIXED_PLATFORM_PRICE_LABELS.audio],
                   ["Video call", FIXED_PLATFORM_PRICE_LABELS.video],
-                  ["Home visit", FIXED_PLATFORM_PRICE_LABELS.homeVisit],
                 ].map(([label, price]) => (
                   <div key={label} className="rounded-xl border border-slate-200 px-3 py-3">
                     <p className="text-sm font-medium text-slate-700">{label}</p>
@@ -1219,12 +1201,6 @@ export default function PartnerOnboardingPage() {
                   </div>
                 ))}
               </div>
-
-              {profile.servicesOffered.includes("Home Visit") ? (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-                  Home Visit approval will be completed manually by admin after verification review.
-                </div>
-              ) : null}
 
               <div>
                 <p className="mb-2 text-sm font-medium text-slate-700">Categories</p>
