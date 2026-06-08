@@ -2,7 +2,7 @@
 
 import { CheckCircle2, ChevronLeft, ChevronRight, ShieldCheck } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import {
@@ -73,6 +73,11 @@ type KycUploadState = {
   aadhaarBack: PartnerKycUploadResult | null;
   pan: PartnerKycUploadResult | null;
 };
+type LiveVideoState = {
+  file: File | null;
+  upload: PartnerKycUploadResult | null;
+  objectUrl: string;
+};
 
 const stepTitles = [
   "Basic details",
@@ -81,8 +86,13 @@ const stepTitles = [
   "About your support style",
   "Services & pricing",
   "KYC documents",
+  "Live video verification",
   "Safety agreement",
 ];
+const REQUIRED_DOCUMENTS_MESSAGE = "Please upload all required verification documents before submitting.";
+const LIVE_VIDEO_REQUIRED_MESSAGE = "Please complete live video verification before submitting.";
+const LIVE_VIDEO_MIN_SECONDS = 10;
+const LIVE_VIDEO_MAX_SECONDS = 30;
 
 function toggleArrayValue(values: string[], value: string) {
   return values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
@@ -238,7 +248,11 @@ function toOnboardingProfile(source: PartnerProfile): OnboardingProfile {
   };
 }
 
-function toPartnerOnboardingPayload(profile: OnboardingProfile, uploads: KycUploadState) {
+function toPartnerOnboardingPayload(
+  profile: OnboardingProfile,
+  uploads: KycUploadState,
+  liveVideoUpload: PartnerKycUploadResult | null,
+) {
   const backendSupportedServices = profile.servicesOffered
     .filter((service): service is Exclude<OnboardingServiceType, "Home Visit"> => service !== "Home Visit")
     .map((service) => {
@@ -260,6 +274,9 @@ function toPartnerOnboardingPayload(profile: OnboardingProfile, uploads: KycUplo
     uploads.aadhaarBack?.downloadUrl || uploads.aadhaarBack?.storagePath || uploads.aadhaarBack?.fileName,
   );
   const panUploaded = Boolean(uploads.pan?.downloadUrl || uploads.pan?.storagePath || uploads.pan?.fileName);
+  const liveVideoUploaded = Boolean(
+    liveVideoUpload?.downloadUrl || liveVideoUpload?.storagePath || liveVideoUpload?.fileName,
+  );
 
   return {
     fullName: profile.fullName.trim(),
@@ -300,6 +317,12 @@ function toPartnerOnboardingPayload(profile: OnboardingProfile, uploads: KycUplo
     panFileName: uploads.pan?.fileName || undefined,
     panStoragePath: uploads.pan?.storagePath || undefined,
     panUrl: uploads.pan?.downloadUrl || undefined,
+    liveVerificationName: profile.fullName.trim(),
+    liveVerificationAge: Number(profile.age) || 0,
+    liveVerificationHobbies: profile.hobbies.join(", "),
+    liveVideoUploaded,
+    liveVideoFileName: liveVideoUpload?.fileName || undefined,
+    liveVideoStoragePath: liveVideoUpload?.storagePath || undefined,
     aadhaarFileName:
       uploads.aadhaarFront?.fileName ||
       uploads.aadhaarBack?.fileName ||
@@ -366,6 +389,21 @@ export default function PartnerOnboardingPage() {
     aadhaarBack: null,
     pan: null,
   });
+  const [liveVideo, setLiveVideo] = useState<LiveVideoState>({
+    file: null,
+    upload: null,
+    objectUrl: "",
+  });
+  const [isRecordingLiveVideo, setIsRecordingLiveVideo] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [recordingError, setRecordingError] = useState("");
+  const liveStreamVideoRef = useRef<HTMLVideoElement | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const liveStreamRef = useRef<MediaStream | null>(null);
+  const liveVideoChunksRef = useRef<Blob[]>([]);
+  const recordingStartedAtRef = useRef(0);
+  const recordingTimerRef = useRef<number | null>(null);
+  const recordingStopTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -421,6 +459,27 @@ export default function PartnerOnboardingPage() {
     savePartnerDraft(profile);
   }, [profile]);
 
+  useEffect(() => {
+    return () => {
+      if (recordingTimerRef.current) window.clearInterval(recordingTimerRef.current);
+      if (recordingStopTimerRef.current) window.clearTimeout(recordingStopTimerRef.current);
+      liveStreamRef.current?.getTracks().forEach((track) => track.stop());
+      if (liveVideo.objectUrl) URL.revokeObjectURL(liveVideo.objectUrl);
+    };
+  }, [liveVideo.objectUrl]);
+
+  const requiredDocumentsSelected = Boolean(
+    (selfieFile || kycUploads.selfie) &&
+      (aadhaarFrontFile || kycUploads.aadhaarFront) &&
+      (aadhaarBackFile || kycUploads.aadhaarBack) &&
+      (panFile || kycUploads.pan),
+  );
+  const liveVerificationScript = `My name is ${profile.fullName || "[name]"}. I am ${
+    profile.age || "[age]"
+  } years old. I am applying to become a YoPartner partner. My hobbies are ${
+    profile.hobbies.length > 0 ? profile.hobbies.join(", ") : "[hobbies]"
+  }. I agree to follow YoPartner safety and respectful communication rules.`;
+
   const summaryRows = useMemo(
     () => [
       { label: "Full Name", value: profile.fullName || "-" },
@@ -469,8 +528,12 @@ export default function PartnerOnboardingPage() {
         label: "PAN",
         value: formatDocumentSelectionStatus(Boolean(panFile || kycUploads.pan || profile.panFileName)),
       },
+      {
+        label: "Live video",
+        value: formatDocumentSelectionStatus(Boolean(liveVideo.file || liveVideo.upload)),
+      },
     ],
-    [aadhaarBackFile, aadhaarFrontFile, kycUploads, panFile, profile, selfieFile],
+    [aadhaarBackFile, aadhaarFrontFile, kycUploads, liveVideo.file, liveVideo.upload, panFile, profile, selfieFile],
   );
 
   const validateStep = (stepIndex: number): ValidationErrors => {
@@ -513,7 +576,20 @@ export default function PartnerOnboardingPage() {
       if (profile.categories.length === 0) nextErrors.categories = "Select at least one category.";
     }
 
+    if (stepIndex === 5 && !requiredDocumentsSelected) {
+      nextErrors.base = REQUIRED_DOCUMENTS_MESSAGE;
+    }
+
     if (stepIndex === 6) {
+      if (!profile.fullName.trim()) nextErrors.fullName = "Full Name is required.";
+      if (!profile.age.trim()) nextErrors.age = "Age is required.";
+      if (profile.hobbies.length === 0) nextErrors.hobbies = "Select at least one hobby.";
+      if (!liveVideo.file && !liveVideo.upload) {
+        nextErrors.base = LIVE_VIDEO_REQUIRED_MESSAGE;
+      }
+    }
+
+    if (stepIndex === 7) {
       if (
         !profile.safetyPlatonicOnly ||
         !profile.safetyRespectfulRules ||
@@ -527,6 +603,114 @@ export default function PartnerOnboardingPage() {
     return nextErrors;
   };
 
+  const stopLiveRecording = () => {
+    const recorder = mediaRecorderRef.current;
+    if (recorder && recorder.state !== "inactive") {
+      recorder.stop();
+    }
+  };
+
+  const clearRecordingTimers = () => {
+    if (recordingTimerRef.current) {
+      window.clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+    if (recordingStopTimerRef.current) {
+      window.clearTimeout(recordingStopTimerRef.current);
+      recordingStopTimerRef.current = null;
+    }
+  };
+
+  const stopLiveStream = () => {
+    liveStreamRef.current?.getTracks().forEach((track) => track.stop());
+    liveStreamRef.current = null;
+    if (liveStreamVideoRef.current) {
+      liveStreamVideoRef.current.srcObject = null;
+    }
+  };
+
+  const handleStartLiveRecording = async () => {
+    setRecordingError("");
+    setErrors({});
+    if (typeof window === "undefined" || typeof MediaRecorder === "undefined") {
+      setRecordingError("Live video recording is not supported in this browser. Please use the latest Chrome or Edge.");
+      return;
+    }
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setRecordingError("Camera and microphone recording is not supported in this browser.");
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")
+        ? "video/webm;codecs=vp8,opus"
+        : MediaRecorder.isTypeSupported("video/webm")
+          ? "video/webm"
+          : "";
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      liveVideoChunksRef.current = [];
+      liveStreamRef.current = stream;
+      mediaRecorderRef.current = recorder;
+      recordingStartedAtRef.current = Date.now();
+      setRecordingSeconds(0);
+      setIsRecordingLiveVideo(true);
+
+      if (liveStreamVideoRef.current) {
+        liveStreamVideoRef.current.srcObject = stream;
+      }
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) liveVideoChunksRef.current.push(event.data);
+      };
+      recorder.onstop = () => {
+        clearRecordingTimers();
+        setIsRecordingLiveVideo(false);
+        stopLiveStream();
+        const seconds = Math.round((Date.now() - recordingStartedAtRef.current) / 1000);
+        setRecordingSeconds(seconds);
+        if (seconds < LIVE_VIDEO_MIN_SECONDS) {
+          setRecordingError(`Please record at least ${LIVE_VIDEO_MIN_SECONDS} seconds for live verification.`);
+          return;
+        }
+        const blobType = recorder.mimeType || "video/webm";
+        const blob = new Blob(liveVideoChunksRef.current, { type: blobType });
+        const extension = blobType.includes("mp4") ? "mp4" : "webm";
+        const file = new File([blob], `live-verification-${Date.now()}.${extension}`, { type: blobType });
+        setLiveVideo((current) => {
+          if (current.objectUrl) URL.revokeObjectURL(current.objectUrl);
+          return {
+            file,
+            upload: null,
+            objectUrl: URL.createObjectURL(blob),
+          };
+        });
+        setRecordingError("");
+      };
+
+      recorder.start();
+      recordingTimerRef.current = window.setInterval(() => {
+        const elapsed = Math.floor((Date.now() - recordingStartedAtRef.current) / 1000);
+        setRecordingSeconds(elapsed);
+      }, 250);
+      recordingStopTimerRef.current = window.setTimeout(stopLiveRecording, LIVE_VIDEO_MAX_SECONDS * 1000);
+    } catch {
+      clearRecordingTimers();
+      stopLiveStream();
+      setIsRecordingLiveVideo(false);
+      setRecordingError("Camera and microphone permission is required to record live verification.");
+    }
+  };
+
+  const handleRemoveLiveVideo = () => {
+    setLiveVideo((current) => {
+      if (current.objectUrl) URL.revokeObjectURL(current.objectUrl);
+      return { file: null, upload: null, objectUrl: "" };
+    });
+    setRecordingSeconds(0);
+    setRecordingError("");
+  };
+
   const handleContinue = () => {
     const stepErrors = validateStep(step);
     setErrors(stepErrors);
@@ -535,10 +719,20 @@ export default function PartnerOnboardingPage() {
   };
 
   const handleSubmit = () => {
-    const stepErrors = validateStep(6);
+    const stepErrors = validateStep(7);
     setErrors(stepErrors);
     setSubmitMessage("");
     if (Object.keys(stepErrors).length > 0) return;
+    if (!requiredDocumentsSelected) {
+      setErrors({ base: REQUIRED_DOCUMENTS_MESSAGE });
+      setStep(5);
+      return;
+    }
+    if (!liveVideo.file && !liveVideo.upload) {
+      setErrors({ base: LIVE_VIDEO_REQUIRED_MESSAGE });
+      setStep(6);
+      return;
+    }
 
     const finalProfile: OnboardingProfile = {
       ...profile,
@@ -596,6 +790,7 @@ export default function PartnerOnboardingPage() {
         }
         const uid = user.uid;
         let nextUploads: KycUploadState = { ...kycUploads };
+        let nextLiveVideoUpload = liveVideo.upload;
         try {
           const uploadIfSelected = async (file: File | null, type: KycUploadType) => {
             if (!file) return null;
@@ -613,8 +808,20 @@ export default function PartnerOnboardingPage() {
           if (aadhaarFrontUpload) nextUploads = { ...nextUploads, aadhaarFront: aadhaarFrontUpload };
           if (aadhaarBackUpload) nextUploads = { ...nextUploads, aadhaarBack: aadhaarBackUpload };
           if (panUpload) nextUploads = { ...nextUploads, pan: panUpload };
+          if (liveVideo.file) {
+            nextLiveVideoUpload = await uploadPartnerKycFile({
+              file: liveVideo.file,
+              uid,
+              type: "live-video",
+            });
+          }
 
           setKycUploads(nextUploads);
+          setLiveVideo((current) => ({
+            ...current,
+            file: null,
+            upload: nextLiveVideoUpload,
+          }));
           setSelfieFile(null);
           setAadhaarFrontFile(null);
           setAadhaarBackFile(null);
@@ -629,7 +836,26 @@ export default function PartnerOnboardingPage() {
           return;
         }
 
-        const payload = toPartnerOnboardingPayload(finalProfile, nextUploads);
+        const documentsUploaded = Boolean(
+          nextUploads.selfie &&
+            nextUploads.aadhaarFront &&
+            nextUploads.aadhaarBack &&
+            nextUploads.pan,
+        );
+        if (!documentsUploaded) {
+          setErrors({ base: REQUIRED_DOCUMENTS_MESSAGE });
+          setStep(5);
+          setIsSubmitting(false);
+          return;
+        }
+        if (!nextLiveVideoUpload) {
+          setErrors({ base: LIVE_VIDEO_REQUIRED_MESSAGE });
+          setStep(6);
+          setIsSubmitting(false);
+          return;
+        }
+
+        const payload = toPartnerOnboardingPayload(finalProfile, nextUploads, nextLiveVideoUpload);
         const response = await submitPartnerApplication(payload);
         if (response.error) {
           if (response.error.status === 401) {
@@ -1021,7 +1247,7 @@ export default function PartnerOnboardingPage() {
                   Documents are reviewed securely by the YoPartner verification team.
                 </p>
                 <p className="mt-1 text-xs text-slate-500">
-                  Allowed formats: JPG, PNG, WEBP, PDF. Maximum 5 MB per document.
+                  Selfie, Aadhaar front, Aadhaar back, and PAN are required. Allowed formats: JPG, PNG, WEBP, PDF. Maximum 5 MB per document.
                 </p>
               </div>
 
@@ -1164,10 +1390,101 @@ export default function PartnerOnboardingPage() {
                   ) : null}
                 </label>
               </div>
+              {errors.base ? <p className="text-xs font-medium text-rose-600">{errors.base}</p> : null}
             </div>
           ) : null}
 
           {step === 6 ? (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <h3 className="text-sm font-semibold text-slate-900">Live Video Verification</h3>
+                <p className="mt-1 text-xs text-slate-600">
+                  Record a short live video inside this flow. Keep it between {LIVE_VIDEO_MIN_SECONDS} and {LIVE_VIDEO_MAX_SECONDS} seconds.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-[#dceae5] bg-white p-4">
+                <p className="text-sm font-semibold text-slate-900">Read this script while recording</p>
+                <p className="mt-2 rounded-xl bg-slate-50 p-3 text-sm leading-6 text-slate-700">
+                  {liveVerificationScript}
+                </p>
+                <div className="mt-3 grid gap-2 text-xs text-slate-600 sm:grid-cols-3">
+                  <p><span className="font-semibold text-slate-800">Name:</span> {profile.fullName || "Missing"}</p>
+                  <p><span className="font-semibold text-slate-800">Age:</span> {profile.age || "Missing"}</p>
+                  <p><span className="font-semibold text-slate-800">Hobbies:</span> {profile.hobbies.join(", ") || "Missing"}</p>
+                </div>
+              </div>
+
+              <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
+                <div className="rounded-xl border border-slate-200 bg-slate-950 p-3">
+                  {isRecordingLiveVideo ? (
+                    <video
+                      ref={liveStreamVideoRef}
+                      autoPlay
+                      muted
+                      playsInline
+                      className="aspect-video w-full rounded-lg bg-black object-cover"
+                    />
+                  ) : liveVideo.objectUrl ? (
+                    <video
+                      src={liveVideo.objectUrl}
+                      controls
+                      controlsList="nodownload"
+                      playsInline
+                      className="aspect-video w-full rounded-lg bg-black object-cover"
+                    />
+                  ) : (
+                    <div className="flex aspect-video w-full items-center justify-center rounded-lg bg-slate-900 px-4 text-center text-sm text-white/70">
+                      Your recorded verification video preview will appear here.
+                    </div>
+                  )}
+                </div>
+
+                <div className="rounded-xl border border-slate-200 p-4">
+                  <p className="text-sm font-semibold text-slate-900">
+                    {isRecordingLiveVideo ? `Recording ${recordingSeconds}s` : liveVideo.file || liveVideo.upload ? "Video recorded" : "Ready to record"}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Browser recording requires camera and microphone permission.
+                  </p>
+                  <div className="mt-4 flex flex-col gap-2">
+                    {!isRecordingLiveVideo ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void handleStartLiveRecording();
+                        }}
+                        className="h-10 rounded-xl bg-[#0f766e] px-4 text-sm font-semibold text-white"
+                      >
+                        {liveVideo.file || liveVideo.upload ? "Record Again" : "Start Recording"}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={stopLiveRecording}
+                        className="h-10 rounded-xl bg-rose-600 px-4 text-sm font-semibold text-white"
+                      >
+                        Stop Recording
+                      </button>
+                    )}
+                    {liveVideo.file || liveVideo.upload ? (
+                      <button
+                        type="button"
+                        onClick={handleRemoveLiveVideo}
+                        className="h-10 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-700"
+                      >
+                        Remove Video
+                      </button>
+                    ) : null}
+                  </div>
+                  {recordingError ? <p className="mt-3 text-xs font-medium text-rose-600">{recordingError}</p> : null}
+                  {errors.base ? <p className="mt-3 text-xs font-medium text-rose-600">{errors.base}</p> : null}
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {step === 7 ? (
             <div className="space-y-4">
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                 <h3 className="text-sm font-semibold text-slate-900">Profile Summary</h3>
@@ -1225,6 +1542,18 @@ export default function PartnerOnboardingPage() {
                 </label>
 
                 {errors.base ? <p className="text-xs text-rose-600">{errors.base}</p> : null}
+                {!liveVideo.file && !liveVideo.upload ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setErrors({ base: LIVE_VIDEO_REQUIRED_MESSAGE });
+                      setStep(6);
+                    }}
+                    className="mt-2 inline-flex h-10 items-center rounded-xl border border-rose-200 px-4 text-sm font-semibold text-rose-700"
+                  >
+                    Go to Live Video Verification
+                  </button>
+                ) : null}
               </div>
 
               {isDemoPartnerSession ? (

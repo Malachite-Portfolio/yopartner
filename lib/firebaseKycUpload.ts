@@ -2,15 +2,16 @@ import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { getCurrentFirebaseUser, subscribeFirebaseAuthState } from "@/lib/auth/firebasePhoneAuth";
 import { firebaseStorage } from "@/lib/firebase/client";
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024;
-const ALLOWED_TYPES = new Set([
+const MAX_DOCUMENT_FILE_SIZE = 5 * 1024 * 1024;
+const MAX_VIDEO_FILE_SIZE = 50 * 1024 * 1024;
+const ALLOWED_DOCUMENT_TYPES = new Set([
   "image/jpeg",
   "image/png",
   "image/webp",
   "application/pdf",
 ]);
 
-type PartnerKycType = "selfie" | "aadhaar-front" | "aadhaar-back" | "pan";
+type PartnerKycType = "selfie" | "aadhaar-front" | "aadhaar-back" | "pan" | "live-video";
 
 type UploadPartnerKycFileParams = {
   file: File;
@@ -40,11 +41,23 @@ function sanitizeFileName(name: string) {
   return `${normalizedBase}${ext}`;
 }
 
-function validateFile(file: File) {
-  if (!ALLOWED_TYPES.has(file.type)) {
+function validateFile(file: File, type: PartnerKycType) {
+  if (type === "live-video") {
+    const videoType = file.type.toLowerCase();
+    const isAllowedVideo = videoType === "video/mp4" || videoType === "video/webm" || videoType.startsWith("video/webm;");
+    if (!isAllowedVideo) {
+      throw new Error("Live verification video must be WEBM or MP4.");
+    }
+    if (file.size > MAX_VIDEO_FILE_SIZE) {
+      throw new Error("Live verification video must be 50 MB or smaller.");
+    }
+    return;
+  }
+
+  if (!ALLOWED_DOCUMENT_TYPES.has(file.type)) {
     throw new Error("Only JPG, PNG, WEBP, or PDF files are allowed.");
   }
-  if (file.size > MAX_FILE_SIZE) {
+  if (file.size > MAX_DOCUMENT_FILE_SIZE) {
     throw new Error("Each verification document must be 5 MB or smaller.");
   }
 }
@@ -125,7 +138,7 @@ export async function uploadPartnerKycFile(
     throw new Error("Your login session does not match the selected KYC upload path. Please login again as a partner.");
   }
 
-  validateFile(file);
+  validateFile(file, type);
 
   const cleanName = sanitizeFileName(file.name || "document");
   const timestamp = Date.now();
