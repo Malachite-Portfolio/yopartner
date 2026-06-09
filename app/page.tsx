@@ -83,7 +83,7 @@ export default function HomePage() {
               </span>
               <h3 className="mt-4 text-[1.65rem] font-semibold">Partnership, Not Dating</h3>
               <p className="mt-3 text-sm leading-7 text-[#d4ece8]">YoPartner is strictly platonic. No dating. No therapy. Just quality social partnership.</p>
-              <Link href="/trust-safety" className="mt-8 inline-flex h-9 w-full items-center justify-center rounded-full bg-white text-xs font-semibold text-[#0b4e47] shadow-sm">
+              <Link href="/trust-safety" className="mt-8 inline-flex h-9 w-full items-center justify-center rounded-full bg-white text-xs font-semibold !text-[#0b4e47] shadow-sm">
                 See Safety Standards
               </Link>
             </article>
