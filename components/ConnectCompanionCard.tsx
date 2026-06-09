@@ -248,17 +248,17 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
           />
         </div>
 
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 overflow-hidden">
           <div className="flex items-start justify-between gap-2">
-            <div>
-              <h3 className="flex min-w-0 items-center gap-1.5 text-[19px] font-medium leading-tight text-[#172533] md:text-[21px]">
+            <div className="min-w-0 flex-1 overflow-hidden">
+              <h3 className="flex min-w-0 max-w-full items-center gap-1.5 text-[19px] font-medium leading-tight text-[#172533] md:text-[21px]">
                 <span className="min-w-0 truncate">{name}</span>
                 {isVerifiedPartner ? <VerifiedPartnerBadge /> : null}
               </h3>
               <p className="mt-0.5 line-clamp-1 text-[13px] leading-4 text-[#637382]">{tagline}</p>
             </div>
-            <span className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${getStatusBadgeClass(status)}`}>
-              <span className={`h-2.5 w-2.5 rounded-full ${getStatusDotClass(status)}`} />
+            <span className={`inline-flex max-w-[72px] shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${getStatusBadgeClass(status)}`}>
+              <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${getStatusDotClass(status)}`} />
               {status === "ONLINE" ? "Online" : status === "BUSY" ? "Busy" : "Offline"}
             </span>
           </div>

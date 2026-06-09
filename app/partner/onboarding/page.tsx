@@ -253,9 +253,9 @@ function toPartnerOnboardingPayload(
 ) {
   const backendSupportedServices = profile.servicesOffered
     .map((service) => {
-      if (service === "Chat") return "CHAT";
-      if (service === "Audio Call") return "AUDIO";
-      return "VIDEO";
+      if (service === "Chat") return "Chat";
+      if (service === "Audio Call") return "Audio Call";
+      return "Video Call";
     });
   const safetyChecklist = [];
   if (profile.safetyPlatonicOnly) safetyChecklist.push("strictly platonic");
@@ -589,6 +589,25 @@ export default function PartnerOnboardingPage() {
     return nextErrors;
   };
 
+  const findFirstSubmitValidationError = () => {
+    for (let stepIndex = 0; stepIndex < stepTitles.length; stepIndex += 1) {
+      const stepErrors = validateStep(stepIndex);
+      if (Object.keys(stepErrors).length > 0) {
+        return { stepIndex, stepErrors };
+      }
+    }
+    return null;
+  };
+
+  const getSubmitErrorStep = (message: string) => {
+    const normalized = message.toLowerCase();
+    if (normalized.includes("service") || normalized.includes("categor")) return 4;
+    if (normalized.includes("document") || normalized.includes("aadhaar") || normalized.includes("pan") || normalized.includes("selfie")) return 5;
+    if (normalized.includes("live video") || normalized.includes("live verification")) return 6;
+    if (normalized.includes("safety")) return 7;
+    return null;
+  };
+
   const stopLiveRecording = () => {
     const recorder = mediaRecorderRef.current;
     if (recorder && recorder.state !== "inactive") {
@@ -705,10 +724,13 @@ export default function PartnerOnboardingPage() {
   };
 
   const handleSubmit = () => {
-    const stepErrors = validateStep(7);
-    setErrors(stepErrors);
+    const firstValidationError = findFirstSubmitValidationError();
     setSubmitMessage("");
-    if (Object.keys(stepErrors).length > 0) return;
+    if (firstValidationError) {
+      setErrors(firstValidationError.stepErrors);
+      setStep(firstValidationError.stepIndex);
+      return;
+    }
     if (!requiredDocumentsSelected) {
       setErrors({ base: REQUIRED_DOCUMENTS_MESSAGE });
       setStep(5);
@@ -859,6 +881,10 @@ export default function PartnerOnboardingPage() {
           }
           const statusLabel = response.error.status ?? "ERR";
           const message = response.error.message || "Unknown error";
+          const submitErrorStep = getSubmitErrorStep(message);
+          if (submitErrorStep !== null) {
+            setStep(submitErrorStep);
+          }
           setErrors({ base: `Submit failed (${statusLabel}): ${message}` });
           setIsSubmitting(false);
           return;
