@@ -112,6 +112,20 @@ export async function updateAdminPartnerStatus(
   });
 }
 
+export async function removeAdminPartner(
+  partnerId: string,
+  payload: { reason: string; adminEmail?: string },
+) {
+  return apiRequest<{
+    companion: Record<string, unknown>;
+    cancelledPendingRequests?: number;
+    message?: string;
+  }>(`/api/admin/partners/${partnerId}/delete`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function listModerationActions(target?: "USER" | "PARTNER" | "HOME_VISIT") {
   const suffix = target ? `?target=${encodeURIComponent(target)}` : "";
   return apiRequest<{ actions: Array<Record<string, unknown>> }>(`/api/admin/moderation/actions${suffix}`);

@@ -8,6 +8,7 @@ import { AdminStatusBadge } from "@/components/admin/AdminStatusBadge";
 import { AdminTableToolbar } from "@/components/admin/AdminTableToolbar";
 import {
   listCompanions,
+  removeAdminPartner,
   type AdminPartnerModerationStatus,
   updateAdminPartnerStatus,
 } from "@/lib/api/admin";
@@ -125,6 +126,10 @@ export default function AdminCompanionsPage() {
   const [statusExpiresAt, setStatusExpiresAt] = useState("");
   const [statusSubmitting, setStatusSubmitting] = useState(false);
   const [statusError, setStatusError] = useState("");
+  const [removeTarget, setRemoveTarget] = useState<PartnerRow | null>(null);
+  const [removeReason, setRemoveReason] = useState("");
+  const [removeSubmitting, setRemoveSubmitting] = useState(false);
+  const [removeError, setRemoveError] = useState("");
 
   const loadCompanions = useCallback(async () => {
     setLoading(true);
@@ -213,6 +218,46 @@ export default function AdminCompanionsPage() {
     setStatusReason("");
     setStatusExpiresAt("");
     setInfoMessage(`Updated ${statusTarget.partner.name} to ${statusTarget.status}.`);
+    await loadCompanions();
+  }
+
+  function openRemoveModal(partner: PartnerRow) {
+    setRemoveTarget(partner);
+    setRemoveReason("");
+    setRemoveError("");
+  }
+
+  async function handleSubmitRemove(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!removeTarget || removeSubmitting) return;
+
+    const reason = removeReason.trim();
+    if (!reason) {
+      setRemoveError("Reason is required.");
+      return;
+    }
+
+    setRemoveSubmitting(true);
+    setRemoveError("");
+
+    const response = await removeAdminPartner(removeTarget.id, { reason });
+
+    if (response.error?.status === 401) {
+      clearAdminAuthSession();
+      router.replace("/admin/login");
+      return;
+    }
+
+    if (response.error || !response.data) {
+      setRemoveSubmitting(false);
+      setRemoveError(response.error?.message ?? "Unable to remove host.");
+      return;
+    }
+
+    setRemoveSubmitting(false);
+    setRemoveTarget(null);
+    setRemoveReason("");
+    setInfoMessage(response.data.message || "Host removed successfully.");
     await loadCompanions();
   }
 
@@ -308,6 +353,7 @@ export default function AdminCompanionsPage() {
                             { label: "Temp Ban", tone: "danger", onClick: () => openStatusModal(item, "TEMP_BANNED") },
                             { label: "Ban", tone: "danger", onClick: () => openStatusModal(item, "BANNED") },
                             { label: "Hide", tone: "warning", onClick: () => openStatusModal(item, "HIDDEN") },
+                            { label: "Remove Host", tone: "danger", onClick: () => openRemoveModal(item) },
                             { label: "Activate", tone: "success", onClick: () => openStatusModal(item, "ACTIVE") },
                           ]}
                         />
@@ -394,6 +440,75 @@ export default function AdminCompanionsPage() {
 
             {statusError ? (
               <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">{statusError}</p>
+            ) : null}
+          </form>
+        ) : null}
+      </AdminDetailDrawer>
+
+      <AdminDetailDrawer
+        open={Boolean(removeTarget)}
+        title="Remove Host"
+        onClose={() => {
+          if (removeSubmitting) return;
+          setRemoveTarget(null);
+          setRemoveReason("");
+          setRemoveError("");
+        }}
+        footer={(
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+              onClick={() => {
+                setRemoveTarget(null);
+                setRemoveReason("");
+                setRemoveError("");
+              }}
+              disabled={removeSubmitting}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="partner-remove-form"
+              className="rounded-lg bg-rose-700 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={removeSubmitting}
+            >
+              {removeSubmitting ? "Removing..." : "Remove Host"}
+            </button>
+          </div>
+        )}
+      >
+        {removeTarget ? (
+          <form id="partner-remove-form" className="space-y-4" onSubmit={handleSubmitRemove}>
+            <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
+              <p className="font-semibold text-rose-900">Are you sure you want to remove this host?</p>
+              <p className="mt-2">
+                They will no longer appear publicly or receive requests. Past records will be kept for audit.
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+              <p><span className="font-semibold text-slate-900">Host:</span> {removeTarget.name}</p>
+              <p><span className="font-semibold text-slate-900">Phone:</span> {removeTarget.loginPhone}</p>
+              <p><span className="font-semibold text-slate-900">Current moderation:</span> {removeTarget.moderationStatus}</p>
+            </div>
+
+            <label className="block space-y-1">
+              <span className="text-sm font-medium text-slate-800">Reason</span>
+              <textarea
+                value={removeReason}
+                onChange={(event) => setRemoveReason(event.target.value)}
+                className="min-h-24 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none ring-0 transition focus:border-slate-500"
+                placeholder="Required reason for audit trail"
+                maxLength={500}
+                required
+                disabled={removeSubmitting}
+              />
+            </label>
+
+            {removeError ? (
+              <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">{removeError}</p>
             ) : null}
           </form>
         ) : null}
