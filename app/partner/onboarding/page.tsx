@@ -134,6 +134,19 @@ function formatDocumentSelectionStatus(hasDocument: boolean) {
   return hasDocument ? "Selected" : "Pending";
 }
 
+function isValidPartnerAge(value: string) {
+  const age = Number(value);
+  return Number.isInteger(age) && age >= 18 && age <= 70;
+}
+
+function hasUploadedArtifact(upload: PartnerKycUploadResult | null) {
+  return Boolean(upload?.fileName && upload.storagePath);
+}
+
+function hasLiveVideoArtifact(upload: PartnerKycUploadResult | null) {
+  return hasUploadedArtifact(upload) && Boolean(upload?.storagePath.includes("/live-video/"));
+}
+
 function getLiveVideoMimeType() {
   if (typeof MediaRecorder === "undefined") return "";
   const supportedTypes = [
@@ -364,6 +377,7 @@ function toPartnerOnboardingPayload(
     chatPrice: CHAT_RATE_PER_MIN,
     audioPrice: AUDIO_RATE_PER_MIN,
     videoPrice: VIDEO_RATE_PER_MIN,
+    homeVisitRequested: false,
     categories: profile.categories,
     safetyChecklist,
     selfieUploaded,
@@ -615,7 +629,13 @@ export default function PartnerOnboardingPage() {
 
     if (stepIndex === 0) {
       if (!profile.fullName.trim()) nextErrors.fullName = "Full Name is required.";
+      if (profile.fullName.trim() && profile.fullName.trim().length < 2) {
+        nextErrors.fullName = "Full Name must be at least 2 characters.";
+      }
       if (!profile.age.trim()) nextErrors.age = "Age is required.";
+      if (profile.age.trim() && !isValidPartnerAge(profile.age)) {
+        nextErrors.age = "Age must be a number between 18 and 70.";
+      }
       if (!profile.gender) nextErrors.gender = "Gender is required.";
       if (!profile.religion.trim()) nextErrors.religion = "Religion is required.";
       if (!profile.bornCity.trim()) nextErrors.bornCity = "Born City is required.";
@@ -636,6 +656,9 @@ export default function PartnerOnboardingPage() {
 
     if (stepIndex === 3) {
       if (!profile.profileTagline.trim()) nextErrors.profileTagline = "Profile Tagline is required.";
+      if (profile.profileTagline.trim() && profile.profileTagline.trim().length < 6) {
+        nextErrors.profileTagline = "Profile Tagline must be at least 6 characters.";
+      }
       if (!profile.aboutYourself.trim()) nextErrors.aboutYourself = "About Yourself is required.";
       if (profile.aboutYourself.trim().length < 80) {
         nextErrors.aboutYourself = "About Yourself must be at least 80 characters.";
@@ -654,6 +677,9 @@ export default function PartnerOnboardingPage() {
     if (stepIndex === 6) {
       if (!profile.fullName.trim()) nextErrors.fullName = "Full Name is required.";
       if (!profile.age.trim()) nextErrors.age = "Age is required.";
+      if (profile.age.trim() && !isValidPartnerAge(profile.age)) {
+        nextErrors.age = "Age must be a number between 18 and 70.";
+      }
       if (profile.hobbies.length === 0) nextErrors.hobbies = "Select at least one hobby.";
       if (!liveVideo.file && !liveVideo.upload) {
         nextErrors.base = LIVE_VIDEO_REQUIRED_MESSAGE;
@@ -686,10 +712,64 @@ export default function PartnerOnboardingPage() {
 
   const getSubmitErrorStep = (message: string) => {
     const normalized = message.toLowerCase();
+    if (
+      normalized.includes("full name") ||
+      normalized.includes("age") ||
+      normalized.includes("gender") ||
+      normalized.includes("religion") ||
+      normalized.includes("born city") ||
+      normalized.includes("nationality")
+    ) return 0;
+    if (
+      normalized.includes("school") ||
+      normalized.includes("college") ||
+      normalized.includes("qualification")
+    ) return 1;
+    if (
+      normalized.includes("language") ||
+      normalized.includes("communication") ||
+      normalized.includes("hobbies")
+    ) return 2;
+    if (
+      normalized.includes("profile tagline") ||
+      normalized.includes("about yourself")
+    ) return 3;
     if (normalized.includes("service") || normalized.includes("categor")) return 4;
     if (normalized.includes("document") || normalized.includes("aadhaar") || normalized.includes("pan") || normalized.includes("selfie")) return 5;
     if (normalized.includes("live video") || normalized.includes("live verification")) return 6;
     if (normalized.includes("safety")) return 7;
+    return null;
+  };
+
+  const getSubmitErrorMessage = (error: NonNullable<Awaited<ReturnType<typeof submitPartnerApplication>>["error"]>) => {
+    const details = asRecord(error.details);
+    const validationErrors = Array.isArray(details.validationErrors) ? details.validationErrors : [];
+    const firstValidationError = asRecord(validationErrors[0]);
+    const label = toOptionalString(firstValidationError.label);
+    const validationMessage = toOptionalString(firstValidationError.message);
+    if (label && validationMessage) return `${label}: ${validationMessage}`;
+    return error.message || "Unknown error";
+  };
+
+  const validateUploadedArtifacts = (
+    uploads: KycUploadState,
+    liveVideoUpload: PartnerKycUploadResult | null,
+  ) => {
+    if (!hasUploadedArtifact(uploads.selfie)) {
+      return { stepIndex: 5, message: "Selfie upload path is missing. Please reselect and upload your selfie." };
+    }
+    if (!hasUploadedArtifact(uploads.aadhaarFront)) {
+      return { stepIndex: 5, message: "Aadhaar Front upload path is missing. Please reselect and upload Aadhaar Front." };
+    }
+    if (!hasUploadedArtifact(uploads.aadhaarBack)) {
+      return { stepIndex: 5, message: "Aadhaar Back upload path is missing. Please reselect and upload Aadhaar Back." };
+    }
+    if (!hasUploadedArtifact(uploads.pan)) {
+      return { stepIndex: 5, message: "PAN upload path is missing. Please reselect and upload PAN." };
+    }
+    if (!hasLiveVideoArtifact(liveVideoUpload)) {
+      return { stepIndex: 6, message: "Live video upload path is missing. Please record and upload live verification again." };
+    }
     return null;
   };
 
@@ -1002,28 +1082,23 @@ export default function PartnerOnboardingPage() {
           return;
         }
 
-        const documentsUploaded = Boolean(
-          nextUploads.selfie &&
-            nextUploads.aadhaarFront &&
-            nextUploads.aadhaarBack &&
-            nextUploads.pan,
-        );
-        if (!documentsUploaded) {
-          setErrors({ base: REQUIRED_DOCUMENTS_MESSAGE });
-          setStep(5);
-          setIsSubmitting(false);
-          return;
-        }
-        if (!nextLiveVideoUpload) {
-          setErrors({ base: LIVE_VIDEO_REQUIRED_MESSAGE });
-          setStep(6);
+        const uploadValidationError = validateUploadedArtifacts(nextUploads, nextLiveVideoUpload);
+        if (uploadValidationError) {
+          setErrors({ base: uploadValidationError.message });
+          setStep(uploadValidationError.stepIndex);
           setIsSubmitting(false);
           return;
         }
 
         const payload = toPartnerOnboardingPayload(finalProfile, nextUploads, nextLiveVideoUpload);
+        if (process.env.NODE_ENV !== "production") {
+          console.info("[partner onboarding] submit payload", payload);
+        }
         const response = await submitPartnerApplication(payload);
         if (response.error) {
+          if (process.env.NODE_ENV !== "production") {
+            console.warn("[partner onboarding] submit response body", response.error.details ?? response.error);
+          }
           if (response.error.status === 401) {
             clearPartnerStoredFirebaseToken();
             if (typeof window !== "undefined") {
@@ -1038,7 +1113,7 @@ export default function PartnerOnboardingPage() {
             return;
           }
           const statusLabel = response.error.status ?? "ERR";
-          const message = response.error.message || "Unknown error";
+          const message = getSubmitErrorMessage(response.error);
           const submitErrorStep = getSubmitErrorStep(message);
           if (submitErrorStep !== null) {
             setStep(submitErrorStep);
