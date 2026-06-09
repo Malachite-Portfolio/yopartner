@@ -9,6 +9,7 @@ import {
   PARTNER_FIREBASE_UID_KEY,
   clearPendingConfirmationResult,
   getAuthMode,
+  getFirebaseErrorDetails,
   setPartnerStoredFirebaseToken,
   getPendingConfirmationResult,
   isFirebaseOtpEnabled,
@@ -33,11 +34,15 @@ import {
 } from "@/lib/partnerAuth";
 import { maskIndianPhoneNumber } from "@/lib/phoneMask";
 
+const PARTNER_LOGIN_BROWSER_HELPER =
+  "For best results, open YoPartner directly in Chrome/Safari. Avoid WhatsApp or Instagram in-app browser.";
+
 export default function PartnerOtpPage() {
   const router = useRouter();
   const phone = getPartnerPhone() || getClientDemoPartnerPendingPhone();
   const [digits, setDigits] = useState(["", "", "", "", "", ""]);
   const [error, setError] = useState("");
+  const [debugError, setDebugError] = useState<{ code: string; message: string } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const inputsRef = useRef<Array<HTMLInputElement | null>>([]);
   const otpValue = useMemo(() => digits.join(""), [digits]);
@@ -54,6 +59,8 @@ export default function PartnerOtpPage() {
     mode === "firebase" &&
     !pendingConfirmation &&
     !isClientDemoOtpFlow;
+  const showDebugDetails =
+    typeof window !== "undefined" && process.env.NODE_ENV !== "production";
 
   useEffect(() => {
     if (!phone) {
@@ -64,6 +71,7 @@ export default function PartnerOtpPage() {
   const updateDigit = (index: number, value: string) => {
     if (!/^\d?$/.test(value)) return;
     setError("");
+    setDebugError(null);
     setDigits((current) => current.map((digit, i) => (i === index ? value : digit)));
     if (value && index < 5) {
       inputsRef.current[index + 1]?.focus();
@@ -80,13 +88,16 @@ export default function PartnerOtpPage() {
     if (isClientDemoOtpFlow) {
       if (otpValue.length !== 6) {
         setError("Please enter the complete 6-digit OTP.");
+        setDebugError(null);
         return;
       }
       if (otpValue !== CLIENT_DEMO_OTP) {
         setError("Invalid OTP. Please check and try again.");
+        setDebugError(null);
         return;
       }
       setError("");
+      setDebugError(null);
       activateClientDemoPartnerSession();
       clearPendingConfirmationResult();
       setAuthMode("demo");
@@ -96,27 +107,32 @@ export default function PartnerOtpPage() {
 
     if (IS_PRODUCTION_READY_MODE && !firebaseEnabled) {
       setError("Firebase OTP is not configured. Please check Vercel environment variables.");
+      setDebugError(null);
       return;
     }
 
     if (IS_PRODUCTION_READY_MODE && !pendingConfirmation) {
       setError("OTP session expired. Please request a new OTP.");
+      setDebugError(null);
       return;
     }
 
     if (otpValue.length !== 6) {
       setError("Please enter the complete 6-digit OTP.");
+      setDebugError(null);
       return;
     }
 
     if (mode === "firebase") {
       if (!pendingConfirmation) {
         setError("OTP session expired. Please request a new OTP.");
+        setDebugError(null);
         return;
       }
 
       setIsSubmitting(true);
       setError("");
+      setDebugError(null);
       try {
         const user = await verifyOtp(pendingConfirmation, otpValue);
         const idToken = await user.getIdToken(true);
@@ -138,6 +154,9 @@ export default function PartnerOtpPage() {
         router.replace(landing.route);
       } catch (verifyError) {
         setError(mapFirebaseAuthError(verifyError));
+        if (showDebugDetails) {
+          setDebugError(getFirebaseErrorDetails(verifyError));
+        }
       } finally {
         setIsSubmitting(false);
       }
@@ -145,6 +164,7 @@ export default function PartnerOtpPage() {
     }
 
     setError("");
+    setDebugError(null);
     loginPartner(phone);
     setAuthMode("demo");
     const landing = await resolvePartnerLandingRoute();
@@ -190,6 +210,9 @@ export default function PartnerOtpPage() {
         </div>
 
         <p className="mt-3 text-xs text-slate-500">Resend code in 28s</p>
+        <p className="mt-3 rounded-xl border border-sky-100 bg-sky-50 px-3 py-2 text-xs font-medium leading-5 text-sky-800">
+          {PARTNER_LOGIN_BROWSER_HELPER}
+        </p>
 
         <button
           type="button"
@@ -200,6 +223,12 @@ export default function PartnerOtpPage() {
           {isSubmitting ? "Verifying..." : "Verify"}
         </button>
         {error ? <p className="mt-2 text-xs font-medium text-rose-600">{error}</p> : null}
+        {showDebugDetails && debugError ? (
+          <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            <p className="font-semibold">Firebase error: {debugError.code}</p>
+            <p className="mt-1">Message: {debugError.message}</p>
+          </div>
+        ) : null}
         <p className="mt-2 inline-flex rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
           {isClientDemoOtpFlow
             ? "Client Demo OTP"

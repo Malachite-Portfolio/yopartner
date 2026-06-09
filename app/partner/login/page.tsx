@@ -11,6 +11,7 @@ import {
   isFirebaseOtpEnabled,
   isFirebaseTestNumbersMode,
   mapFirebaseAuthError,
+  resetRecaptcha,
   sendOtp,
   setAuthMode,
   setupRecaptcha,
@@ -21,6 +22,34 @@ import { PARTNER_PHONE_KEY } from "@/lib/partnerAuth";
 
 const PARTNER_SESSION_EXPIRED_MESSAGE =
   "Your login session could not be verified. Please login again as a partner.";
+const PARTNER_LOGIN_BROWSER_HELPER =
+  "For best results, open YoPartner directly in Chrome/Safari. Avoid WhatsApp or Instagram in-app browser.";
+const OTP_START_TIMEOUT_MS = 30000;
+
+function createOtpStartError(message = "OTP start timed out.") {
+  return {
+    code: "auth/internal-error",
+    message,
+  };
+}
+
+async function withOtpStartTimeout<T>(task: Promise<T>) {
+  let timeoutId: number | null = null;
+  try {
+    return await Promise.race([
+      task,
+      new Promise<T>((_, reject) => {
+        timeoutId = window.setTimeout(() => {
+          reject(createOtpStartError("OTP verification start timed out."));
+        }, OTP_START_TIMEOUT_MS);
+      }),
+    ]);
+  } finally {
+    if (timeoutId !== null) {
+      window.clearTimeout(timeoutId);
+    }
+  }
+}
 
 export default function PartnerLoginPage() {
   const router = useRouter();
@@ -33,17 +62,26 @@ export default function PartnerLoginPage() {
     return params.get("message") || PARTNER_SESSION_EXPIRED_MESSAGE;
   });
   const [debugError, setDebugError] = useState<{ code: string; message: string } | null>(null);
+  const [authFailed, setAuthFailed] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const firebaseEnabled = isFirebaseOtpEnabled();
   const firebaseTestMode = isFirebaseTestNumbersMode();
   const isDemoPhoneInput = isClientDemoEnabled() && isClientDemoPartnerPhone(phone);
   const showDebugDetails =
-    typeof window !== "undefined" &&
-    process.env.NODE_ENV !== "production" &&
-    (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+    typeof window !== "undefined" && process.env.NODE_ENV !== "production";
+
+  function clearFailure() {
+    setError("");
+    setDebugError(null);
+    setAuthFailed(false);
+  }
 
   const handleContinue = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (isSubmitting) return;
+    setDebugError(null);
+    setAuthFailed(false);
+
     const trimmedPhone = phone.replace(/\D/g, "");
     if (!trimmedPhone) {
       setError("Phone number is required.");
@@ -89,19 +127,18 @@ export default function PartnerLoginPage() {
 
     setIsSubmitting(true);
     setError("");
-    setDebugError(null);
     try {
       const verifier = setupRecaptcha("partner-recaptcha-container");
       if (!verifier) {
-        setError("Firebase OTP is not ready. Please retry in a moment.");
-        setIsSubmitting(false);
-        return;
+        throw createOtpStartError("reCAPTCHA verifier could not be created.");
       }
-      await sendOtp(normalizedPhone, verifier);
+      await withOtpStartTimeout(sendOtp(normalizedPhone, verifier));
       setAuthMode("firebase");
       router.push("/partner/otp");
     } catch (authError) {
+      resetRecaptcha();
       setError(mapFirebaseAuthError(authError));
+      setAuthFailed(true);
       if (showDebugDetails) {
         setDebugError(getFirebaseErrorDetails(authError));
       }
@@ -132,7 +169,10 @@ export default function PartnerLoginPage() {
               <input
                 type="tel"
                 value={phone}
-                onChange={(event) => setPhone(event.target.value.replace(/[^\d]/g, "").slice(0, 10))}
+                onChange={(event) => {
+                  clearFailure();
+                  setPhone(event.target.value.replace(/[^\d]/g, "").slice(0, 10));
+                }}
                 placeholder="Enter mobile number"
                 className="w-full px-3 text-sm text-slate-800 outline-none"
               />
@@ -143,11 +183,18 @@ export default function PartnerLoginPage() {
             <input
               type="checkbox"
               checked={agreed}
-              onChange={(event) => setAgreed(event.target.checked)}
+              onChange={(event) => {
+                clearFailure();
+                setAgreed(event.target.checked);
+              }}
               className="mt-0.5 h-4 w-4 rounded border-slate-300"
             />
             <span className="text-xs text-slate-700">I agree to YoPartner Partner Terms and Safety Guidelines.</span>
           </label>
+
+          <p className="rounded-xl border border-sky-100 bg-sky-50 px-3 py-2 text-xs font-medium leading-5 text-sky-800">
+            {PARTNER_LOGIN_BROWSER_HELPER}
+          </p>
 
           {error ? (
             <p className="inline-flex items-center gap-1 text-sm font-medium text-rose-600">
@@ -162,13 +209,23 @@ export default function PartnerLoginPage() {
             </div>
           ) : null}
 
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="h-11 w-full rounded-xl bg-[#2563eb] text-sm font-semibold text-white transition hover:bg-[#1d4ed8] disabled:cursor-not-allowed disabled:bg-slate-400"
-          >
-            {isSubmitting ? "Sending OTP..." : "Continue"}
-          </button>
+          {authFailed ? (
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="h-11 w-full rounded-xl border border-[#2563eb] bg-white text-sm font-semibold text-[#2563eb] transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:border-slate-300 disabled:text-slate-400"
+            >
+              Retry
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="h-11 w-full rounded-xl bg-[#2563eb] text-sm font-semibold text-white transition hover:bg-[#1d4ed8] disabled:cursor-not-allowed disabled:bg-slate-400"
+            >
+              {isSubmitting ? "Sending OTP..." : "Continue"}
+            </button>
+          )}
 
           <p className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
             {firebaseEnabled

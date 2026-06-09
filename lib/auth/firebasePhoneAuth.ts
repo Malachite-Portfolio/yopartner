@@ -198,24 +198,31 @@ export function mapFirebaseAuthError(error: unknown) {
   const defaultMessage = "Unable to continue. Please try again.";
   const { code, message } = getFirebaseErrorDetails(error);
   if (!code) return defaultMessage;
+  const normalizedMessage = message.toLowerCase();
+  const tooManyAttemptsMessage = "Too many OTP attempts. Please wait 15–30 minutes before trying again.";
+  const otpStartFailureMessage =
+    "OTP verification could not start. Please open this page in Chrome/Safari, clear site data, and try again.";
+
+  if (normalizedMessage.includes("too many")) {
+    return tooManyAttemptsMessage;
+  }
+
+  if (normalizedMessage.includes("recaptcha")) {
+    return otpStartFailureMessage;
+  }
 
   const map: Record<string, string> = {
     "auth/invalid-phone-number": "Please enter a valid 10-digit phone number.",
-    "auth/too-many-requests": "Too many attempts. Please wait and try again.",
+    "auth/too-many-requests": tooManyAttemptsMessage,
     "auth/quota-exceeded": "OTP quota exceeded for this project. Please try later.",
-    "auth/captcha-check-failed": "reCAPTCHA verification failed. Please retry.",
+    "auth/captcha-check-failed": otpStartFailureMessage,
     "auth/code-expired": "OTP expired. Request a new OTP and try again.",
     "auth/invalid-verification-code": "Invalid OTP. Please check and try again.",
-    "auth/missing-client-identifier": "Missing client identifier. Refresh and try again.",
+    "auth/missing-client-identifier": otpStartFailureMessage,
     "auth/network-request-failed": "Network error. Please check your connection and retry.",
-    "auth/internal-error": "Temporary authentication issue. Please retry.",
-    "auth/invalid-app-credential":
-      "Firebase app verification failed. Check: Phone provider enabled, localhost authorized, test phone number added, reCAPTCHA container rendered, browser extensions disabled, and try Incognito.",
+    "auth/internal-error": otpStartFailureMessage,
+    "auth/invalid-app-credential": otpStartFailureMessage,
   };
-
-  if (message.toLowerCase().includes("recaptcha")) {
-    return "reCAPTCHA verification failed. Please retry.";
-  }
 
   return map[code] ?? defaultMessage;
 }
