@@ -16,13 +16,17 @@ import { clearAdminAuthSession } from "@/lib/adminAuth";
 import { formatDateTime } from "@/lib/adminFormat";
 import { AUDIO_RATE_PER_MIN, CHAT_RATE_PER_MIN, VIDEO_RATE_PER_MIN } from "@/lib/platformPricing";
 
+type AdminPartnerDisplayStatus = AdminPartnerModerationStatus | "REMOVED";
+
 type PartnerRow = {
   id: string;
   name: string;
   loginPhone: string;
   moderationStatus: AdminPartnerModerationStatus;
+  moderationDisplayStatus: AdminPartnerDisplayStatus;
   moderationReason: string;
   moderationExpiresAt: string;
+  isRemoved: boolean;
   companionStatus: string;
   verificationStatus: string;
   services: string[];
@@ -51,6 +55,11 @@ function asString(value: unknown, fallback = "") {
 function asNumber(value: unknown, fallback = 0) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function asBoolean(value: unknown) {
+  if (typeof value === "boolean") return value;
+  return String(value ?? "").trim().toLowerCase() === "true";
 }
 
 function asStringArray(value: unknown) {
@@ -91,13 +100,21 @@ function toPartnerRows(data: unknown): PartnerRow[] {
     .map((item) => {
       const record = asRecord(item);
       const user = asRecord(record.user);
+      const moderationStatus = normalizePartnerStatus(record.moderationStatus);
+      const latestActionType = asString(record.latestModerationActionType).toUpperCase();
+      const removalStatus = asString(record.removalStatus).toUpperCase();
+      const isRemoved =
+        moderationStatus === "HIDDEN" &&
+        (asBoolean(record.isRemoved) || latestActionType === "PARTNER_REMOVED" || removalStatus === "REMOVED");
       return {
         id: asString(record.id),
         name: asString(record.displayName ?? user.name, "-"),
         loginPhone: asString(user.phoneNumber, "-"),
-        moderationStatus: normalizePartnerStatus(record.moderationStatus),
+        moderationStatus,
+        moderationDisplayStatus: isRemoved ? "REMOVED" : moderationStatus,
         moderationReason: asString(record.moderationReason),
         moderationExpiresAt: asString(record.moderationExpiresAt),
+        isRemoved,
         companionStatus: asString(record.status, "-"),
         verificationStatus: asString(record.verificationStatus, "-"),
         services: asStringArray(record.servicesOffered).map(formatService),
@@ -120,7 +137,7 @@ export default function AdminCompanionsPage() {
   const [apiError, setApiError] = useState("");
   const [infoMessage, setInfoMessage] = useState("");
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<"All" | AdminPartnerModerationStatus>("All");
+  const [filter, setFilter] = useState<"All" | AdminPartnerDisplayStatus>("All");
   const [statusTarget, setStatusTarget] = useState<StatusTarget | null>(null);
   const [statusReason, setStatusReason] = useState("");
   const [statusExpiresAt, setStatusExpiresAt] = useState("");
@@ -162,7 +179,7 @@ export default function AdminCompanionsPage() {
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
     return rows.filter((row) => {
-      if (filter !== "All" && row.moderationStatus !== filter) return false;
+      if (filter !== "All" && row.moderationDisplayStatus !== filter) return false;
       if (!term) return true;
       const text = `${row.name} ${row.loginPhone} ${row.services.join(" ")}`.toLowerCase();
       return text.includes(term);
@@ -217,8 +234,18 @@ export default function AdminCompanionsPage() {
     setStatusTarget(null);
     setStatusReason("");
     setStatusExpiresAt("");
-    setInfoMessage(`Updated ${statusTarget.partner.name} to ${statusTarget.status}.`);
+    const actionLabel = getStatusActionLabel(statusTarget.partner, statusTarget.status);
+    setInfoMessage(
+      actionLabel === "Restore Host"
+        ? `Restored ${statusTarget.partner.name}.`
+        : `Updated ${statusTarget.partner.name} to ${statusTarget.status}.`,
+    );
     await loadCompanions();
+  }
+
+  function getStatusActionLabel(partner: PartnerRow, status: AdminPartnerModerationStatus) {
+    if (status === "ACTIVE" && partner.isRemoved) return "Restore Host";
+    return "Update Status";
   }
 
   function openRemoveModal(partner: PartnerRow) {
@@ -295,8 +322,8 @@ export default function AdminCompanionsPage() {
           onSearchChange={setSearch}
           searchPlaceholder="Search by name, phone, or service..."
           filterValue={filter}
-          onFilterChange={(value) => setFilter(value as "All" | AdminPartnerModerationStatus)}
-          filterOptions={["All", "ACTIVE", "RESTRICTED", "TEMP_BANNED", "BANNED", "HIDDEN"]}
+          onFilterChange={(value) => setFilter(value as "All" | AdminPartnerDisplayStatus)}
+          filterOptions={["All", "ACTIVE", "RESTRICTED", "TEMP_BANNED", "BANNED", "HIDDEN", "REMOVED"]}
         />
 
         {loading ? (
@@ -323,43 +350,46 @@ export default function AdminCompanionsPage() {
                     <td colSpan={9} className="px-2 py-3 text-slate-500">No partners found.</td>
                   </tr>
                 ) : (
-                  filtered.map((item) => (
-                    <tr key={item.id} className="border-t border-slate-100 align-top">
-                      <td className="px-2 py-2 text-slate-800">{item.name}</td>
-                      <td className="px-2 py-2 text-slate-700">{item.loginPhone}</td>
-                      <td className="px-2 py-2">
-                        <div className="space-y-1">
-                          <AdminStatusBadge status={item.companionStatus} />
-                          <AdminStatusBadge status={item.verificationStatus} />
-                        </div>
-                      </td>
-                      <td className="px-2 py-2 text-xs text-slate-700">
-                        <AdminStatusBadge status={item.moderationStatus} />
-                        <div className="mt-1">{item.moderationReason || "-"}</div>
-                        {item.moderationExpiresAt ? <div>Until: {formatDateTime(item.moderationExpiresAt)}</div> : null}
-                      </td>
-                      <td className="px-2 py-2 text-slate-700">{item.services.join(", ") || "-"}</td>
-                      <td className="px-2 py-2 text-slate-700">
-                        Chat {formatINR(item.chatPrice)} | Audio {formatINR(item.audioPrice)} | Video {formatINR(item.videoPrice)}
-                      </td>
-                      <td className="px-2 py-2">
-                        <AdminStatusBadge status={item.online ? "ONLINE" : "OFFLINE"} />
-                      </td>
-                      <td className="px-2 py-2 text-slate-700">{item.updatedAt ? formatDateTime(item.updatedAt) : "-"}</td>
-                      <td className="px-2 py-2">
-                        <AdminActionMenu
-                          actions={[
-                            { label: "Restrict", tone: "warning", onClick: () => openStatusModal(item, "RESTRICTED") },
-                            { label: "Temp Ban", tone: "danger", onClick: () => openStatusModal(item, "TEMP_BANNED") },
-                            { label: "Ban", tone: "danger", onClick: () => openStatusModal(item, "BANNED") },
-                            { label: "Hide", tone: "warning", onClick: () => openStatusModal(item, "HIDDEN") },
-                            { label: "Remove Host", tone: "danger", onClick: () => openRemoveModal(item) },
-                            { label: "Activate", tone: "success", onClick: () => openStatusModal(item, "ACTIVE") },
-                          ]}
-                        />
-                      </td>
-                    </tr>
-                  ))
+                  filtered.map((item) => {
+                    const actions = item.isRemoved
+                      ? [{ label: "Restore Host", tone: "success" as const, onClick: () => openStatusModal(item, "ACTIVE") }]
+                      : [
+                          { label: "Restrict", tone: "warning" as const, onClick: () => openStatusModal(item, "RESTRICTED") },
+                          { label: "Temp Ban", tone: "danger" as const, onClick: () => openStatusModal(item, "TEMP_BANNED") },
+                          { label: "Ban", tone: "danger" as const, onClick: () => openStatusModal(item, "BANNED") },
+                          { label: "Hide", tone: "warning" as const, onClick: () => openStatusModal(item, "HIDDEN") },
+                          { label: "Remove Host", tone: "danger" as const, onClick: () => openRemoveModal(item) },
+                          { label: "Activate", tone: "success" as const, onClick: () => openStatusModal(item, "ACTIVE") },
+                        ];
+                    return (
+                      <tr key={item.id} className="border-t border-slate-100 align-top">
+                        <td className="px-2 py-2 text-slate-800">{item.name}</td>
+                        <td className="px-2 py-2 text-slate-700">{item.loginPhone}</td>
+                        <td className="px-2 py-2">
+                          <div className="space-y-1">
+                            <AdminStatusBadge status={item.companionStatus} />
+                            <AdminStatusBadge status={item.verificationStatus} />
+                          </div>
+                        </td>
+                        <td className="px-2 py-2 text-xs text-slate-700">
+                          <AdminStatusBadge status={item.moderationDisplayStatus} />
+                          <div className="mt-1">{item.moderationReason || "-"}</div>
+                          {item.moderationExpiresAt ? <div>Until: {formatDateTime(item.moderationExpiresAt)}</div> : null}
+                        </td>
+                        <td className="px-2 py-2 text-slate-700">{item.services.join(", ") || "-"}</td>
+                        <td className="px-2 py-2 text-slate-700">
+                          Chat {formatINR(item.chatPrice)} | Audio {formatINR(item.audioPrice)} | Video {formatINR(item.videoPrice)}
+                        </td>
+                        <td className="px-2 py-2">
+                          <AdminStatusBadge status={item.online ? "ONLINE" : "OFFLINE"} />
+                        </td>
+                        <td className="px-2 py-2 text-slate-700">{item.updatedAt ? formatDateTime(item.updatedAt) : "-"}</td>
+                        <td className="px-2 py-2">
+                          <AdminActionMenu actions={actions} />
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -369,7 +399,7 @@ export default function AdminCompanionsPage() {
 
       <AdminDetailDrawer
         open={Boolean(statusTarget)}
-        title={statusTarget ? `Set ${statusTarget.status}` : "Set Partner Status"}
+        title={statusTarget ? getStatusActionLabel(statusTarget.partner, statusTarget.status) : "Set Partner Status"}
         onClose={() => {
           if (statusSubmitting) return;
           setStatusTarget(null);
@@ -398,7 +428,7 @@ export default function AdminCompanionsPage() {
               className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
               disabled={statusSubmitting}
             >
-              {statusSubmitting ? "Updating..." : "Update Status"}
+              {statusSubmitting ? "Updating..." : statusTarget ? getStatusActionLabel(statusTarget.partner, statusTarget.status) : "Update Status"}
             </button>
           </div>
         )}
@@ -408,7 +438,10 @@ export default function AdminCompanionsPage() {
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
               <p><span className="font-semibold text-slate-900">Partner:</span> {statusTarget.partner.name}</p>
               <p><span className="font-semibold text-slate-900">Phone:</span> {statusTarget.partner.loginPhone}</p>
-              <p><span className="font-semibold text-slate-900">New Status:</span> {statusTarget.status}</p>
+              <p>
+                <span className="font-semibold text-slate-900">New Status:</span>{" "}
+                {statusTarget.partner.isRemoved && statusTarget.status === "ACTIVE" ? "RESTORED (ACTIVE)" : statusTarget.status}
+              </p>
             </div>
 
             <label className="block space-y-1">

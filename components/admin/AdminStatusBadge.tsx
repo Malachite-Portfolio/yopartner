@@ -23,6 +23,8 @@ const styleMap: Record<string, string> = {
   cancelled: "bg-rose-50 text-rose-700",
   flagged: "bg-rose-50 text-rose-700",
   hidden: "bg-slate-200 text-slate-700",
+  removed: "bg-rose-100 text-rose-800",
+  deleted: "bg-rose-100 text-rose-800",
   restricted: "bg-amber-50 text-amber-700",
   needs_info: "bg-sky-50 text-sky-700",
   not_submitted: "bg-slate-100 text-slate-700",
