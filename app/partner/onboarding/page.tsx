@@ -93,11 +93,19 @@ const LIVE_VIDEO_REQUIRED_MESSAGE = "Please complete live video verification bef
 const LIVE_VIDEO_UNSUPPORTED_MESSAGE =
   "Your browser does not support live video recording. Please try Chrome on Android or another supported browser.";
 const CAMERA_PERMISSION_DENIED_MESSAGE =
-  "Camera permission was denied. Please allow camera access in your browser settings and try again.";
+  "Camera permission is blocked. Please allow Camera and Microphone from your browser site settings, then reload and try again.";
 const CAMERA_ALREADY_IN_USE_MESSAGE =
   "Camera is already being used by another app. Close it and try again.";
 const CAMERA_REQUIRES_HTTPS_MESSAGE =
   "Camera requires HTTPS. Please open YoPartner using https://yopartner.com.";
+const CAMERA_PERMISSION_HELP_STEPS = [
+  "Tap the lock/settings icon in your browser address bar.",
+  "Open Site settings.",
+  "Set Camera to Allow.",
+  "Set Microphone to Allow.",
+  "Reload this page.",
+  "Tap Enable Camera again.",
+];
 const LIVE_VIDEO_MIN_SECONDS = 10;
 const LIVE_VIDEO_MAX_SECONDS = 30;
 
@@ -160,6 +168,24 @@ function getCameraPermissionMessage(error: unknown) {
     return CAMERA_REQUIRES_HTTPS_MESSAGE;
   }
   return "Camera and microphone permission is required to record live verification.";
+}
+
+function getLiveCameraErrorMessage(error: unknown) {
+  const rawMessage = error instanceof Error ? error.message.trim() : "";
+  if (rawMessage === LIVE_VIDEO_UNSUPPORTED_MESSAGE || rawMessage === CAMERA_REQUIRES_HTTPS_MESSAGE) {
+    return rawMessage;
+  }
+  return getCameraPermissionMessage(error);
+}
+
+async function readBrowserPermissionState(name: "camera" | "microphone") {
+  if (typeof navigator === "undefined" || !navigator.permissions?.query) return "unsupported";
+  try {
+    const status = await navigator.permissions.query({ name: name as PermissionName });
+    return status.state;
+  } catch {
+    return "unsupported";
+  }
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -439,6 +465,7 @@ export default function PartnerOnboardingPage() {
   const [isVideoOnlyRecording, setIsVideoOnlyRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [recordingError, setRecordingError] = useState("");
+  const [permissionCheckMessage, setPermissionCheckMessage] = useState("");
   const liveStreamVideoRef = useRef<HTMLVideoElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const liveStreamRef = useRef<MediaStream | null>(null);
@@ -718,6 +745,7 @@ export default function PartnerOnboardingPage() {
 
   const handleEnableCamera = async () => {
     setRecordingError("");
+    setPermissionCheckMessage("");
     setErrors({});
     setIsEnablingCamera(true);
     stopLiveStream();
@@ -730,15 +758,28 @@ export default function PartnerOnboardingPage() {
       }
     } catch (error) {
       stopLiveStream();
-      const message = error instanceof Error && error.message ? error.message : getCameraPermissionMessage(error);
-      setRecordingError(message);
+      setRecordingError(getLiveCameraErrorMessage(error));
     } finally {
       setIsEnablingCamera(false);
     }
   };
 
+  const handleCheckCameraPermission = async () => {
+    setPermissionCheckMessage("");
+    const [cameraState, microphoneState] = await Promise.all([
+      readBrowserPermissionState("camera"),
+      readBrowserPermissionState("microphone"),
+    ]);
+    if (cameraState === "unsupported" && microphoneState === "unsupported") {
+      setPermissionCheckMessage("This browser does not expose permission status here. Use browser site settings, then reload and retry.");
+      return;
+    }
+    setPermissionCheckMessage(`Camera: ${cameraState}. Microphone: ${microphoneState}.`);
+  };
+
   const handleStartLiveRecording = async () => {
     setRecordingError("");
+    setPermissionCheckMessage("");
     setErrors({});
     if (typeof window === "undefined" || typeof MediaRecorder === "undefined") {
       setRecordingError(LIVE_VIDEO_UNSUPPORTED_MESSAGE);
@@ -751,8 +792,7 @@ export default function PartnerOnboardingPage() {
         liveStreamRef.current = stream;
         setIsCameraEnabled(true);
       } catch (error) {
-        const message = error instanceof Error && error.message ? error.message : getCameraPermissionMessage(error);
-        setRecordingError(message);
+        setRecordingError(getLiveCameraErrorMessage(error));
         stopLiveStream();
         return;
       }
@@ -1591,7 +1631,7 @@ export default function PartnerOnboardingPage() {
                         {isEnablingCamera
                           ? "Enabling Camera..."
                           : recordingError
-                            ? "Try Again"
+                            ? "Retry Camera"
                             : liveVideo.file || liveVideo.upload
                               ? "Re-record"
                               : "Enable Camera"}
@@ -1627,7 +1667,30 @@ export default function PartnerOnboardingPage() {
                       </button>
                     ) : null}
                   </div>
-                  {recordingError ? <p className="mt-3 text-xs font-medium text-rose-600">{recordingError}</p> : null}
+                  {recordingError ? (
+                    <div className="mt-3 rounded-xl border border-rose-100 bg-rose-50 p-3 text-xs text-rose-700">
+                      <p className="font-semibold">{recordingError}</p>
+                      {recordingError === CAMERA_PERMISSION_DENIED_MESSAGE ? (
+                        <ol className="mt-2 list-decimal space-y-1 pl-4">
+                          {CAMERA_PERMISSION_HELP_STEPS.map((stepItem) => (
+                            <li key={stepItem}>{stepItem}</li>
+                          ))}
+                        </ol>
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void handleCheckCameraPermission();
+                        }}
+                        className="mt-3 h-9 rounded-lg border border-rose-200 bg-white px-3 text-xs font-semibold text-rose-700"
+                      >
+                        Check permission again
+                      </button>
+                      {permissionCheckMessage ? (
+                        <p className="mt-2 font-medium text-rose-700">{permissionCheckMessage}</p>
+                      ) : null}
+                    </div>
+                  ) : null}
                   {errors.base ? <p className="mt-3 text-xs font-medium text-rose-600">{errors.base}</p> : null}
                 </div>
               </div>
