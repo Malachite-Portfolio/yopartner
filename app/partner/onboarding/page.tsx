@@ -90,6 +90,14 @@ const stepTitles = [
 ];
 const REQUIRED_DOCUMENTS_MESSAGE = "Please upload all required verification documents before submitting.";
 const LIVE_VIDEO_REQUIRED_MESSAGE = "Please complete live video verification before submitting.";
+const LIVE_VIDEO_UNSUPPORTED_MESSAGE =
+  "Your browser does not support live video recording. Please try Chrome on Android or another supported browser.";
+const CAMERA_PERMISSION_DENIED_MESSAGE =
+  "Camera permission was denied. Please allow camera access in your browser settings and try again.";
+const CAMERA_ALREADY_IN_USE_MESSAGE =
+  "Camera is already being used by another app. Close it and try again.";
+const CAMERA_REQUIRES_HTTPS_MESSAGE =
+  "Camera requires HTTPS. Please open YoPartner using https://yopartner.com.";
 const LIVE_VIDEO_MIN_SECONDS = 10;
 const LIVE_VIDEO_MAX_SECONDS = 30;
 
@@ -116,6 +124,42 @@ function sanitizeServices(services: string[]): OnboardingServiceType[] {
 
 function formatDocumentSelectionStatus(hasDocument: boolean) {
   return hasDocument ? "Selected" : "Pending";
+}
+
+function getLiveVideoMimeType() {
+  if (typeof MediaRecorder === "undefined") return "";
+  const supportedTypes = [
+    "video/webm;codecs=vp8,opus",
+    "video/webm;codecs=vp8",
+    "video/webm",
+    "video/mp4",
+  ];
+  return supportedTypes.find((type) => MediaRecorder.isTypeSupported(type)) ?? "";
+}
+
+function getCameraErrorName(error: unknown) {
+  return typeof error === "object" && error && "name" in error
+    ? String((error as { name?: unknown }).name ?? "")
+    : "";
+}
+
+function shouldRetryVideoOnly(error: unknown) {
+  const name = getCameraErrorName(error);
+  return ["NotFoundError", "OverconstrainedError", "ConstraintNotSatisfiedError"].includes(name);
+}
+
+function getCameraPermissionMessage(error: unknown) {
+  const name = getCameraErrorName(error);
+  if (name === "NotAllowedError" || name === "PermissionDeniedError") {
+    return CAMERA_PERMISSION_DENIED_MESSAGE;
+  }
+  if (name === "NotReadableError" || name === "TrackStartError") {
+    return CAMERA_ALREADY_IN_USE_MESSAGE;
+  }
+  if (name === "SecurityError") {
+    return CAMERA_REQUIRES_HTTPS_MESSAGE;
+  }
+  return "Camera and microphone permission is required to record live verification.";
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -390,6 +434,9 @@ export default function PartnerOnboardingPage() {
     objectUrl: "",
   });
   const [isRecordingLiveVideo, setIsRecordingLiveVideo] = useState(false);
+  const [isCameraEnabled, setIsCameraEnabled] = useState(false);
+  const [isEnablingCamera, setIsEnablingCamera] = useState(false);
+  const [isVideoOnlyRecording, setIsVideoOnlyRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [recordingError, setRecordingError] = useState("");
   const liveStreamVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -459,9 +506,20 @@ export default function PartnerOnboardingPage() {
       if (recordingTimerRef.current) window.clearInterval(recordingTimerRef.current);
       if (recordingStopTimerRef.current) window.clearTimeout(recordingStopTimerRef.current);
       liveStreamRef.current?.getTracks().forEach((track) => track.stop());
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
       if (liveVideo.objectUrl) URL.revokeObjectURL(liveVideo.objectUrl);
     };
   }, [liveVideo.objectUrl]);
+
+  useEffect(() => {
+    if (liveStreamVideoRef.current && liveStreamRef.current) {
+      liveStreamVideoRef.current.srcObject = liveStreamRef.current;
+    }
+  }, [isCameraEnabled, isRecordingLiveVideo]);
 
   const requiredDocumentsSelected = Boolean(
     (selfieFile || kycUploads.selfie) &&
@@ -632,34 +690,93 @@ export default function PartnerOnboardingPage() {
     if (liveStreamVideoRef.current) {
       liveStreamVideoRef.current.srcObject = null;
     }
+    setIsCameraEnabled(false);
+    setIsVideoOnlyRecording(false);
+  };
+
+  const requestLiveCameraStream = async () => {
+    if (typeof window === "undefined") {
+      throw new Error(LIVE_VIDEO_UNSUPPORTED_MESSAGE);
+    }
+    if (window.isSecureContext === false) {
+      throw new Error(CAMERA_REQUIRES_HTTPS_MESSAGE);
+    }
+    if (!navigator.mediaDevices?.getUserMedia) {
+      throw new Error(LIVE_VIDEO_UNSUPPORTED_MESSAGE);
+    }
+
+    try {
+      setIsVideoOnlyRecording(false);
+      return await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    } catch (error) {
+      if (!shouldRetryVideoOnly(error)) throw error;
+      const videoOnlyStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      setIsVideoOnlyRecording(true);
+      return videoOnlyStream;
+    }
+  };
+
+  const handleEnableCamera = async () => {
+    setRecordingError("");
+    setErrors({});
+    setIsEnablingCamera(true);
+    stopLiveStream();
+    try {
+      const stream = await requestLiveCameraStream();
+      liveStreamRef.current = stream;
+      setIsCameraEnabled(true);
+      if (liveStreamVideoRef.current) {
+        liveStreamVideoRef.current.srcObject = stream;
+      }
+    } catch (error) {
+      stopLiveStream();
+      const message = error instanceof Error && error.message ? error.message : getCameraPermissionMessage(error);
+      setRecordingError(message);
+    } finally {
+      setIsEnablingCamera(false);
+    }
   };
 
   const handleStartLiveRecording = async () => {
     setRecordingError("");
     setErrors({});
     if (typeof window === "undefined" || typeof MediaRecorder === "undefined") {
-      setRecordingError("Live video recording is not supported in this browser. Please use the latest Chrome or Edge.");
+      setRecordingError(LIVE_VIDEO_UNSUPPORTED_MESSAGE);
       return;
     }
-    if (!navigator.mediaDevices?.getUserMedia) {
-      setRecordingError("Camera and microphone recording is not supported in this browser.");
+    let stream = liveStreamRef.current;
+    if (!stream || stream.getTracks().every((track) => track.readyState === "ended")) {
+      try {
+        stream = await requestLiveCameraStream();
+        liveStreamRef.current = stream;
+        setIsCameraEnabled(true);
+      } catch (error) {
+        const message = error instanceof Error && error.message ? error.message : getCameraPermissionMessage(error);
+        setRecordingError(message);
+        stopLiveStream();
+        return;
+      }
+    }
+
+    const mimeType = getLiveVideoMimeType();
+    let recorder: MediaRecorder;
+    try {
+      recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+    } catch {
+      setRecordingError(LIVE_VIDEO_UNSUPPORTED_MESSAGE);
       return;
     }
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")
-        ? "video/webm;codecs=vp8,opus"
-        : MediaRecorder.isTypeSupported("video/webm")
-          ? "video/webm"
-          : "";
-      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
       liveVideoChunksRef.current = [];
-      liveStreamRef.current = stream;
       mediaRecorderRef.current = recorder;
       recordingStartedAtRef.current = Date.now();
       setRecordingSeconds(0);
       setIsRecordingLiveVideo(true);
+      setLiveVideo((current) => {
+        if (current.objectUrl) URL.revokeObjectURL(current.objectUrl);
+        return { file: null, upload: null, objectUrl: "" };
+      });
 
       if (liveStreamVideoRef.current) {
         liveStreamVideoRef.current.srcObject = stream;
@@ -699,15 +816,16 @@ export default function PartnerOnboardingPage() {
         setRecordingSeconds(elapsed);
       }, 250);
       recordingStopTimerRef.current = window.setTimeout(stopLiveRecording, LIVE_VIDEO_MAX_SECONDS * 1000);
-    } catch {
+    } catch (error) {
       clearRecordingTimers();
       stopLiveStream();
       setIsRecordingLiveVideo(false);
-      setRecordingError("Camera and microphone permission is required to record live verification.");
+      setRecordingError(getCameraPermissionMessage(error));
     }
   };
 
   const handleRemoveLiveVideo = () => {
+    stopLiveStream();
     setLiveVideo((current) => {
       if (current.objectUrl) URL.revokeObjectURL(current.objectUrl);
       return { file: null, upload: null, objectUrl: "" };
@@ -1419,7 +1537,7 @@ export default function PartnerOnboardingPage() {
 
               <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
                 <div className="rounded-xl border border-slate-200 bg-slate-950 p-3">
-                  {isRecordingLiveVideo ? (
+                  {isCameraEnabled || isRecordingLiveVideo ? (
                     <video
                       ref={liveStreamVideoRef}
                       autoPlay
@@ -1444,13 +1562,42 @@ export default function PartnerOnboardingPage() {
 
                 <div className="rounded-xl border border-slate-200 p-4">
                   <p className="text-sm font-semibold text-slate-900">
-                    {isRecordingLiveVideo ? `Recording ${recordingSeconds}s` : liveVideo.file || liveVideo.upload ? "Video recorded" : "Ready to record"}
+                    {isRecordingLiveVideo
+                      ? `Recording ${recordingSeconds}s`
+                      : liveVideo.file || liveVideo.upload
+                        ? "Video recorded"
+                        : isCameraEnabled
+                          ? "Camera enabled"
+                          : "Camera permission required"}
                   </p>
                   <p className="mt-1 text-xs text-slate-500">
-                    Browser recording requires camera and microphone permission.
+                    Tap Enable Camera first. Your browser will ask for camera and microphone permission.
                   </p>
+                  {isVideoOnlyRecording ? (
+                    <p className="mt-2 text-xs font-medium text-amber-700">
+                      Microphone was unavailable, so video-only recording is enabled.
+                    </p>
+                  ) : null}
                   <div className="mt-4 flex flex-col gap-2">
-                    {!isRecordingLiveVideo ? (
+                    {!isRecordingLiveVideo && !isCameraEnabled ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void handleEnableCamera();
+                        }}
+                        disabled={isEnablingCamera}
+                        className="h-10 rounded-xl bg-[#0f766e] px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {isEnablingCamera
+                          ? "Enabling Camera..."
+                          : recordingError
+                            ? "Try Again"
+                            : liveVideo.file || liveVideo.upload
+                              ? "Re-record"
+                              : "Enable Camera"}
+                      </button>
+                    ) : null}
+                    {!isRecordingLiveVideo && isCameraEnabled ? (
                       <button
                         type="button"
                         onClick={() => {
@@ -1458,9 +1605,10 @@ export default function PartnerOnboardingPage() {
                         }}
                         className="h-10 rounded-xl bg-[#0f766e] px-4 text-sm font-semibold text-white"
                       >
-                        {liveVideo.file || liveVideo.upload ? "Record Again" : "Start Recording"}
+                        Start Recording
                       </button>
-                    ) : (
+                    ) : null}
+                    {isRecordingLiveVideo ? (
                       <button
                         type="button"
                         onClick={stopLiveRecording}
@@ -1468,7 +1616,7 @@ export default function PartnerOnboardingPage() {
                       >
                         Stop Recording
                       </button>
-                    )}
+                    ) : null}
                     {liveVideo.file || liveVideo.upload ? (
                       <button
                         type="button"

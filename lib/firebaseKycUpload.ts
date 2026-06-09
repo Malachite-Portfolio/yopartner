@@ -44,7 +44,7 @@ function sanitizeFileName(name: string) {
 function validateFile(file: File, type: PartnerKycType) {
   if (type === "live-video") {
     const videoType = file.type.toLowerCase();
-    const isAllowedVideo = videoType === "video/mp4" || videoType === "video/webm" || videoType.startsWith("video/webm;");
+    const isAllowedVideo = videoType.startsWith("video/mp4") || videoType.startsWith("video/webm");
     if (!isAllowedVideo) {
       throw new Error("Live verification video must be WEBM or MP4.");
     }
