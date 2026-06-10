@@ -4,7 +4,9 @@ import { ArrowLeft, Lock, Mic, PhoneOff, Volume2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import type { IAgoraRTCClient, IAgoraRTCRemoteUser, IMicrophoneAudioTrack, IRemoteAudioTrack } from "agora-rtc-sdk-ng";
+import { CallBrowserWarning } from "@/components/call/CallBrowserWarning";
 import { EndSessionConfirmModal } from "@/components/session/EndSessionConfirmModal";
+import { useCallPageResilience } from "@/hooks/useCallPageResilience";
 import { useLoopingRingtone } from "@/hooks/useLoopingRingtone";
 import { useSessionExitGuard } from "@/hooks/useSessionExitGuard";
 import {
@@ -18,7 +20,14 @@ import {
   type SessionStatus,
 } from "@/lib/api/sessions";
 import { resolveCompanionRouteProfile, type CompanionRouteProfile } from "@/lib/companionRoutes";
-import { buildAgoraUid, createAgoraClient, normalizeChannelName, requestAudioPermission } from "@/lib/agora";
+import {
+  buildAgoraUid,
+  createAgoraClient,
+  getMediaDeviceErrorMessage,
+  normalizeChannelName,
+  renewAgoraSessionToken,
+  shouldRejoinAgora,
+} from "@/lib/agora";
 import { getUserAuthTokenWithRestore } from "@/lib/auth/userAuth";
 import { isActiveSessionStatus } from "@/lib/sessionStatus";
 import { VerifiedPartnerBadge } from "@/components/VerifiedPartnerBadge";
@@ -112,6 +121,11 @@ export default function AudioCallPage() {
   const remoteAudioTrackRef = useRef<IRemoteAudioTrack | null>(null);
   const remoteAudioElementRef = useRef<HTMLAudioElement | null>(null);
   const autoEndedRewardRef = useRef(false);
+  const joinedRef = useRef(false);
+  const joiningRef = useRef(false);
+  const reconnectingRef = useRef(false);
+  const renewingTokenRef = useRef(false);
+  const endingRef = useRef(false);
 
   const isPending = session?.status === "PENDING";
   const isActive = session?.status === "LIVE" || session?.status === "ACCEPTED";
@@ -206,6 +220,8 @@ export default function AudioCallPage() {
   }, [session]);
 
   const cleanupAgora = useCallback(async () => {
+    joinedRef.current = false;
+    joiningRef.current = false;
     try {
       remoteAudioTrackRef.current?.stop();
     } catch {
@@ -233,8 +249,6 @@ export default function AudioCallPage() {
 
     setJoined(false);
     setJoining(false);
-    setNeedsPermissionAction(false);
-
     setLocalAudioReady(false);
     setLocalAudioPublished(false);
     setLocalJoinStartedAt(null);
@@ -485,7 +499,11 @@ export default function AudioCallPage() {
     async (client: IAgoraRTCClient, user: IAgoraRTCRemoteUser) => {
       if (!user.hasAudio && !user.audioTrack) return;
 
-      await client.subscribe(user, "audio");
+      try {
+        await client.subscribe(user, "audio");
+      } catch {
+        // Repeated publish/foreground sweeps can hit an already-subscribed track.
+      }
       const latestUser = client.remoteUsers.find((item) => String(item.uid) === String(user.uid));
       const track = latestUser?.audioTrack ?? user.audioTrack ?? null;
 
@@ -504,13 +522,13 @@ export default function AudioCallPage() {
   );
 
   const joinAgoraAudio = useCallback(async () => {
-    if (!session || !companion || joining || joined || !isActive) return;
+    if (!session || !companion || joiningRef.current || joinedRef.current || endingRef.current || !isActive) return;
 
+    joiningRef.current = true;
     setJoining(true);
     setError("");
 
     try {
-      await requestAudioPermission();
       await refreshAudioOutputDevices();
       setNeedsPermissionAction(false);
 
@@ -551,6 +569,40 @@ export default function AudioCallPage() {
         setAudioPlaybackReady(false);
       });
 
+      client.on("connection-state-change", (state, previousState) => {
+        if (state === "RECONNECTING") {
+          setError("Call connection interrupted. Reconnecting...");
+          return;
+        }
+        if (state === "CONNECTED" && previousState === "RECONNECTING") {
+          setError("");
+          void replayRemoteAudio("auto");
+          return;
+        }
+        if (shouldRejoinAgora(state) && previousState !== "DISCONNECTING" && document.visibilityState === "visible") {
+          setError("Call connection was lost. Rejoining...");
+          void cleanupAgora();
+        }
+      });
+
+      client.on("token-privilege-will-expire", () => {
+        if (renewingTokenRef.current) return;
+        renewingTokenRef.current = true;
+        void renewAgoraSessionToken(client, session.id)
+          .catch(() => {
+            setError("Secure call token refresh failed. Reconnecting...");
+            void cleanupAgora();
+          })
+          .finally(() => {
+            renewingTokenRef.current = false;
+          });
+      });
+
+      client.on("token-privilege-did-expire", () => {
+        setError("Secure call token expired. Reconnecting...");
+        void cleanupAgora();
+      });
+
       const tokenResponse = await getSessionAgoraToken(session.id);
       if (tokenResponse.error || !tokenResponse.data?.token) {
         setError(tokenResponse.error?.message || "Could not prepare secure call token. Please retry.");
@@ -573,12 +625,18 @@ export default function AudioCallPage() {
       setDebugAgoraUid(uid);
 
       await client.join(appId, channelName, tokenResponse.data.token, uid);
+      joinedRef.current = true;
       setJoined(true);
       syncRemoteUsersDebug(client);
 
       const AgoraRTC = await import("agora-rtc-sdk-ng");
       const localAudioTrack = await AgoraRTC.default.createMicrophoneAudioTrack();
       localAudioTrackRef.current = localAudioTrack;
+      localAudioTrack.on("track-ended", () => {
+        setNeedsPermissionAction(true);
+        setError("Microphone stopped. Tap Enable microphone to reconnect it.");
+        void cleanupAgora();
+      });
       setDebugLocalMicCreated(true);
       setLocalAudioReady(true);
 
@@ -590,28 +648,54 @@ export default function AudioCallPage() {
       await Promise.all(client.remoteUsers.map(async (remoteUser) => subscribeRemoteAudioUser(client, remoteUser)));
       syncRemoteUsersDebug(client);
     } catch (joinError) {
-      const message = joinError instanceof Error ? joinError.message : "Unable to connect audio call.";
-      if (/permission|denied|notallowed/i.test(message)) {
-        setNeedsPermissionAction(true);
-        setError("Microphone permission is required for audio calls.");
-      } else {
-        setError(message);
-      }
+      const message = getMediaDeviceErrorMessage(joinError, "audio");
       await cleanupAgora();
+      setNeedsPermissionAction(/permission|required|busy|unavailable|microphone/i.test(message));
+      setError(message);
     } finally {
+      joiningRef.current = false;
       setJoining(false);
     }
-  }, [cleanupAgora, companion, isActive, joined, joining, notifyMediaReady, refreshAudioOutputDevices, session, subscribeRemoteAudioUser, syncRemoteUsersDebug]);
+  }, [cleanupAgora, companion, isActive, notifyMediaReady, refreshAudioOutputDevices, replayRemoteAudio, session, subscribeRemoteAudioUser, syncRemoteUsersDebug]);
 
   useEffect(() => {
-    if (!isActive || joined || joining) return;
+    if (!isActive || joined || joining || needsPermissionAction) return;
     const timer = window.setTimeout(() => {
       void joinAgoraAudio();
     }, 0);
     return () => {
       window.clearTimeout(timer);
     };
-  }, [isActive, joinAgoraAudio, joined, joining]);
+  }, [isActive, joinAgoraAudio, joined, joining, needsPermissionAction]);
+
+  const recoverForegroundAudio = useCallback(async () => {
+    if (needsPermissionAction || endingRef.current) return;
+    const client = clientRef.current;
+    const localTrackEnded = localAudioTrackRef.current?.getMediaStreamTrack?.().readyState === "ended";
+    if (!client || shouldRejoinAgora(client.connectionState) || localTrackEnded) {
+      if (reconnectingRef.current) return;
+      reconnectingRef.current = true;
+      setError("Restoring call after returning to the screen...");
+      await cleanupAgora();
+      reconnectingRef.current = false;
+      return;
+    }
+    if (client.connectionState === "CONNECTED") {
+      await Promise.all(
+        client.remoteUsers.map(async (remoteUser) => {
+          if (!remoteUser.hasAudio && !remoteUser.audioTrack) return;
+          await subscribeRemoteAudioUser(client, remoteUser);
+        }),
+      );
+      await replayRemoteAudio("auto");
+      setError("");
+    }
+  }, [cleanupAgora, needsPermissionAction, replayRemoteAudio, subscribeRemoteAudioUser]);
+
+  useCallPageResilience({
+    active: isActive,
+    onForeground: recoverForegroundAudio,
+  });
 
   const toggleMute = useCallback(async () => {
     const track = localAudioTrackRef.current;
@@ -651,7 +735,8 @@ export default function AudioCallPage() {
   }, [applyOutputRoute, replayRemoteAudio, speakerEnabled]);
 
   const handleCancel = async () => {
-    if (!session?.id || isCancelling) return;
+    if (!session?.id || isCancelling || endingRef.current) return;
+    endingRef.current = true;
     setIsCancelling(true);
 
     let response;
@@ -670,18 +755,21 @@ export default function AudioCallPage() {
       setSession(response.data);
       return;
     }
+    endingRef.current = false;
     setError(response.error?.message || "Unable to cancel request.");
   };
 
   const handleConfirmEndSession = useCallback(async () => {
     if (!session?.id) return;
-    if (isCancelling) throw new Error("Session is already ending.");
+    if (isCancelling || endingRef.current) throw new Error("Session is already ending.");
+    endingRef.current = true;
     setIsCancelling(true);
     try {
       const responsePromise = endSession(session.id);
       await cleanupAgora();
       const response = await responsePromise;
       if (!response.data) {
+        endingRef.current = false;
         const message = response.error?.message || "Unable to end this session. Please try again.";
         setError(message);
         throw new Error(message);
@@ -701,6 +789,7 @@ export default function AudioCallPage() {
     if (elapsedSeconds < maxAllowedSeconds || autoEndedRewardRef.current) return;
 
     autoEndedRewardRef.current = true;
+    endingRef.current = true;
     setSessionEndNotice(sessionLimitMessage);
     setIsCancelling(true);
 
@@ -713,6 +802,7 @@ export default function AudioCallPage() {
           setSession(response.data);
           return;
         }
+        endingRef.current = false;
         setError(response.error?.message || sessionLimitMessage);
       } finally {
         setIsCancelling(false);
@@ -854,6 +944,10 @@ export default function AudioCallPage() {
           </button>
         ) : null}
 
+        <div className="mt-3">
+          <CallBrowserWarning />
+        </div>
+
         {error ? <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">{error}</p> : null}
 
         {balanceWarning ? (
@@ -903,7 +997,15 @@ export default function AudioCallPage() {
         </div>
 
         {remoteAudioPublished && !audioPlaybackReady && !isPending ? (
-          <p className="mt-2 text-center text-xs text-[#334155]">Tap speaker or screen to enable audio</p>
+          <button
+            type="button"
+            onClick={() => {
+              void replayRemoteAudio("gesture");
+            }}
+            className="mt-2 self-center rounded-full border border-[#b7dfd7] bg-white px-3 py-1.5 text-xs font-semibold text-[#0f766e]"
+          >
+            Tap to enable call audio
+          </button>
         ) : null}
 
         <div className="pb-2 pt-4">

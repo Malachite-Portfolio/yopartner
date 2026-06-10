@@ -1,4 +1,5 @@
 import type {
+  ConnectionState,
   IAgoraRTCClient,
   ICameraVideoTrack,
   ILocalAudioTrack,
@@ -8,6 +9,7 @@ import type {
   IRemoteVideoTrack,
   UID,
 } from "agora-rtc-sdk-ng";
+import { getSessionAgoraToken } from "@/lib/api/sessions";
 
 export type AgoraModule = typeof import("agora-rtc-sdk-ng");
 
@@ -76,4 +78,41 @@ export function closeTrackSafely(track: ILocalAudioTrack | ILocalVideoTrack | nu
   } catch {
     // no-op
   }
+}
+
+export function getMediaDeviceErrorMessage(error: unknown, kind: "audio" | "video") {
+  const name =
+    error && typeof error === "object" && "name" in error
+      ? String((error as { name?: unknown }).name ?? "")
+      : "";
+  const message = error instanceof Error ? error.message : "";
+  const permissionLabel = kind === "video" ? "Camera and microphone" : "Microphone";
+
+  if (/NotAllowedError|PermissionDeniedError/i.test(name) || /permission|denied|notallowed/i.test(message)) {
+    return `${permissionLabel} permission is required for ${kind} calls.`;
+  }
+  if (/NotReadableError|TrackStartError/i.test(name) || /not.?readable|could not start|device.*busy/i.test(message)) {
+    return `${permissionLabel} is busy or unavailable. Close other apps using it, then try again.`;
+  }
+  if (/NotFoundError|DevicesNotFoundError/i.test(name) || /requested device not found|no device/i.test(message)) {
+    return kind === "video"
+      ? "No working camera or microphone was found on this device."
+      : "No working microphone was found on this device.";
+  }
+  if (/AbortError/i.test(name)) {
+    return `${permissionLabel} could not start. Please try again.`;
+  }
+  return message || `Unable to connect ${kind} call.`;
+}
+
+export async function renewAgoraSessionToken(client: IAgoraRTCClient, sessionId: string) {
+  const response = await getSessionAgoraToken(sessionId);
+  if (response.error || !response.data?.token) {
+    throw new Error(response.error?.message || "Could not refresh the secure call token.");
+  }
+  await client.renewToken(response.data.token);
+}
+
+export function shouldRejoinAgora(state: ConnectionState) {
+  return state === "DISCONNECTED";
 }

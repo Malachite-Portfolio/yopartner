@@ -11,7 +11,9 @@ import type {
   IRemoteAudioTrack,
   IRemoteVideoTrack,
 } from "agora-rtc-sdk-ng";
+import { CallBrowserWarning } from "@/components/call/CallBrowserWarning";
 import { EndSessionConfirmModal } from "@/components/session/EndSessionConfirmModal";
+import { useCallPageResilience } from "@/hooks/useCallPageResilience";
 import { useLoopingRingtone } from "@/hooks/useLoopingRingtone";
 import { useSessionExitGuard } from "@/hooks/useSessionExitGuard";
 import {
@@ -28,7 +30,14 @@ import {
   resolveCompanionRouteProfile,
   type CompanionRouteProfile,
 } from "@/lib/companionRoutes";
-import { buildAgoraUid, createAgoraClient, normalizeChannelName, requestVideoPermission } from "@/lib/agora";
+import {
+  buildAgoraUid,
+  createAgoraClient,
+  getMediaDeviceErrorMessage,
+  normalizeChannelName,
+  renewAgoraSessionToken,
+  shouldRejoinAgora,
+} from "@/lib/agora";
 import { isActiveSessionStatus } from "@/lib/sessionStatus";
 import { getUserAuthTokenWithRestore } from "@/lib/auth/userAuth";
 import { VerifiedPartnerBadge } from "@/components/VerifiedPartnerBadge";
@@ -126,6 +135,11 @@ export default function VideoCallPage() {
   const remoteVideoContainerRef = useRef<HTMLDivElement | null>(null);
   const remoteAudioElementRef = useRef<HTMLAudioElement | null>(null);
   const autoEndedBillingRef = useRef(false);
+  const joinedRef = useRef(false);
+  const joiningRef = useRef(false);
+  const reconnectingRef = useRef(false);
+  const renewingTokenRef = useRef(false);
+  const endingRef = useRef(false);
   const isPending = session?.status === "PENDING";
   useLoopingRingtone({ enabled: isPending, kind: "ringback", volume: 0.06 });
   const isCallLive = Boolean(session?.liveStartedAt);
@@ -209,6 +223,8 @@ export default function VideoCallPage() {
   }, []);
 
   const cleanupAgora = useCallback(async () => {
+    joinedRef.current = false;
+    joiningRef.current = false;
     try {
       remoteAudioTrackRef.current?.stop();
       remoteVideoTrackRef.current?.stop();
@@ -237,6 +253,7 @@ export default function VideoCallPage() {
       clientRef.current = null;
     }
     setJoined(false);
+    setJoining(false);
     setLocalAudioReady(false);
     setLocalVideoReady(false);
     setLocalAudioPublished(false);
@@ -262,7 +279,6 @@ export default function VideoCallPage() {
     setDebugTokenFetched(false);
     setDebugAgoraUid(null);
     setLocalMicCreated(false);
-    setNeedsPermissionAction(false);
   }, []);
 
   useEffect(() => {
@@ -560,11 +576,11 @@ export default function VideoCallPage() {
   }, [isCameraOn, isFrontCamera]);
 
   const joinAgoraVideo = useCallback(async () => {
-    if (!session || !companion || joining || joined) return;
+    if (!session || !companion || joiningRef.current || joinedRef.current || endingRef.current) return;
+    joiningRef.current = true;
     setJoining(true);
     setError("");
     try {
-      await requestVideoPermission();
       await refreshAudioOutputDevices();
       setNeedsPermissionAction(false);
 
@@ -657,6 +673,46 @@ export default function VideoCallPage() {
         remoteAudioTrackRef.current = null;
       });
 
+      client.on("connection-state-change", (state, previousState) => {
+        if (state === "RECONNECTING") {
+          setError("Call connection interrupted. Reconnecting...");
+          return;
+        }
+        if (state === "CONNECTED" && previousState === "RECONNECTING") {
+          setError("");
+          void playRemoteAudio("auto");
+          if (localVideoContainerRef.current) {
+            localVideoTrackRef.current?.play(localVideoContainerRef.current);
+          }
+          if (remoteVideoContainerRef.current) {
+            remoteVideoTrackRef.current?.play(remoteVideoContainerRef.current);
+          }
+          return;
+        }
+        if (shouldRejoinAgora(state) && previousState !== "DISCONNECTING" && document.visibilityState === "visible") {
+          setError("Call connection was lost. Rejoining...");
+          void cleanupAgora();
+        }
+      });
+
+      client.on("token-privilege-will-expire", () => {
+        if (renewingTokenRef.current) return;
+        renewingTokenRef.current = true;
+        void renewAgoraSessionToken(client, session.id)
+          .catch(() => {
+            setError("Secure call token refresh failed. Reconnecting...");
+            void cleanupAgora();
+          })
+          .finally(() => {
+            renewingTokenRef.current = false;
+          });
+      });
+
+      client.on("token-privilege-did-expire", () => {
+        setError("Secure call token expired. Reconnecting...");
+        void cleanupAgora();
+      });
+
       const tokenResponse = await getSessionAgoraToken(session.id);
       if (tokenResponse.error || !tokenResponse.data?.token) {
         setError(tokenResponse.error?.message || "Could not prepare secure call token. Please retry.");
@@ -677,11 +733,22 @@ export default function VideoCallPage() {
       setDebugAgoraUid(uid);
 
       await client.join(appId, channelName, tokenResponse.data.token, uid);
+      joinedRef.current = true;
 
       const AgoraRTC = await import("agora-rtc-sdk-ng");
       const [localAudioTrack, localVideoTrack] = await AgoraRTC.default.createMicrophoneAndCameraTracks();
       localAudioTrackRef.current = localAudioTrack;
       localVideoTrackRef.current = localVideoTrack;
+      localAudioTrack.on("track-ended", () => {
+        setNeedsPermissionAction(true);
+        setError("Microphone stopped. Reconnect camera and microphone to continue.");
+        void cleanupAgora();
+      });
+      localVideoTrack.on("track-ended", () => {
+        setNeedsPermissionAction(true);
+        setError("Camera stopped. Reconnect camera and microphone to continue.");
+        void cleanupAgora();
+      });
       setLocalMicCreated(true);
       setLocalAudioReady(true);
       setLocalVideoReady(true);
@@ -701,28 +768,77 @@ export default function VideoCallPage() {
       }, 1500);
       setJoined(true);
     } catch (joinError) {
-      const message = joinError instanceof Error ? joinError.message : "Unable to connect video call.";
-      if (/permission|denied|notallowed/i.test(message)) {
-        setNeedsPermissionAction(true);
-        setError("Camera and microphone permission are required for video calls.");
-      } else {
-        setError(message);
-      }
+      const message = getMediaDeviceErrorMessage(joinError, "video");
       await cleanupAgora();
+      setNeedsPermissionAction(/permission|required|busy|unavailable|camera|microphone/i.test(message));
+      setError(message);
     } finally {
+      joiningRef.current = false;
       setJoining(false);
     }
-  }, [cleanupAgora, companion, joined, joining, notifyMediaReady, playRemoteAudio, refreshAudioOutputDevices, session, syncRemoteUsersDebug]);
+  }, [cleanupAgora, companion, notifyMediaReady, playRemoteAudio, refreshAudioOutputDevices, session, syncRemoteUsersDebug]);
 
   useEffect(() => {
-    if ((session?.status !== "LIVE" && session?.status !== "ACCEPTED") || joined || joining) return;
+    if ((session?.status !== "LIVE" && session?.status !== "ACCEPTED") || joined || joining || needsPermissionAction) return;
     const timer = window.setTimeout(() => {
       void joinAgoraVideo();
     }, 0);
     return () => {
       window.clearTimeout(timer);
     };
-  }, [joinAgoraVideo, joined, joining, session?.status]);
+  }, [joinAgoraVideo, joined, joining, needsPermissionAction, session?.status]);
+
+  const recoverForegroundVideo = useCallback(async () => {
+    if (needsPermissionAction || endingRef.current) return;
+    const client = clientRef.current;
+    const localAudioEnded = localAudioTrackRef.current?.getMediaStreamTrack?.().readyState === "ended";
+    const localVideoEnded = localVideoTrackRef.current?.getMediaStreamTrack?.().readyState === "ended";
+    if (!client || shouldRejoinAgora(client.connectionState) || localAudioEnded || localVideoEnded) {
+      if (reconnectingRef.current) return;
+      reconnectingRef.current = true;
+      setError("Restoring call after returning to the screen...");
+      await cleanupAgora();
+      reconnectingRef.current = false;
+      return;
+    }
+    if (client.connectionState !== "CONNECTED") return;
+    await Promise.all(
+      client.remoteUsers.map(async (remoteUser) => {
+        if (remoteUser.hasAudio) {
+          try {
+            await client.subscribe(remoteUser, "audio");
+          } catch {
+            // The SDK throws when this track is already subscribed.
+          }
+          remoteAudioTrackRef.current = remoteUser.audioTrack ?? remoteAudioTrackRef.current;
+          setRemoteAudioPublished(Boolean(remoteUser.audioTrack));
+        }
+        if (remoteUser.hasVideo) {
+          try {
+            await client.subscribe(remoteUser, "video");
+          } catch {
+            // The SDK throws when this track is already subscribed.
+          }
+          remoteVideoTrackRef.current = remoteUser.videoTrack ?? remoteVideoTrackRef.current;
+          setRemoteVideoReady(Boolean(remoteUser.videoTrack));
+        }
+      }),
+    );
+    setRemoteUserJoined(client.remoteUsers.length > 0);
+    await playRemoteAudio("auto");
+    if (localVideoContainerRef.current) {
+      localVideoTrackRef.current?.play(localVideoContainerRef.current);
+    }
+    if (remoteVideoContainerRef.current) {
+      remoteVideoTrackRef.current?.play(remoteVideoContainerRef.current);
+    }
+    setError("");
+  }, [cleanupAgora, needsPermissionAction, playRemoteAudio]);
+
+  useCallPageResilience({
+    active: session?.status === "LIVE" || session?.status === "ACCEPTED",
+    onForeground: recoverForegroundVideo,
+  });
 
   const handleSpeakerToggle = useCallback(() => {
     const nextSpeakerState = !speakerEnabled;
@@ -747,7 +863,8 @@ export default function VideoCallPage() {
   }, [applyOutputRoute, playRemoteAudio, speakerEnabled]);
 
   const handleCancel = async () => {
-    if (!session?.id || isCancelling) return;
+    if (!session?.id || isCancelling || endingRef.current) return;
+    endingRef.current = true;
     setIsCancelling(true);
     let response;
     if (session.status === "PENDING") {
@@ -764,18 +881,21 @@ export default function VideoCallPage() {
       setSession(response.data);
       return;
     }
+    endingRef.current = false;
     setError(response.error?.message || "Unable to cancel request.");
   };
 
   const handleConfirmEndSession = useCallback(async () => {
     if (!session?.id) return;
-    if (isCancelling) throw new Error("Session is already ending.");
+    if (isCancelling || endingRef.current) throw new Error("Session is already ending.");
+    endingRef.current = true;
     setIsCancelling(true);
     try {
       const responsePromise = endSession(session.id);
       await cleanupAgora();
       const response = await responsePromise;
       if (!response.data) {
+        endingRef.current = false;
         const message = response.error?.message || "Unable to end this session. Please try again.";
         setError(message);
         throw new Error(message);
@@ -795,6 +915,7 @@ export default function VideoCallPage() {
     if (elapsedSeconds < maxAllowedSeconds || autoEndedBillingRef.current) return;
 
     autoEndedBillingRef.current = true;
+    endingRef.current = true;
     setSessionEndNotice("Your available balance is over. Please add money to continue.");
     setIsCancelling(true);
 
@@ -807,6 +928,7 @@ export default function VideoCallPage() {
           setSession(response.data);
           return;
         }
+        endingRef.current = false;
         setError(response.error?.message || "Your available balance is over. Please add money to continue.");
       } finally {
         setIsCancelling(false);
@@ -927,6 +1049,9 @@ export default function VideoCallPage() {
             {joining ? "Enabling camera & microphone..." : "Enable camera & microphone"}
           </button>
         ) : null}
+        <div className="mb-3">
+          <CallBrowserWarning dark />
+        </div>
         {error ? (
           <p className="mb-3 rounded-xl border border-amber-300/80 bg-amber-100/15 px-3 py-2 text-xs text-amber-100">
             {error}
@@ -946,6 +1071,17 @@ export default function VideoCallPage() {
           <p className="mb-3 rounded-xl border border-slate-200/40 bg-black/25 px-3 py-2 text-xs text-slate-100">
             {audioAssistMessage}
           </p>
+        ) : null}
+        {remoteAudioPublished && !audioPlaybackReady && !isPending ? (
+          <button
+            type="button"
+            onClick={() => {
+              void playRemoteAudio("gesture");
+            }}
+            className="mb-3 self-center rounded-full border border-cyan-300/50 bg-black/35 px-3 py-1.5 text-xs font-semibold text-cyan-100"
+          >
+            Tap to enable call audio
+          </button>
         ) : null}
         <div className="flex items-center justify-between">
           <button
