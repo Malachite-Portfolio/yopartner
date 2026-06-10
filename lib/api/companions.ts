@@ -222,10 +222,15 @@ function isLikelyPrivatePath(value: string) {
   );
 }
 
+function isApprovedProfileImageProxyUrl(value: string) {
+  return /(?:^https?:\/\/[^/]+)?\/api\/companions\/[^/?#]+\/profile-image(?:[?#].*)?$/i.test(value);
+}
+
 function normalizePublicImageUrl(value: unknown) {
   if (typeof value !== "string") return "";
   const text = value.trim();
   if (!text) return "";
+  if (isApprovedProfileImageProxyUrl(text)) return text;
   if (isLikelyPrivatePath(text)) return "";
   if (/^https?:\/\//i.test(text)) return text;
   if (text.startsWith("/")) return text;
