@@ -1,10 +1,10 @@
 "use client";
 
 import { Bell, ChevronDown, Menu } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { logoutPartnerAuthSession } from "@/lib/auth/logout";
-import { markPartnerPresenceOffline, sendPartnerOfflineBeacon } from "@/lib/api/partner";
+import { getPartnerProfileMedia, markPartnerPresenceOffline, sendPartnerOfflineBeacon } from "@/lib/api/partner";
 import { getPartnerProfile } from "@/lib/partnerAuth";
 import { defaultPartnerProfile, type PartnerProfile } from "@/lib/partnerData";
 
@@ -32,8 +32,25 @@ export function PartnerTopbar({ onMenuOpen }: PartnerTopbarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
   const profile = getPartnerProfile<PartnerProfile>(defaultPartnerProfile);
   const nameLabel = profile.fullName || "Companion";
+
+  useEffect(() => {
+    let active = true;
+
+    const loadProfileImage = async () => {
+      const response = await getPartnerProfileMedia();
+      if (!active || response.error) return;
+      setProfileImageUrl(response.data?.profileImageUrl ?? response.data?.resolvedProfileImageUrl ?? null);
+    };
+
+    void loadProfileImage();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const handleLogout = async () => {
     sendPartnerOfflineBeacon();
@@ -71,9 +88,14 @@ export function PartnerTopbar({ onMenuOpen }: PartnerTopbarProps) {
             onClick={() => setMenuOpen((current) => !current)}
             className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-2.5 text-sm font-semibold text-slate-700"
           >
-            <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-r from-[#1d4ed8] to-[#0ea5a6] text-xs font-bold text-white">
-              {nameLabel.slice(0, 1).toUpperCase()}
-            </span>
+            {profileImageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={profileImageUrl} alt="" className="h-7 w-7 rounded-full object-cover" />
+            ) : (
+              <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-r from-[#1d4ed8] to-[#0ea5a6] text-xs font-bold text-white">
+                {nameLabel.slice(0, 1).toUpperCase()}
+              </span>
+            )}
             <span className="hidden sm:inline">{nameLabel}</span>
             <ChevronDown size={14} />
           </button>
