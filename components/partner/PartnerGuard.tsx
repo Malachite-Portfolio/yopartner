@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { PARTNER_FIREBASE_TOKEN_KEY, subscribeFirebaseAuthState } from "@/lib/auth/firebasePhoneAuth";
 import { resolvePartnerLandingRoute } from "@/lib/partnerApproval";
 import { isPartnerLoggedIn } from "@/lib/partnerAuth";
@@ -14,6 +14,7 @@ type PartnerGuardProps = {
 
 export function PartnerGuard({ children, requireOnboarding = true }: PartnerGuardProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [checking, setChecking] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
 
@@ -37,7 +38,11 @@ export function PartnerGuard({ children, requireOnboarding = true }: PartnerGuar
       }
 
       const landing = await resolvePartnerLandingRoute();
-      if (landing.route !== "/partner/dashboard") {
+      const canAccessProfileWhilePending =
+        pathname === "/partner/profile" &&
+        (landing.route === "/partner/application-status" || landing.route === "/partner/onboarding");
+
+      if (landing.route !== "/partner/dashboard" && !canAccessProfileWhilePending) {
         setHasAccess(false);
         setChecking(false);
         router.replace(landing.route);
@@ -54,7 +59,7 @@ export function PartnerGuard({ children, requireOnboarding = true }: PartnerGuar
     });
 
     return unsubscribe;
-  }, [requireOnboarding, router]);
+  }, [pathname, requireOnboarding, router]);
 
   useEffect(() => {
     if (checking) return;

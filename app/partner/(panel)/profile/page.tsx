@@ -223,6 +223,11 @@ export default function PartnerProfilePage() {
       setErrorMessage("");
       const response = await getPartnerProfileMedia();
       if (response.error) {
+        if (!isApproved && (response.error.status === 403 || response.error.status === 404)) {
+          setMedia(EMPTY_MEDIA_STATE);
+          setLoadingMedia(false);
+          return;
+        }
         setErrorMessage(response.error.message || "Unable to load profile images right now.");
         setLoadingMedia(false);
         return;
@@ -232,7 +237,7 @@ export default function PartnerProfilePage() {
     };
 
     void loadMedia();
-  }, []);
+  }, [isApproved]);
 
   const handleProfileImageFile = async (file: File | null) => {
     if (!file || uploadingProfileImage) return;

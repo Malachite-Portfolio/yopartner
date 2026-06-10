@@ -252,6 +252,36 @@ function toOnboardingServices(value: unknown): OnboardingServiceType[] {
     .filter((item): item is OnboardingServiceType => Boolean(item));
 }
 
+function toExistingUpload(application: Record<string, unknown>, key: string): PartnerKycUploadResult | null {
+  const fileName = toOptionalString(application[`${key}FileName`]);
+  const storagePath = toOptionalString(application[`${key}StoragePath`]);
+  const downloadUrl = toOptionalString(application[`${key}Url`]);
+
+  if (!storagePath && !fileName && !downloadUrl) return null;
+  return {
+    fileName: fileName || storagePath.split("/").pop() || "uploaded-file",
+    storagePath,
+    downloadUrl,
+    contentType: "",
+    size: 0,
+  };
+}
+
+function toExistingLiveVideoUpload(application: Record<string, unknown>): PartnerKycUploadResult | null {
+  const fileName = toOptionalString(application.liveVideoFileName);
+  const storagePath = toOptionalString(application.liveVideoStoragePath);
+  const uploaded = Boolean(application.liveVideoUploaded);
+
+  if (!uploaded && !storagePath && !fileName) return null;
+  return {
+    fileName: fileName || storagePath.split("/").pop() || "live-verification-video",
+    storagePath,
+    downloadUrl: "",
+    contentType: "video/webm",
+    size: 0,
+  };
+}
+
 function mergeWithBackendProfile(
   current: OnboardingProfile,
   companionInput: Record<string, unknown> | null,
@@ -443,6 +473,7 @@ export default function PartnerOnboardingPage() {
   const router = useRouter();
   const isDemoPartnerSession = isClientDemoPartnerSessionActive();
   const [isEditMode, setIsEditMode] = useState<boolean | null>(null);
+  const [isHydratingExistingApplication, setIsHydratingExistingApplication] = useState(IS_PRODUCTION_READY_MODE);
   const [step, setStep] = useState(0);
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [submitMessage, setSubmitMessage] = useState("");
@@ -502,33 +533,50 @@ export default function PartnerOnboardingPage() {
   }, [router]);
 
   useEffect(() => {
-    if (!IS_PRODUCTION_READY_MODE) return;
+    if (!IS_PRODUCTION_READY_MODE) {
+      return;
+    }
     if (isEditMode === null) return;
 
     let active = true;
     const hydrateExistingApplication = async () => {
-      const landing = await resolvePartnerLandingRoute();
-      if (!active) return;
-      if ((landing.route === "/partner/dashboard" && !isEditMode) || landing.route === "/partner/application-status") {
-        router.replace(landing.route);
-        return;
+      setIsHydratingExistingApplication(true);
+      try {
+        const landing = await resolvePartnerLandingRoute();
+        if (!active) return;
+        if (!isEditMode && (landing.route === "/partner/dashboard" || landing.route === "/partner/application-status")) {
+          router.replace(landing.route);
+          return;
+        }
+
+        const [profileResponse, applicationsResponse] = await Promise.all([getPartnerProfileApi(), getPartnerApplications()]);
+        if (!active) return;
+
+        const profilePayload = asRecord(profileResponse.data);
+        const applicationsPayload = asRecord(applicationsResponse.data);
+        const applicationFromProfile = asRecord(profilePayload.application);
+        const applicationFromApplications = asRecord(applicationsPayload.application);
+        const companionFromProfile = asRecord(profilePayload.companion);
+        const companionFromApplication = asRecord(applicationFromApplications.companion);
+
+        const application = Object.keys(applicationFromProfile).length > 0 ? applicationFromProfile : applicationFromApplications;
+        const companion = Object.keys(companionFromProfile).length > 0 ? companionFromProfile : companionFromApplication;
+
+        if (Object.keys(application).length === 0 && Object.keys(companion).length === 0) return;
+        setProfile((current) => mergeWithBackendProfile(current, companion, application));
+        setKycUploads({
+          selfie: toExistingUpload(application, "selfie"),
+          aadhaarFront: toExistingUpload(application, "aadhaarFront"),
+          aadhaarBack: toExistingUpload(application, "aadhaarBack"),
+          pan: toExistingUpload(application, "pan"),
+        });
+        setLiveVideo((current) => ({
+          ...current,
+          upload: toExistingLiveVideoUpload(application),
+        }));
+      } finally {
+        if (active) setIsHydratingExistingApplication(false);
       }
-
-      const [profileResponse, applicationsResponse] = await Promise.all([getPartnerProfileApi(), getPartnerApplications()]);
-      if (!active) return;
-
-      const profilePayload = asRecord(profileResponse.data);
-      const applicationsPayload = asRecord(applicationsResponse.data);
-      const applicationFromProfile = asRecord(profilePayload.application);
-      const applicationFromApplications = asRecord(applicationsPayload.application);
-      const companionFromProfile = asRecord(profilePayload.companion);
-      const companionFromApplication = asRecord(applicationFromApplications.companion);
-
-      const application = Object.keys(applicationFromProfile).length > 0 ? applicationFromProfile : applicationFromApplications;
-      const companion = Object.keys(companionFromProfile).length > 0 ? companionFromProfile : companionFromApplication;
-
-      if (Object.keys(application).length === 0 && Object.keys(companion).length === 0) return;
-      setProfile((current) => mergeWithBackendProfile(current, companion, application));
     };
 
     void hydrateExistingApplication();
@@ -1194,6 +1242,16 @@ export default function PartnerOnboardingPage() {
       })}
     </div>
   );
+
+  if (isEditMode === null || isHydratingExistingApplication) {
+    return (
+      <section className="flex min-h-screen items-center justify-center bg-[#fffdf8] px-4">
+        <div className="rounded-3xl border border-[#dceae5] bg-white px-5 py-4 text-sm font-medium text-slate-600 shadow-sm">
+          Loading your partner profile...
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="min-h-screen bg-[#fffdf8]">

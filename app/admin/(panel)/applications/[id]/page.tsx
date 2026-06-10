@@ -7,6 +7,7 @@ import { ArrowLeft } from "lucide-react";
 import { AdminStatusBadge } from "@/components/admin/AdminStatusBadge";
 import {
   fetchAdminKycDocumentPreview,
+  fetchAdminLiveVideoPreview,
   getAdminApplicationById,
   listApplications,
   type AdminKycDocumentType,
@@ -35,11 +36,12 @@ type DocumentInfo = {
 };
 
 type PreviewState = {
-  documentType: AdminKycDocumentType;
   label: string;
   objectUrl: string;
   contentType: string;
 };
+
+type PreviewLoadingKey = AdminKycDocumentType | "liveVideo";
 
 type ApplicationDetails = {
   id: string;
@@ -70,6 +72,10 @@ type ApplicationDetails = {
   aadhaarFront: DocumentInfo;
   aadhaarBack: DocumentInfo;
   pan: DocumentInfo;
+  liveVideo: DocumentInfo;
+  liveVerificationName: string;
+  liveVerificationAge: string;
+  liveVerificationHobbies: string;
   safetyChecklist: SafetyRow[];
   adminNote: string;
 };
@@ -224,6 +230,10 @@ function extractApplication(applicationRaw: unknown): ApplicationDetails {
     application.panDocument,
     payload.panDocument,
   ]);
+  const liveVideo: DocumentInfo = {
+    uploaded: parseBoolean(application.liveVideoUploaded ?? payload.liveVideoUploaded),
+    fileName: asString(application.liveVideoFileName ?? payload.liveVideoFileName, ""),
+  };
 
   if (!aadhaarFront.uploaded || !aadhaarBack.uploaded) {
     const legacyAadhaar = getDocumentInfo(
@@ -285,6 +295,10 @@ function extractApplication(applicationRaw: unknown): ApplicationDetails {
     aadhaarFront,
     aadhaarBack,
     pan,
+    liveVideo,
+    liveVerificationName: asString(application.liveVerificationName ?? payload.liveVerificationName),
+    liveVerificationAge: asString(application.liveVerificationAge ?? payload.liveVerificationAge),
+    liveVerificationHobbies: asString(application.liveVerificationHobbies ?? payload.liveVerificationHobbies),
     safetyChecklist: [
       {
         label: "Strictly platonic",
@@ -319,7 +333,7 @@ export default function AdminApplicationDetailsPage() {
   const [rowActionLoading, setRowActionLoading] = useState<RowAction | null>(null);
   const [adminNoteDraft, setAdminNoteDraft] = useState("");
   const [preview, setPreview] = useState<PreviewState | null>(null);
-  const [previewLoading, setPreviewLoading] = useState<AdminKycDocumentType | null>(null);
+  const [previewLoading, setPreviewLoading] = useState<PreviewLoadingKey | null>(null);
   const [previewError, setPreviewError] = useState("");
 
   const loadDetails = useCallback(async () => {
@@ -486,8 +500,38 @@ export default function AdminApplicationDetailsPage() {
 
     if (preview?.objectUrl) URL.revokeObjectURL(preview.objectUrl);
     setPreview({
-      documentType,
       label,
+      objectUrl: URL.createObjectURL(response.data.blob),
+      contentType: response.data.contentType,
+    });
+  };
+
+  const handleViewLiveVideo = async () => {
+    if (!details) return;
+    setPreviewLoading("liveVideo");
+    setPreviewError("");
+
+    const response = await fetchAdminLiveVideoPreview(details.id);
+    setPreviewLoading(null);
+
+    if (response.error) {
+      if (response.error.status === 401) {
+        clearAdminAuthSession();
+        router.replace("/admin/login");
+        return;
+      }
+      setPreviewError(response.error.message || "Unable to load live verification video.");
+      return;
+    }
+
+    if (!response.data) {
+      setPreviewError("Unable to load live verification video.");
+      return;
+    }
+
+    if (preview?.objectUrl) URL.revokeObjectURL(preview.objectUrl);
+    setPreview({
+      label: "Live Verification Video",
       objectUrl: URL.createObjectURL(response.data.blob),
       contentType: response.data.contentType,
     });
@@ -617,6 +661,28 @@ export default function AdminApplicationDetailsPage() {
           {renderDocumentCard("Aadhaar Back", "aadhaarBack", details.aadhaarBack)}
           {renderDocumentCard("PAN", "pan", details.pan)}
         </div>
+
+        <h3 className="text-base font-semibold text-slate-900">Live verification</h3>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <p><span className="font-semibold text-slate-900">Name:</span> {details.liveVerificationName}</p>
+          <p><span className="font-semibold text-slate-900">Age:</span> {details.liveVerificationAge}</p>
+          <p className="sm:col-span-2"><span className="font-semibold text-slate-900">Hobbies:</span> {details.liveVerificationHobbies}</p>
+          <div className="sm:col-span-2">
+            <p><span className="font-semibold text-slate-900">Video:</span> {details.liveVideo.uploaded ? "Uploaded" : "Missing"}</p>
+            {details.liveVideo.uploaded ? (
+              <button
+                type="button"
+                onClick={() => {
+                  void handleViewLiveVideo();
+                }}
+                disabled={previewLoading !== null}
+                className="mt-1 rounded-lg border border-[#0f766e]/20 bg-[#eef8f5] px-2.5 py-1 text-xs font-semibold text-[#0f766e] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {previewLoading === "liveVideo" ? "Loading..." : "View Live Video"}
+              </button>
+            ) : null}
+          </div>
+        </div>
         {previewError ? (
           <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">
             {previewError}
@@ -703,6 +769,14 @@ export default function AdminApplicationDetailsPage() {
                   src={preview.objectUrl}
                   alt={`${preview.label} preview`}
                   className="mx-auto max-h-[76vh] max-w-full rounded-lg bg-white object-contain"
+                />
+              ) : preview.contentType.toLowerCase().startsWith("video/") ? (
+                <video
+                  src={preview.objectUrl}
+                  controls
+                  controlsList="nodownload"
+                  playsInline
+                  className="mx-auto max-h-[76vh] max-w-full rounded-lg bg-black"
                 />
               ) : (
                 <iframe

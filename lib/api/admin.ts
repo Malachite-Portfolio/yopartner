@@ -71,6 +71,43 @@ export async function fetchAdminKycDocumentPreview(applicationId: string, docume
   };
 }
 
+export async function fetchAdminLiveVideoPreview(applicationId: string) {
+  const token = getStoredAdminToken();
+  if (!token) {
+    return {
+      data: null,
+      error: { status: 401, message: "Admin login required." },
+    };
+  }
+
+  const response = await fetch(
+    `/api/admin/live-verification-videos/${encodeURIComponent(applicationId)}/preview`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    },
+  );
+
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => ({}))) as { message?: string; error?: string };
+    return {
+      data: null,
+      error: {
+        status: response.status,
+        message: payload.message || payload.error || "Unable to load live verification video.",
+      },
+    };
+  }
+
+  return {
+    data: {
+      blob: await response.blob(),
+      contentType: response.headers.get("content-type") ?? "video/webm",
+    },
+    error: null,
+  };
+}
+
 export const getAdminDashboard = () => adminGet<Record<string, unknown>>("/api/admin/dashboard");
 export const listApplications = () => adminGet<Record<string, unknown>>("/api/admin/applications");
 export const updateApplicationStatus = (payload: Record<string, unknown>) => adminUpdate("/api/admin/applications", payload);
