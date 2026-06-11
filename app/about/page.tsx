@@ -8,7 +8,6 @@
   Sparkles,
   Users,
   Video,
-  Activity,
   Smile,
 } from "lucide-react";
 import Link from "next/link";
@@ -48,11 +47,6 @@ const offerings = [
     icon: Video,
   },
   {
-    title: "Home Visit Companionship",
-    description: "Approved in-person companionship with extra safety checks.",
-    icon: Activity,
-  },
-  {
     title: "Social Companionship",
     description: "Conversation, presence, and meaningful time without pressure.",
     icon: Smile,
@@ -77,7 +71,7 @@ const whyItems = [
   },
   {
     title: "Flexible formats",
-    description: "Choose chat, voice, video, or home visits based on comfort.",
+    description: "Choose chat, voice, or video based on comfort.",
     icon: Sparkles,
   },
 ];
@@ -100,7 +94,7 @@ export default function AboutPage() {
           </h1>
           <p className="mt-5 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">
             YoPartner exists to make verified human connection easy, private, and trustworthy.
-            Connect through chat, voice calls, video companionship, and home visit companionship.
+            Connect through chat, voice calls, and video companionship.
           </p>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -233,7 +227,7 @@ export default function AboutPage() {
         <div className="rounded-3xl border border-slate-200 bg-white px-6 py-8 text-center shadow-sm sm:px-10 sm:py-10">
           <h2 className="text-3xl font-semibold text-[#111827]">Start with a verified companion today.</h2>
           <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-slate-600">
-            Choose chat companionship, voice calls, video companionship, or home visit companionship.
+            Choose chat companionship, voice calls, or video companionship.
           </p>
           <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link

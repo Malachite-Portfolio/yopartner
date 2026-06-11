@@ -10,35 +10,25 @@ const outfit = Outfit({
 const verificationStandards = [
   "Identity Verification",
   "Profile Screening",
-  "Background Validation",
-  "Community Compliance",
-  "Continuous Quality Monitoring",
+  "Quality Review",
 ];
 
 const connectionFocus = [
   "Social Companionship",
   "Meaningful Conversations",
-  "Emotional Connection",
-  "Shared Experiences",
   "Respectful Interaction",
 ];
 
 const experienceExpectations = [
-  "Easy Session Booking",
+  "Easy Booking",
   "Verified Companions",
-  "Flexible Scheduling",
-  "Consistent Service Quality",
   "Dedicated Support Team",
-  "User-Friendly Experience",
 ];
 
 const privacyFeatures = [
   "Secure Messaging",
   "Protected Voice Sessions",
   "Confidential Video Calls",
-  "Privacy-First Design",
-  "Account Protection Systems",
-  "Safe Communication Standards",
 ];
 
 export default function HomePage() {
@@ -83,9 +73,7 @@ export default function HomePage() {
               Built Around Trust, Designed For Human Connection
             </h2>
             <p className="mx-auto mt-3 max-w-[920px] text-[15px] leading-7 text-[#536965]">
-              Every meaningful connection begins with trust. That&apos;s why we&apos;ve created a platform where safety,
-              privacy, and authenticity are part of every interaction. From verified profiles to secure communication,
-              every detail is designed to help you connect with confidence.
+              A safer companionship platform with verified profiles, private conversations, and respectful communication.
             </p>
           </div>
 
@@ -98,17 +86,10 @@ export default function HomePage() {
                 <div>
                   <h3 className="text-[1.75rem] font-semibold text-[#102f2b]">Real People. Real Verification.</h3>
                   <p className="mt-3 text-sm leading-7 text-[#4f6661]">
-                    Behind every profile is a real person who has completed our verification process. We carefully review
-                    companion profiles before they become available, helping create a trusted environment where genuine
-                    conversations can happen naturally.
-                  </p>
-                  <p className="mt-3 text-sm leading-7 text-[#4f6661]">
-                    Whether you&apos;re looking for companionship, conversation, or emotional support, you can connect
-                    knowing accountability and transparency come first.
+                    Every companion profile is reviewed before going live, helping users connect with confidence.
                   </p>
                 </div>
                 <div className="rounded-[20px] bg-[#d7f4f3] p-4">
-                  <p className="mb-3 text-sm font-semibold text-[#123f39]">Verification Standards</p>
                   <div className="space-y-2">
                     {verificationStandards.map((pill) => (
                       <span key={pill} className="block rounded-full bg-white px-3 py-1.5 text-[11px] font-medium text-[#446660]">
@@ -126,17 +107,8 @@ export default function HomePage() {
               </span>
               <h3 className="mt-4 text-[1.65rem] font-semibold">Human Connection Without Expectations</h3>
               <p className="mt-3 text-sm leading-7 text-[#d4ece8]">
-                Our platform is built for companionship, conversation, and meaningful social interaction.
+                No dating pressure. No hidden expectations. Just respectful companionship and meaningful conversations.
               </p>
-              <p className="mt-3 text-sm leading-7 text-[#d4ece8]">
-                There is no pressure to impress, no dating culture, and no hidden expectations. Just authentic human
-                connection designed to help people feel seen, heard, and supported.
-              </p>
-              <p className="mt-3 text-sm leading-7 text-[#d4ece8]">
-                Whether you&apos;re sharing your thoughts, discussing your day, or simply spending time with someone who
-                listens, every interaction is rooted in respect and understanding.
-              </p>
-              <p className="mt-5 text-sm font-semibold text-white">Our Focus</p>
               <ul className="mt-2 space-y-1.5 text-xs leading-5 text-[#d4ece8]">
                 {connectionFocus.map((item) => (
                   <li key={item}>{item}</li>
@@ -153,17 +125,8 @@ export default function HomePage() {
               </span>
               <h3 className="mt-4 text-[1.7rem] font-semibold text-[#173934]">A Thoughtfully Curated Experience</h3>
               <p className="mt-3 text-sm leading-7 text-[#4f6661]">
-                We believe companionship should feel comfortable from the very first interaction.
+                From discovery to booking, YoPartner is designed to make companionship simple, smooth, and comfortable.
               </p>
-              <p className="mt-3 text-sm leading-7 text-[#4f6661]">
-                From seamless booking and verified profiles to responsive support and intuitive communication, every step
-                has been designed to create a smooth and enjoyable experience.
-              </p>
-              <p className="mt-3 text-sm leading-7 text-[#4f6661]">
-                Our goal is simple &mdash; remove the barriers that often prevent people from connecting and make meaningful
-                companionship more accessible.
-              </p>
-              <p className="mt-5 text-sm font-semibold text-[#173934]">What You Can Expect</p>
               <ul className="mt-2 space-y-1.5 text-xs leading-5 text-[#4f6661]">
                 {experienceExpectations.map((item) => (
                   <li key={item}>{item}</li>
@@ -181,17 +144,8 @@ export default function HomePage() {
                     Private Conversations, Protected Always
                   </h3>
                   <p className="mt-3 text-sm leading-7 text-[#4f6661]">
-                    Trust grows when people feel safe sharing their thoughts.
+                    Chat, voice, and video sessions stay inside protected platform channels designed around privacy.
                   </p>
-                  <p className="mt-3 text-sm leading-7 text-[#4f6661]">
-                    That&apos;s why all communication happens through secure channels designed to protect your privacy and
-                    personal information. Whether you&apos;re chatting, talking over voice, or connecting through video,
-                    your conversations remain confidential and protected.
-                  </p>
-                  <p className="mt-3 text-sm leading-7 text-[#4f6661]">
-                    You focus on the conversation. We&apos;ll handle the security.
-                  </p>
-                  <p className="mt-5 text-sm font-semibold text-[#123f39]">Privacy Features</p>
                   <ul className="mt-2 grid gap-1.5 text-xs leading-5 text-[#4f6661] sm:grid-cols-2">
                     {privacyFeatures.map((item) => (
                       <li key={item}>{item}</li>
@@ -207,9 +161,6 @@ export default function HomePage() {
                     <span>Average Response Time:</span>
                     <span className="font-semibold text-[#214c45]">Under 2 Minutes</span>
                   </div>
-                  <p className="mt-4 leading-5 text-[#4a615c]">
-                    Reliable support whenever meaningful connection matters most.
-                  </p>
                 </div>
               </div>
             </article>
@@ -221,9 +172,7 @@ export default function HomePage() {
         <div className="mx-auto w-full max-w-[1180px] rounded-[24px] bg-[#005c55] px-6 py-10 text-white shadow-[0_24px_50px_rgba(0,67,61,0.26)] sm:px-10 sm:py-12">
           <Quote size={38} className="text-white/35" />
           <blockquote className="mx-auto mt-2 max-w-[860px] text-center text-[2rem] font-semibold leading-[1.25] sm:text-[2.3rem]">
-            &quot;Finding genuine conversations online felt impossible until I joined YoPartner. The experience was simple,
-            respectful, and exactly what I was looking for. It feels good knowing there are real people ready to
-            connect.&quot;
+            &quot;YoPartner made it simple to find genuine conversations in a respectful and safe space.&quot;
           </blockquote>
           <div className="mt-8 flex items-center justify-center gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -242,21 +191,8 @@ export default function HomePage() {
             Meaningful Connections Start With A Simple Conversation
           </h2>
           <p className="mx-auto mt-4 max-w-[660px] text-[15px] leading-7 text-[#4f6661]">
-            Thousands of people are discovering the value of genuine human connection through trusted companionship
-            experiences.
-          </p>
-          <p className="mx-auto mt-3 max-w-[760px] text-[15px] leading-7 text-[#4f6661]">
-            Whether you&apos;re looking for someone to talk to, share a hobby with, spend quality time with, or simply enjoy
-            a meaningful conversation, YoPartner makes it easier to connect with people who understand the importance of
-            companionship.
-          </p>
-          <p className="mx-auto mt-5 max-w-[760px] text-[15px] leading-7 text-[#4f6661]">
-            Join India&apos;s growing community of people who believe that meaningful conversations, shared experiences,
-            and human connection can make everyday life better.
-          </p>
-          <p className="mx-auto mt-3 max-w-[760px] text-[15px] leading-7 text-[#4f6661]">
-            From chat and voice calls to video sessions and in-person companionship, every interaction is designed to be
-            safe, respectful, and authentic.
+            Connect with verified companions for chat, voice, and video conversations designed to feel safe, respectful,
+            and real.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link
@@ -269,7 +205,7 @@ export default function HomePage() {
               href="/connect-now"
               className="inline-flex h-11 items-center justify-center rounded-full border border-[#c6d9d1] bg-white px-7 text-sm font-medium text-[#224d46] transition hover:-translate-y-0.5 hover:bg-[#f9fcfb]"
             >
-              Explore Companionships
+              Explore Companions
             </Link>
           </div>
         </div>

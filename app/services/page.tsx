@@ -59,7 +59,7 @@ export default function ServicesPage() {
 
       <CTASection
         title="Ready to book your first session?"
-        subtitle="Start with trusted chat, voice call, video, or home visit companionship."
+        subtitle="Start with trusted chat, voice call, or video companionship."
         primaryLabel="Start Now"
         primaryHref="/connect-now"
       />

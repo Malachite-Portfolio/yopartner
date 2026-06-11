@@ -50,7 +50,7 @@ export function Footer() {
               <span className="text-[22px] font-semibold text-[#0f2f2c]">YoPartner</span>
             </Link>
             <p className="mt-4 max-w-[300px] text-[13px] leading-6 text-[#58706a]">
-              India&apos;s premium companionship platform for verified chat, voice call, video, and home visit sessions.
+              India&apos;s premium companionship platform for verified chat, voice, and video conversations.
             </p>
           </div>
 

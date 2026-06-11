@@ -27,12 +27,11 @@ export type ServiceDetail = {
   highlights: string[];
 };
 
-export type CompanionFilter = "Chat" | "Calls" | "In-Person" | "Activities";
+export type CompanionFilter = "Chat" | "Calls" | "Activities";
 export type SupportType =
   | "Private Chat"
   | "Audio Calls"
   | "Video Calls"
-  | "In-Person Visits"
   | "Activities"
   | "Emotional Support";
 
@@ -185,7 +184,7 @@ export const processSteps: ProcessStep[] = [
   {
     title: "Select Your Session Format",
     description:
-      "Pick chat, voice call companionship, video companionship, or home visit companionship.",
+      "Pick chat, voice call companionship, or video companionship.",
     icon: "calendar",
   },
   {
@@ -211,11 +210,6 @@ export const services: Service[] = [
     title: "Video Companionship",
     description: "Face-to-face sessions with verified companions in secure channels.",
     icon: "video",
-  },
-  {
-    title: "Home Visit Companionship",
-    description: "Approved in-person companionship with additional safety review.",
-    icon: "map-pin",
   },
 ];
 
@@ -250,16 +244,6 @@ export const serviceDetails: ServiceDetail[] = [
       "Strictly platonic platform standards",
     ],
   },
-  {
-    title: "Home Visit Companionship",
-    description:
-      "In-person companionship in approved locations with additional verification controls.",
-    highlights: [
-      "Extra safety checks before activation",
-      "Strictly platonic interactions only",
-      "Platform-monitored standards and support",
-    ],
-  },
 ];
 
 export const companions: Companion[] = [
@@ -270,13 +254,13 @@ export const companions: Companion[] = [
     rating: 4.9,
     bio: "Gentle listener who enjoys long chats, beach walks, and mindfulness conversations.",
     longBio:
-      "Aarav is known for his calm energy and thoughtful presence. He supports clients through private chat, calls, and safe in-person sessions focused on connection, clarity, and emotional steadiness.",
+      "Aarav is known for his calm energy and thoughtful presence. He supports clients through private chat, voice, and video conversations focused on connection, clarity, and emotional steadiness.",
     tags: ["Calm", "Empathetic", "English/Hindi"],
     price: "from ₹899 / session",
-    focus: ["Chat", "Calls", "In-Person"],
+    focus: ["Chat", "Calls"],
     languages: ["English", "Hindi"],
     availability: "Mon-Sat, 10:00 AM - 9:00 PM",
-    supportTypes: ["Private Chat", "Audio Calls", "In-Person Visits", "Emotional Support"],
+    supportTypes: ["Private Chat", "Audio Calls", "Video Calls", "Emotional Support"],
     verification: ["Government ID verified", "Background reviewed", "Profile quality approved"],
   },
   {
@@ -289,10 +273,10 @@ export const companions: Companion[] = [
       "Meera creates uplifting sessions centered on creativity, social confidence, and healthy emotional expression. She is a great fit for activities and supportive calls that feel natural and warm.",
     tags: ["Creative", "Positive", "Kannada/English"],
     price: "from ₹999 / session",
-    focus: ["Calls", "Activities", "In-Person"],
+    focus: ["Calls", "Activities"],
     languages: ["English", "Kannada"],
     availability: "Tue-Sun, 11:00 AM - 8:00 PM",
-    supportTypes: ["Audio Calls", "Video Calls", "Activities", "In-Person Visits"],
+    supportTypes: ["Audio Calls", "Video Calls", "Activities"],
     verification: ["Government ID verified", "Address verified", "Profile quality approved"],
   },
   {
@@ -321,10 +305,10 @@ export const companions: Companion[] = [
       "Ishita brings a thoughtful and reflective style to companionship. She is popular for structured activity sessions and gentle conversations that help clients feel balanced and seen.",
     tags: ["Thoughtful", "Warm", "Marathi/English"],
     price: "from ₹1099 / session",
-    focus: ["Activities", "In-Person", "Calls"],
+    focus: ["Activities", "Calls"],
     languages: ["English", "Marathi"],
     availability: "Mon-Fri, 12:00 PM - 9:00 PM",
-    supportTypes: ["Video Calls", "In-Person Visits", "Activities", "Emotional Support"],
+    supportTypes: ["Video Calls", "Audio Calls", "Activities", "Emotional Support"],
     verification: ["Government ID verified", "Profile quality approved", "Interview completed"],
   },
   {
@@ -337,10 +321,10 @@ export const companions: Companion[] = [
       "Kabir is approachable and grounded, making sessions feel easy and natural. He supports social confidence, routine companionship, and practical everyday check-ins.",
     tags: ["Friendly", "Grounded", "Telugu/Hindi"],
     price: "from ₹949 / session",
-    focus: ["Chat", "Activities", "In-Person"],
+    focus: ["Chat", "Activities", "Calls"],
     languages: ["Hindi", "Telugu"],
     availability: "Wed-Mon, 2:00 PM - 10:00 PM",
-    supportTypes: ["Private Chat", "Activities", "In-Person Visits", "Audio Calls"],
+    supportTypes: ["Private Chat", "Activities", "Audio Calls", "Video Calls"],
     verification: ["Government ID verified", "Address verified", "Safety onboarding complete"],
   },
   {
@@ -432,24 +416,14 @@ export const faqs: FAQ[] = [
       "YoPartner is built for adults aged 18 and above who are looking for respectful, meaningful companionship sessions.",
   },
   {
-    question: "How does Home Visit work safely?",
-    answer:
-      "Home Visit is strictly platonic and available only for verified companions after platform approval. Sessions follow YoPartner safety rules and approved support guidelines.",
-  },
-  {
     question: "Can I share personal contact details or pay outside YoPartner?",
     answer:
       "No. Users and partners must follow platform safety rules, including no outside payments and no personal contact sharing.",
   },
   {
-    question: "Can YoPartner ask for extra checks before enabling Home Visit?",
-    answer:
-      "Yes. YoPartner may require additional verification before enabling in-person service for safety and compliance.",
-  },
-  {
     question: "How much does a session cost?",
     answer:
-      "YoPartner uses fixed platform prices by service: chat is ₹5/min, audio call is ₹18/min, video call is ₹24/min, and home visit is ₹2000/hour.",
+      "YoPartner uses fixed platform prices by service: chat is ₹5/min, audio call is ₹18/min, and video call is ₹24/min.",
   },
   {
     question: "What if I am not satisfied with my session?",
@@ -1230,7 +1204,7 @@ export const clientDiaries: ClientDiary[] = [
     image:
       "https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?auto=format&fit=crop&w=1200&q=80",
     href: "#",
-    category: "Home Visit",
+    category: "Companionship",
   },
   {
     id: "poetry-listener",
@@ -1253,7 +1227,7 @@ export const clientDiaries: ClientDiary[] = [
   {
     id: "quiet-evening",
     title: "A Quiet Evening Became Memorable",
-    subtitle: "A simple home visit made the day lighter.",
+    subtitle: "A simple conversation made the day lighter.",
     image:
       "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=1200&q=80",
     href: "#",

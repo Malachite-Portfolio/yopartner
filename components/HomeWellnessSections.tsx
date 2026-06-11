@@ -2,7 +2,6 @@ import {
   Ban,
   CheckCircle2,
   HeartHandshake,
-  LockKeyhole,
   MessageCircle,
   Moon,
   ShieldCheck,
@@ -33,7 +32,6 @@ const safetyCards = [
   "Strictly platonic policy",
   "Platform-protected payments",
   "Report and support tools",
-  "Home Visit safety approval",
 ];
 
 const notYoPartner = [
@@ -183,25 +181,8 @@ export function HomeWellnessSections() {
       </section>
 
       <section className="bg-[#f7fbf8] py-16">
-        <div className="mx-auto grid w-full max-w-6xl gap-6 px-4 sm:px-6 lg:grid-cols-2 lg:px-8">
-          <article className="rounded-3xl border border-[#dceae5] bg-white p-7 shadow-sm">
-            <p className="inline-flex items-center gap-2 text-sm font-semibold uppercase text-[#0f766e]">
-              <LockKeyhole size={16} />
-              Safety-gated Home Visit
-            </p>
-            <h2 className="mt-3 text-3xl font-semibold leading-tight text-slate-950">
-              Safe in-person companionship, only after verification
-            </h2>
-            <p className="mt-3 text-sm leading-7 text-slate-600">
-              Home Visit is available only with verified companions, platform rules, and manual safety approval.
-              It is strictly platonic and platform-protected.
-            </p>
-            <Link href="/home-visit" className="mt-5 inline-flex rounded-full bg-[#0f766e] px-5 py-3 text-sm font-semibold text-white">
-              Learn about Home Visit
-            </Link>
-          </article>
-
-          <article className="rounded-3xl border border-[#dceae5] bg-[#102a2a] p-7 text-white shadow-sm">
+        <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
+          <article className="mx-auto max-w-2xl rounded-3xl border border-[#dceae5] bg-[#102a2a] p-7 text-white shadow-sm">
             <p className="text-sm font-semibold uppercase text-[#a7f3d0]">Become a companion</p>
             <h2 className="mt-3 text-3xl font-semibold leading-tight">
               Use your empathy to support people through meaningful conversations.

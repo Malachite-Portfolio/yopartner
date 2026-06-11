@@ -12,54 +12,48 @@ const trustPillars = [
   {
     title: "Verified Companions",
     description:
-      "Every active companion completes a multi-step verification process before joining the platform. Our verification includes identity validation, profile review, and ongoing quality checks to help ensure every connection begins with trust.",
-    miniTitle: "Includes",
-    points: ["Identity Verification", "Profile Authentication", "Ongoing Monitoring"],
+      "Every active companion goes through identity and profile review before going live.",
+    points: ["Identity Verification", "Profile Review", "Ongoing Checks"],
     icon: IdCard,
     iconTone: "bg-[#dff2ef] text-[#0b5b52]",
   },
   {
     title: "Carefully Reviewed Profiles",
     description:
-      "Quality matters just as much as safety. Every companion profile is reviewed to ensure it reflects authenticity, professionalism, communication quality, and alignment with our community standards.",
-    miniTitle: "What We Review",
-    points: ["Profile Accuracy", "Communication Standards", "Community Guidelines", "Platform Suitability"],
+      "Profiles are reviewed for authenticity, quality, and community standards.",
+    points: ["Profile Accuracy", "Communication Quality", "Platform Suitability"],
     icon: UserRoundCheck,
     iconTone: "bg-[#e5edff] text-[#3557b7]",
   },
   {
     title: "Privacy By Design",
     description:
-      "Your personal information and conversations deserve protection. We use privacy-first practices that help safeguard your data and keep your interactions secure, confidential, and under your control.",
-    miniTitle: "Privacy Features",
-    points: ["Protected Communication", "Secure Data Handling", "Confidential Sessions", "User-Controlled Privacy"],
+      "Your personal information and conversations are handled with privacy-first practices.",
+    points: ["Protected Communication", "Secure Data Handling", "Confidential Sessions"],
     icon: EyeOff,
     iconTone: "bg-[#f1ebff] text-[#5c3faf]",
   },
   {
     title: "Respectful Community Standards",
     description:
-      "Meaningful connections thrive in respectful environments. We maintain clear community guidelines that promote kindness, professionalism, and appropriate interactions across the platform.",
-    miniTitle: "Community Values",
-    points: ["Respect", "Professionalism", "Inclusivity", "Accountability"],
+      "We promote kindness, professionalism, and appropriate interactions.",
+    points: ["Respect", "Professionalism", "Accountability"],
     icon: ShieldAlert,
     iconTone: "bg-[#ffe9ea] text-[#b53e48]",
   },
   {
     title: "Secure Communication Channels",
     description:
-      "Whether you choose chat, voice, video, or in-person companionship, every interaction begins through secure platform communication designed to protect your experience.",
-    miniTitle: "Security Features",
-    points: ["Secure Messaging", "Protected Voice Sessions", "Safe Video Connections", "Account Security Measures"],
+      "Chat, voice, and video sessions happen through protected platform channels.",
+    points: ["Secure Messaging", "Protected Voice", "Safe Video"],
     icon: BellRing,
     iconTone: "bg-[#fff1dd] text-[#a56717]",
   },
   {
     title: "Continuous Trust & Support",
     description:
-      "Trust is something that must be maintained every day. Our team continuously monitors platform quality, reviews feedback, and provides support whenever needed to help ensure a positive experience for all members.",
-    miniTitle: "Ongoing Protection",
-    points: ["Quality Monitoring", "User Support", "Feedback Reviews", "Continuous Improvements"],
+      "We monitor quality, review feedback, and support users when needed.",
+    points: ["Quality Monitoring", "User Support", "Feedback Reviews"],
     icon: HeartHandshake,
     iconTone: "bg-[#e4f5ea] text-[#2b7b4e]",
   },
@@ -75,13 +69,8 @@ export default function TrustSafetyPage() {
               Meaningful Connections Begin With Trust
             </h1>
             <p className="mt-6 max-w-[650px] text-[16px] leading-8 text-[#4f6762] sm:text-[17px]">
-              At YoPartner, trust isn&apos;t an afterthought&mdash;it&apos;s the foundation of every interaction. We&apos;ve
-              built a platform where safety, privacy, and authenticity come first, allowing you to focus on what truly
-              matters: genuine human connection.
-            </p>
-            <p className="mt-4 max-w-[650px] text-[16px] leading-8 text-[#4f6762] sm:text-[17px]">
-              Every profile, conversation, and session is supported by clear standards designed to create a comfortable
-              and respectful experience for everyone.
+              YoPartner is built around verified companions, privacy-first communication, and respectful community
+              standards.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
@@ -94,7 +83,7 @@ export default function TrustSafetyPage() {
                 href="#foundations"
                 className="inline-flex h-11 items-center justify-center rounded-full border border-[#cadbd5] bg-white px-6 text-sm font-medium text-[#204d46] transition hover:bg-[#f5faf8]"
               >
-                Learn About Our Safety Standards
+                View Safety Standards
               </Link>
             </div>
           </div>
@@ -108,9 +97,7 @@ export default function TrustSafetyPage() {
             Six Principles Behind Every Safe Connection
           </h2>
           <p className="mt-4 max-w-[820px] text-[15px] leading-7 text-[#546965]">
-            We believe companionship should feel comfortable, transparent, and secure from the very first interaction.
-            These six principles guide everything we do and help create an environment where meaningful conversations can
-            thrive.
+            These principles help create a safer, more respectful platform for meaningful companionship.
           </p>
 
           <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -128,8 +115,7 @@ export default function TrustSafetyPage() {
                   </span>
                   <h3 className="mt-4 text-[1.1rem] font-semibold text-[#153b35]">{pillar.title}</h3>
                   <p className="mt-3 text-[14px] leading-7 text-[#546965]">{pillar.description}</p>
-                  <p className="mt-5 text-sm font-semibold text-[#153b35]">{pillar.miniTitle}</p>
-                  <ul className="mt-2 space-y-1.5 text-[13px] leading-6 text-[#546965]">
+                  <ul className="mt-4 space-y-1.5 text-[13px] leading-6 text-[#546965]">
                     {pillar.points.map((point) => (
                       <li key={point}>{point}</li>
                     ))}
@@ -148,28 +134,16 @@ export default function TrustSafetyPage() {
               A Platform Designed For Genuine Human Connection
             </h3>
             <p className="mx-auto mt-4 max-w-[760px] text-[15px] leading-7 text-[#d4ece8] sm:text-[16px]">
-              Building meaningful companionship starts with creating an environment where people feel safe, respected,
-              and valued.
-            </p>
-            <p className="mx-auto mt-3 max-w-[760px] text-[15px] leading-7 text-[#d4ece8] sm:text-[16px]">
-              That&apos;s why every feature, policy, and process at YoPartner is designed around one goal:
-            </p>
-            <p className="mx-auto mt-3 max-w-[760px] text-[15px] font-semibold leading-7 text-white sm:text-[16px]">
-              Helping real people build real connections with confidence.
+              Every feature, policy, and process at YoPartner is designed to help real people build real connections with
+              confidence.
             </p>
 
             <h3 className="mt-10 font-['Georgia','Times_New_Roman',serif] text-[2.1rem] font-semibold leading-tight sm:text-[2.8rem]">
               Trust Earned Through Every Interaction
             </h3>
             <p className="mx-auto mt-4 max-w-[760px] text-[15px] leading-7 text-[#d4ece8] sm:text-[16px]">
-              Meaningful companionship starts with feeling safe, respected, and valued.
-            </p>
-            <p className="mx-auto mt-3 max-w-[760px] text-[15px] leading-7 text-[#d4ece8] sm:text-[16px]">
-              From verified profiles and privacy-first communication to clear community standards and dedicated support,
-              every part of YoPartner is designed to create an environment where genuine human connection can thrive.
-            </p>
-            <p className="mx-auto mt-3 max-w-[760px] text-[15px] leading-7 text-[#d4ece8] sm:text-[16px]">
-              Because trust isn&apos;t something we ask for&mdash;it&apos;s something we work to earn with every conversation.
+              From verified profiles to secure communication, YoPartner works to create a safer space for meaningful
+              companionship.
             </p>
             <Link
               href="/connect-now"
