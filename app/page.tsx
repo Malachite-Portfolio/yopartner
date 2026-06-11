@@ -13,6 +13,13 @@ const verificationStandards = [
   "Quality Review",
 ];
 
+const verificationJourney = [
+  "Profile Submitted",
+  "Identity Checked",
+  "Quality Reviewed",
+  "Ready To Connect",
+];
+
 const connectionFocus = [
   "Social Companionship",
   "Meaningful Conversations",
@@ -78,7 +85,7 @@ export default function HomePage() {
           </div>
 
           <div className="mt-10 grid gap-4 lg:grid-cols-12">
-            <article className="rounded-[24px] bg-[#f8faf9] p-6 shadow-[0_12px_28px_rgba(0,67,61,0.08)] lg:col-span-8">
+            <article className="flex flex-col rounded-[24px] bg-[#f8faf9] p-6 shadow-[0_12px_28px_rgba(0,67,61,0.08)] lg:col-span-8">
               <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[#c8eee8] text-[#00433d]">
                 <ShieldCheck size={18} />
               </span>
@@ -97,6 +104,19 @@ export default function HomePage() {
                       </span>
                     ))}
                   </div>
+                </div>
+              </div>
+              <div className="mt-6 rounded-[20px] border border-[#dbe9e5] bg-white/80 p-4 sm:p-5">
+                <p className="text-sm font-semibold text-[#123f39]">Verification Journey</p>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  {verificationJourney.map((step, index) => (
+                    <div key={step} className="flex min-w-0 items-center gap-3 lg:block">
+                      <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#d7f4f3] text-xs font-semibold text-[#0b5b52]">
+                        {index + 1}
+                      </span>
+                      <p className="min-w-0 text-sm font-medium leading-5 text-[#3f5d57] lg:mt-2">{step}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
             </article>
