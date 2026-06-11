@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, ChevronLeft, ChevronRight, ShieldCheck } from "lucide-react";
+import { CheckCircle2, ChevronLeft, ChevronRight, Copy, HelpCircle, RefreshCw, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -77,6 +77,19 @@ type LiveVideoState = {
   upload: PartnerKycUploadResult | null;
   objectUrl: string;
 };
+type BrowserPermissionState = PermissionState | "unsupported";
+type CameraErrorKind =
+  | "permission"
+  | "not-found"
+  | "not-readable"
+  | "security"
+  | "overconstrained"
+  | "unsupported"
+  | "unknown";
+type BrowserEnvironment = {
+  permissionGuide: "ios-safari" | "android-chrome" | "other";
+  isInAppBrowser: boolean;
+};
 
 const stepTitles = [
   "Basic details",
@@ -93,18 +106,32 @@ const LIVE_VIDEO_REQUIRED_MESSAGE = "Please complete live video verification bef
 const LIVE_VIDEO_UNSUPPORTED_MESSAGE =
   "Your browser does not support live video recording. Please try Chrome on Android or another supported browser.";
 const CAMERA_PERMISSION_DENIED_MESSAGE =
-  "Camera permission is blocked. Please allow Camera and Microphone from your browser site settings, then reload and try again.";
+  "Camera or microphone permission is blocked. Allow both permissions in your browser settings, then refresh and tap Retry Camera.";
+const CAMERA_NOT_FOUND_MESSAGE =
+  "No camera or microphone was found. Check that this device has working camera and microphone access, then try again.";
 const CAMERA_ALREADY_IN_USE_MESSAGE =
-  "Camera is already being used by another app. Close it and try again.";
+  "Camera or microphone is already being used by another app. Close the other app and try again.";
 const CAMERA_REQUIRES_HTTPS_MESSAGE =
-  "Camera requires HTTPS. Please open YoPartner using https://yopartner.com.";
-const CAMERA_PERMISSION_HELP_STEPS = [
-  "Tap the lock/settings icon in your browser address bar.",
-  "Open Site settings.",
-  "Set Camera to Allow.",
-  "Set Microphone to Allow.",
-  "Reload this page.",
-  "Tap Enable Camera again.",
+  "Camera access is blocked in this browser context. Open YoPartner securely in Safari or Chrome using https://yopartner.com.";
+const CAMERA_CONSTRAINTS_MESSAGE =
+  "This device does not support the requested camera settings. Try another camera, browser, or device.";
+const IN_APP_BROWSER_WARNING =
+  "Camera may not work properly in this browser. Please open this page in Safari or Chrome.";
+const IOS_PERMISSION_HELP_STEPS = [
+  "Open iPhone Settings → Safari → Camera → Allow",
+  "Open iPhone Settings → Safari → Microphone → Allow",
+  "Then reopen YoPartner and tap Retry Camera.",
+];
+const ANDROID_PERMISSION_HELP_STEPS = [
+  "Tap the lock/settings icon near the address bar",
+  "Open Site settings",
+  "Set Camera and Microphone to Allow",
+  "Reload this page and tap Retry Camera.",
+];
+const OTHER_PERMISSION_HELP_STEPS = [
+  "Open this browser's site settings for YoPartner.",
+  "Set Camera and Microphone to Allow.",
+  "Refresh this page and tap Retry Camera.",
 ];
 const LIVE_VIDEO_MIN_SECONDS = 10;
 const LIVE_VIDEO_MAX_SECONDS = 30;
@@ -164,31 +191,38 @@ function getCameraErrorName(error: unknown) {
     : "";
 }
 
-function shouldRetryVideoOnly(error: unknown) {
-  const name = getCameraErrorName(error);
-  return ["NotFoundError", "OverconstrainedError", "ConstraintNotSatisfiedError"].includes(name);
-}
-
-function getCameraPermissionMessage(error: unknown) {
+function getCameraErrorDetails(error: unknown): { kind: CameraErrorKind; message: string } {
   const name = getCameraErrorName(error);
   if (name === "NotAllowedError" || name === "PermissionDeniedError") {
-    return CAMERA_PERMISSION_DENIED_MESSAGE;
+    return { kind: "permission", message: CAMERA_PERMISSION_DENIED_MESSAGE };
+  }
+  if (name === "NotFoundError" || name === "DevicesNotFoundError") {
+    return { kind: "not-found", message: CAMERA_NOT_FOUND_MESSAGE };
   }
   if (name === "NotReadableError" || name === "TrackStartError") {
-    return CAMERA_ALREADY_IN_USE_MESSAGE;
+    return { kind: "not-readable", message: CAMERA_ALREADY_IN_USE_MESSAGE };
   }
   if (name === "SecurityError") {
-    return CAMERA_REQUIRES_HTTPS_MESSAGE;
+    return { kind: "security", message: CAMERA_REQUIRES_HTTPS_MESSAGE };
   }
-  return "Camera and microphone permission is required to record live verification.";
+  if (name === "OverconstrainedError" || name === "ConstraintNotSatisfiedError") {
+    return { kind: "overconstrained", message: CAMERA_CONSTRAINTS_MESSAGE };
+  }
+  return {
+    kind: "unknown",
+    message: "Camera and microphone could not start. Check browser permissions and try again.",
+  };
 }
 
-function getLiveCameraErrorMessage(error: unknown) {
+function getLiveCameraErrorDetails(error: unknown) {
   const rawMessage = error instanceof Error ? error.message.trim() : "";
-  if (rawMessage === LIVE_VIDEO_UNSUPPORTED_MESSAGE || rawMessage === CAMERA_REQUIRES_HTTPS_MESSAGE) {
-    return rawMessage;
+  if (rawMessage === LIVE_VIDEO_UNSUPPORTED_MESSAGE) {
+    return { kind: "unsupported" as const, message: rawMessage };
   }
-  return getCameraPermissionMessage(error);
+  if (rawMessage === CAMERA_REQUIRES_HTTPS_MESSAGE) {
+    return { kind: "security" as const, message: rawMessage };
+  }
+  return getCameraErrorDetails(error);
 }
 
 async function readBrowserPermissionState(name: "camera" | "microphone") {
@@ -199,6 +233,26 @@ async function readBrowserPermissionState(name: "camera" | "microphone") {
   } catch {
     return "unsupported";
   }
+}
+
+function detectBrowserEnvironment(): BrowserEnvironment {
+  if (typeof navigator === "undefined") {
+    return { permissionGuide: "other", isInAppBrowser: false };
+  }
+
+  const userAgent = navigator.userAgent;
+  const isIos =
+    /iPhone|iPad|iPod/i.test(userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const isSafari = /Safari/i.test(userAgent) && !/CriOS|FxiOS|EdgiOS|OPiOS/i.test(userAgent);
+  const isAndroidChrome = /Android/i.test(userAgent) && /Chrome|CriOS/i.test(userAgent);
+  const isInAppBrowser =
+    /FBAN|FBAV|Instagram|WhatsApp|Line\/|; wv\)|\bwv\b|WebView|GSA\//i.test(userAgent);
+
+  return {
+    permissionGuide: isIos && isSafari ? "ios-safari" : isAndroidChrome ? "android-chrome" : "other",
+    isInAppBrowser,
+  };
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -507,10 +561,20 @@ export default function PartnerOnboardingPage() {
   const [isRecordingLiveVideo, setIsRecordingLiveVideo] = useState(false);
   const [isCameraEnabled, setIsCameraEnabled] = useState(false);
   const [isEnablingCamera, setIsEnablingCamera] = useState(false);
-  const [isVideoOnlyRecording, setIsVideoOnlyRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [recordingError, setRecordingError] = useState("");
+  const [cameraErrorKind, setCameraErrorKind] = useState<CameraErrorKind | null>(null);
   const [permissionCheckMessage, setPermissionCheckMessage] = useState("");
+  const [permissionStates, setPermissionStates] = useState<{
+    camera: BrowserPermissionState;
+    microphone: BrowserPermissionState;
+  }>({ camera: "unsupported", microphone: "unsupported" });
+  const [permissionHelpOpen, setPermissionHelpOpen] = useState(false);
+  const [browserEnvironment, setBrowserEnvironment] = useState<BrowserEnvironment>({
+    permissionGuide: "other",
+    isInAppBrowser: false,
+  });
+  const [copyLinkMessage, setCopyLinkMessage] = useState("");
   const liveStreamVideoRef = useRef<HTMLVideoElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const liveStreamRef = useRef<MediaStream | null>(null);
@@ -522,8 +586,43 @@ export default function PartnerOnboardingPage() {
   useEffect(() => {
     const timer = window.setTimeout(() => {
       setIsEditMode(new URLSearchParams(window.location.search).get("edit") === "true");
+      setBrowserEnvironment(detectBrowserEnvironment());
     }, 0);
     return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    const updatePermissionStates = async () => {
+      const [camera, microphone] = await Promise.all([
+        readBrowserPermissionState("camera"),
+        readBrowserPermissionState("microphone"),
+      ]);
+      if (!active) return;
+      setPermissionStates({ camera, microphone });
+      if (camera === "denied" || microphone === "denied") {
+        setCameraErrorKind("permission");
+        setRecordingError(CAMERA_PERMISSION_DENIED_MESSAGE);
+        setPermissionHelpOpen(true);
+      } else {
+        setCameraErrorKind((current) => (current === "permission" ? null : current));
+        setRecordingError((current) => (current === CAMERA_PERMISSION_DENIED_MESSAGE ? "" : current));
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") void updatePermissionStates();
+    };
+
+    void updatePermissionStates();
+    window.addEventListener("focus", updatePermissionStates);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      active = false;
+      window.removeEventListener("focus", updatePermissionStates);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, []);
 
   useEffect(() => {
@@ -621,6 +720,16 @@ export default function PartnerOnboardingPage() {
   } years old. I am applying to become a YoPartner partner. My hobbies are ${
     profile.hobbies.length > 0 ? profile.hobbies.join(", ") : "[hobbies]"
   }. I agree to follow YoPartner safety and respectful communication rules.`;
+  const permissionBlocked =
+    permissionStates.camera === "denied" || permissionStates.microphone === "denied";
+  const shouldEmphasizePermissionHelp = permissionBlocked || cameraErrorKind === "permission";
+  const permissionHelpSteps =
+    browserEnvironment.permissionGuide === "ios-safari"
+      ? IOS_PERMISSION_HELP_STEPS
+      : browserEnvironment.permissionGuide === "android-chrome"
+        ? ANDROID_PERMISSION_HELP_STEPS
+        : OTHER_PERMISSION_HELP_STEPS;
+  const hasSelectedLiveVideo = Boolean(liveVideo.file || liveVideo.upload);
 
   const summaryRows = useMemo(
     () => [
@@ -846,7 +955,6 @@ export default function PartnerOnboardingPage() {
       liveStreamVideoRef.current.srcObject = null;
     }
     setIsCameraEnabled(false);
-    setIsVideoOnlyRecording(false);
   };
 
   const requestLiveCameraStream = async () => {
@@ -860,24 +968,41 @@ export default function PartnerOnboardingPage() {
       throw new Error(LIVE_VIDEO_UNSUPPORTED_MESSAGE);
     }
 
-    try {
-      setIsVideoOnlyRecording(false);
-      return await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    } catch (error) {
-      if (!shouldRetryVideoOnly(error)) throw error;
-      const videoOnlyStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-      setIsVideoOnlyRecording(true);
-      return videoOnlyStream;
-    }
+    return navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+  };
+
+  const refreshPermissionStates = async () => {
+    const [camera, microphone] = await Promise.all([
+      readBrowserPermissionState("camera"),
+      readBrowserPermissionState("microphone"),
+    ]);
+    const nextStates = { camera, microphone };
+    setPermissionStates(nextStates);
+    return nextStates;
+  };
+
+  const showCameraError = (error: unknown) => {
+    const details = getLiveCameraErrorDetails(error);
+    setCameraErrorKind(details.kind);
+    setRecordingError(details.message);
+    if (details.kind === "permission") setPermissionHelpOpen(true);
   };
 
   const handleEnableCamera = async () => {
     setRecordingError("");
+    setCameraErrorKind(null);
     setPermissionCheckMessage("");
     setErrors({});
     setIsEnablingCamera(true);
     stopLiveStream();
     try {
+      const states = await refreshPermissionStates();
+      if (states.camera === "denied" || states.microphone === "denied") {
+        setPermissionHelpOpen(true);
+        setCameraErrorKind("permission");
+        setRecordingError(CAMERA_PERMISSION_DENIED_MESSAGE);
+        return;
+      }
       const stream = await requestLiveCameraStream();
       liveStreamRef.current = stream;
       setIsCameraEnabled(true);
@@ -886,7 +1011,7 @@ export default function PartnerOnboardingPage() {
       }
     } catch (error) {
       stopLiveStream();
-      setRecordingError(getLiveCameraErrorMessage(error));
+      showCameraError(error);
     } finally {
       setIsEnablingCamera(false);
     }
@@ -894,10 +1019,7 @@ export default function PartnerOnboardingPage() {
 
   const handleCheckCameraPermission = async () => {
     setPermissionCheckMessage("");
-    const [cameraState, microphoneState] = await Promise.all([
-      readBrowserPermissionState("camera"),
-      readBrowserPermissionState("microphone"),
-    ]);
+    const { camera: cameraState, microphone: microphoneState } = await refreshPermissionStates();
     if (cameraState === "unsupported" && microphoneState === "unsupported") {
       setPermissionCheckMessage("This browser does not expose permission status here. Use browser site settings, then reload and retry.");
       return;
@@ -907,6 +1029,7 @@ export default function PartnerOnboardingPage() {
 
   const handleStartLiveRecording = async () => {
     setRecordingError("");
+    setCameraErrorKind(null);
     setPermissionCheckMessage("");
     setErrors({});
     if (typeof window === "undefined" || typeof MediaRecorder === "undefined") {
@@ -920,7 +1043,7 @@ export default function PartnerOnboardingPage() {
         liveStreamRef.current = stream;
         setIsCameraEnabled(true);
       } catch (error) {
-        setRecordingError(getLiveCameraErrorMessage(error));
+        showCameraError(error);
         stopLiveStream();
         return;
       }
@@ -941,10 +1064,6 @@ export default function PartnerOnboardingPage() {
       recordingStartedAtRef.current = Date.now();
       setRecordingSeconds(0);
       setIsRecordingLiveVideo(true);
-      setLiveVideo((current) => {
-        if (current.objectUrl) URL.revokeObjectURL(current.objectUrl);
-        return { file: null, upload: null, objectUrl: "" };
-      });
 
       if (liveStreamVideoRef.current) {
         liveStreamVideoRef.current.srcObject = stream;
@@ -976,6 +1095,7 @@ export default function PartnerOnboardingPage() {
           };
         });
         setRecordingError("");
+        setCameraErrorKind(null);
       };
 
       recorder.start();
@@ -988,7 +1108,7 @@ export default function PartnerOnboardingPage() {
       clearRecordingTimers();
       stopLiveStream();
       setIsRecordingLiveVideo(false);
-      setRecordingError(getCameraPermissionMessage(error));
+      showCameraError(error);
     }
   };
 
@@ -1000,6 +1120,17 @@ export default function PartnerOnboardingPage() {
     });
     setRecordingSeconds(0);
     setRecordingError("");
+    setCameraErrorKind(null);
+  };
+
+  const handleCopyCurrentUrl = async () => {
+    setCopyLinkMessage("");
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setCopyLinkMessage("Page link copied. Open Safari or Chrome and paste it into the address bar.");
+    } catch {
+      setCopyLinkMessage(`Copy this link and open it in Safari or Chrome: ${window.location.href}`);
+    }
   };
 
   const handleContinue = () => {
@@ -1708,6 +1839,26 @@ export default function PartnerOnboardingPage() {
                 </div>
               </div>
 
+              {browserEnvironment.isInAppBrowser ? (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                  <p className="font-semibold">{IN_APP_BROWSER_WARNING}</p>
+                  <p className="mt-1 text-xs leading-5 text-amber-800">
+                    Copy this page link, open Safari or Chrome, paste the link into the address bar, and continue there.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void handleCopyCurrentUrl();
+                    }}
+                    className="mt-3 inline-flex h-9 items-center gap-2 rounded-lg border border-amber-300 bg-white px-3 text-xs font-semibold text-amber-900"
+                  >
+                    <Copy size={14} />
+                    Copy Page Link
+                  </button>
+                  {copyLinkMessage ? <p className="mt-2 break-words text-xs font-medium">{copyLinkMessage}</p> : null}
+                </div>
+              ) : null}
+
               <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
                 <div className="rounded-xl border border-slate-200 bg-slate-950 p-3">
                   {isCameraEnabled || isRecordingLiveVideo ? (
@@ -1737,18 +1888,22 @@ export default function PartnerOnboardingPage() {
                   <p className="text-sm font-semibold text-slate-900">
                     {isRecordingLiveVideo
                       ? `Recording ${recordingSeconds}s`
-                      : liveVideo.file || liveVideo.upload
+                      : liveVideo.upload
+                        ? "Selected"
+                        : liveVideo.file
                         ? "Video recorded"
                         : isCameraEnabled
                           ? "Camera enabled"
                           : "Camera permission required"}
                   </p>
                   <p className="mt-1 text-xs text-slate-500">
-                    Tap Enable Camera first. Your browser will ask for camera and microphone permission.
+                    {liveVideo.upload
+                      ? "Your existing live verification video remains selected. Re-record only if you want to replace it."
+                      : "Tap Enable Camera first. Your browser will ask for camera and microphone permission."}
                   </p>
-                  {isVideoOnlyRecording ? (
-                    <p className="mt-2 text-xs font-medium text-amber-700">
-                      Microphone was unavailable, so video-only recording is enabled.
+                  {permissionStates.camera !== "unsupported" || permissionStates.microphone !== "unsupported" ? (
+                    <p className="mt-2 text-xs font-medium text-slate-600">
+                      Camera: {permissionStates.camera}. Microphone: {permissionStates.microphone}.
                     </p>
                   ) : null}
                   <div className="mt-4 flex flex-col gap-2">
@@ -1790,6 +1945,26 @@ export default function PartnerOnboardingPage() {
                         Stop Recording
                       </button>
                     ) : null}
+                    {!isRecordingLiveVideo ? (
+                      <button
+                        type="button"
+                        onClick={() => setPermissionHelpOpen((current) => !current)}
+                        className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-700"
+                      >
+                        <HelpCircle size={16} />
+                        {permissionHelpOpen ? "Hide Permission Help" : "Open Permission Help"}
+                      </button>
+                    ) : null}
+                    {!isRecordingLiveVideo ? (
+                      <button
+                        type="button"
+                        onClick={() => window.location.reload()}
+                        className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-700"
+                      >
+                        <RefreshCw size={16} />
+                        Refresh Page
+                      </button>
+                    ) : null}
                     {liveVideo.file || liveVideo.upload ? (
                       <button
                         type="button"
@@ -1800,16 +1975,9 @@ export default function PartnerOnboardingPage() {
                       </button>
                     ) : null}
                   </div>
-                  {recordingError ? (
+                  {recordingError || shouldEmphasizePermissionHelp ? (
                     <div className="mt-3 rounded-xl border border-rose-100 bg-rose-50 p-3 text-xs text-rose-700">
-                      <p className="font-semibold">{recordingError}</p>
-                      {recordingError === CAMERA_PERMISSION_DENIED_MESSAGE ? (
-                        <ol className="mt-2 list-decimal space-y-1 pl-4">
-                          {CAMERA_PERMISSION_HELP_STEPS.map((stepItem) => (
-                            <li key={stepItem}>{stepItem}</li>
-                          ))}
-                        </ol>
-                      ) : null}
+                      <p className="font-semibold">{recordingError || CAMERA_PERMISSION_DENIED_MESSAGE}</p>
                       <button
                         type="button"
                         onClick={() => {
@@ -1822,6 +1990,22 @@ export default function PartnerOnboardingPage() {
                       {permissionCheckMessage ? (
                         <p className="mt-2 font-medium text-rose-700">{permissionCheckMessage}</p>
                       ) : null}
+                    </div>
+                  ) : null}
+                  {permissionHelpOpen ? (
+                    <div className="mt-3 rounded-xl border border-sky-200 bg-sky-50 p-3 text-xs text-sky-900">
+                      <p className="font-semibold">
+                        {browserEnvironment.permissionGuide === "ios-safari"
+                          ? "iPhone / Safari permission steps"
+                          : browserEnvironment.permissionGuide === "android-chrome"
+                            ? "Android / Chrome permission steps"
+                            : "Camera and microphone permission steps"}
+                      </p>
+                      <ol className="mt-2 list-decimal space-y-1.5 pl-4">
+                        {permissionHelpSteps.map((stepItem) => (
+                          <li key={stepItem}>{stepItem}</li>
+                        ))}
+                      </ol>
                     </div>
                   ) : null}
                   {errors.base ? <p className="mt-3 text-xs font-medium text-rose-600">{errors.base}</p> : null}
@@ -1931,7 +2115,8 @@ export default function PartnerOnboardingPage() {
               <button
                 type="button"
                 onClick={handleContinue}
-                className="inline-flex h-10 items-center gap-1 rounded-full bg-[#0f766e] px-4 text-sm font-semibold text-white"
+                disabled={step === 6 && !hasSelectedLiveVideo}
+                className="inline-flex h-10 items-center gap-1 rounded-full bg-[#0f766e] px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Continue
                 <ChevronRight size={16} />
