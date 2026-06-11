@@ -7,7 +7,39 @@ const outfit = Outfit({
   variable: "--font-outfit-home",
 });
 
-const statPills = ["ID + Background Verified", "Private by Design", "Secure In-App Sessions"];
+const verificationStandards = [
+  "Identity Verification",
+  "Profile Screening",
+  "Background Validation",
+  "Community Compliance",
+  "Continuous Quality Monitoring",
+];
+
+const connectionFocus = [
+  "Social Companionship",
+  "Meaningful Conversations",
+  "Emotional Connection",
+  "Shared Experiences",
+  "Respectful Interaction",
+];
+
+const experienceExpectations = [
+  "Easy Session Booking",
+  "Verified Companions",
+  "Flexible Scheduling",
+  "Consistent Service Quality",
+  "Dedicated Support Team",
+  "User-Friendly Experience",
+];
+
+const privacyFeatures = [
+  "Secure Messaging",
+  "Protected Voice Sessions",
+  "Confidential Video Calls",
+  "Privacy-First Design",
+  "Account Protection Systems",
+  "Safe Communication Standards",
+];
 
 export default function HomePage() {
   return (
@@ -47,8 +79,14 @@ export default function HomePage() {
       <section className="bg-[#EEF4F1] px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
         <div className="mx-auto w-full max-w-[1180px]">
           <div className="text-center">
-            <h2 className="text-[2rem] font-semibold text-[#102f2b] sm:text-[2.25rem]">Trust, Safety, and Privacy by Default</h2>
-            <p className="mt-3 text-[15px] text-[#536965]">A modern companionship platform with verified companions and secure communication.</p>
+            <h2 className="text-[2rem] font-semibold text-[#102f2b] sm:text-[2.25rem]">
+              Built Around Trust, Designed For Human Connection
+            </h2>
+            <p className="mx-auto mt-3 max-w-[920px] text-[15px] leading-7 text-[#536965]">
+              Every meaningful connection begins with trust. That&apos;s why we&apos;ve created a platform where safety,
+              privacy, and authenticity are part of every interaction. From verified profiles to secure communication,
+              every detail is designed to help you connect with confidence.
+            </p>
           </div>
 
           <div className="mt-10 grid gap-4 lg:grid-cols-12">
@@ -58,16 +96,21 @@ export default function HomePage() {
               </span>
               <div className="mt-3 grid gap-5 md:grid-cols-[1fr_210px] md:items-start">
                 <div>
-                  <h3 className="text-[1.75rem] font-semibold text-[#102f2b]">Verification You Can Trust</h3>
+                  <h3 className="text-[1.75rem] font-semibold text-[#102f2b]">Real People. Real Verification.</h3>
                   <p className="mt-3 text-sm leading-7 text-[#4f6661]">
-                    Every profile goes through structured verification before going live.
-                    You connect with real people on a platform built for accountability.
+                    Behind every profile is a real person who has completed our verification process. We carefully review
+                    companion profiles before they become available, helping create a trusted environment where genuine
+                    conversations can happen naturally.
                   </p>
-                  <p className="mt-5 text-sm font-semibold text-[#123f39]">Verification layers</p>
+                  <p className="mt-3 text-sm leading-7 text-[#4f6661]">
+                    Whether you&apos;re looking for companionship, conversation, or emotional support, you can connect
+                    knowing accountability and transparency come first.
+                  </p>
                 </div>
                 <div className="rounded-[20px] bg-[#d7f4f3] p-4">
+                  <p className="mb-3 text-sm font-semibold text-[#123f39]">Verification Standards</p>
                   <div className="space-y-2">
-                    {statPills.map((pill) => (
+                    {verificationStandards.map((pill) => (
                       <span key={pill} className="block rounded-full bg-white px-3 py-1.5 text-[11px] font-medium text-[#446660]">
                         {pill}
                       </span>
@@ -81,8 +124,24 @@ export default function HomePage() {
               <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white/12">
                 <HeartHandshake size={18} />
               </span>
-              <h3 className="mt-4 text-[1.65rem] font-semibold">Partnership, Not Dating</h3>
-              <p className="mt-3 text-sm leading-7 text-[#d4ece8]">YoPartner is strictly platonic. No dating. No therapy. Just quality social partnership.</p>
+              <h3 className="mt-4 text-[1.65rem] font-semibold">Human Connection Without Expectations</h3>
+              <p className="mt-3 text-sm leading-7 text-[#d4ece8]">
+                Our platform is built for companionship, conversation, and meaningful social interaction.
+              </p>
+              <p className="mt-3 text-sm leading-7 text-[#d4ece8]">
+                There is no pressure to impress, no dating culture, and no hidden expectations. Just authentic human
+                connection designed to help people feel seen, heard, and supported.
+              </p>
+              <p className="mt-3 text-sm leading-7 text-[#d4ece8]">
+                Whether you&apos;re sharing your thoughts, discussing your day, or simply spending time with someone who
+                listens, every interaction is rooted in respect and understanding.
+              </p>
+              <p className="mt-5 text-sm font-semibold text-white">Our Focus</p>
+              <ul className="mt-2 space-y-1.5 text-xs leading-5 text-[#d4ece8]">
+                {connectionFocus.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
               <Link href="/trust-safety" className="mt-8 inline-flex h-9 w-full items-center justify-center rounded-full bg-white text-xs font-semibold !text-[#0b4e47] shadow-sm">
                 See Safety Standards
               </Link>
@@ -92,10 +151,24 @@ export default function HomePage() {
               <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white text-[#3d5b57]">
                 <Sparkles size={18} />
               </span>
-              <h3 className="mt-4 text-[1.7rem] font-semibold text-[#173934]">Premium Experience</h3>
+              <h3 className="mt-4 text-[1.7rem] font-semibold text-[#173934]">A Thoughtfully Curated Experience</h3>
               <p className="mt-3 text-sm leading-7 text-[#4f6661]">
-                Clean session flow, verified profiles, and professional support designed for modern human connection.
+                We believe companionship should feel comfortable from the very first interaction.
               </p>
+              <p className="mt-3 text-sm leading-7 text-[#4f6661]">
+                From seamless booking and verified profiles to responsive support and intuitive communication, every step
+                has been designed to create a smooth and enjoyable experience.
+              </p>
+              <p className="mt-3 text-sm leading-7 text-[#4f6661]">
+                Our goal is simple &mdash; remove the barriers that often prevent people from connecting and make meaningful
+                companionship more accessible.
+              </p>
+              <p className="mt-5 text-sm font-semibold text-[#173934]">What You Can Expect</p>
+              <ul className="mt-2 space-y-1.5 text-xs leading-5 text-[#4f6661]">
+                {experienceExpectations.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
             </article>
 
             <article className="rounded-[24px] bg-[#f8faf9] p-6 shadow-[0_12px_28px_rgba(0,67,61,0.08)] lg:col-span-8">
@@ -104,21 +177,39 @@ export default function HomePage() {
                   <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[#d8efea] text-[#00433d]">
                     <MessageCircleHeart size={18} />
                   </span>
-                  <h3 className="mt-4 text-[1.75rem] font-semibold text-[#102f2b]">Secure Communication</h3>
+                  <h3 className="mt-4 text-[1.75rem] font-semibold text-[#102f2b]">
+                    Private Conversations, Protected Always
+                  </h3>
                   <p className="mt-3 text-sm leading-7 text-[#4f6661]">
-                    Message instantly or schedule sessions on your time.
-                    Chat, voice, and video companionship stay inside protected in-app channels.
+                    Trust grows when people feel safe sharing their thoughts.
                   </p>
+                  <p className="mt-3 text-sm leading-7 text-[#4f6661]">
+                    That&apos;s why all communication happens through secure channels designed to protect your privacy and
+                    personal information. Whether you&apos;re chatting, talking over voice, or connecting through video,
+                    your conversations remain confidential and protected.
+                  </p>
+                  <p className="mt-3 text-sm leading-7 text-[#4f6661]">
+                    You focus on the conversation. We&apos;ll handle the security.
+                  </p>
+                  <p className="mt-5 text-sm font-semibold text-[#123f39]">Privacy Features</p>
+                  <ul className="mt-2 grid gap-1.5 text-xs leading-5 text-[#4f6661] sm:grid-cols-2">
+                    {privacyFeatures.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
                 </div>
                 <div className="rounded-[18px] bg-[#eaf2ef] p-4 text-xs text-[#4a615c]">
                   <div className="flex items-center justify-between rounded-full bg-white px-3 py-2">
-                    <span>Current Availability</span>
-                    <span className="rounded-full bg-[#ccedd8] px-2 py-0.5 text-[10px] font-semibold text-[#1f6f56]">HIGH</span>
+                    <span>Availability:</span>
+                    <span className="rounded-full bg-[#ccedd8] px-2 py-0.5 text-[10px] font-semibold text-[#1f6f56]">High</span>
                   </div>
                   <div className="mt-3 flex items-center justify-between rounded-full bg-white px-3 py-2">
-                    <span>Average Response</span>
-                    <span className="font-semibold text-[#214c45]">2 mins</span>
+                    <span>Average Response Time:</span>
+                    <span className="font-semibold text-[#214c45]">Under 2 Minutes</span>
                   </div>
+                  <p className="mt-4 leading-5 text-[#4a615c]">
+                    Reliable support whenever meaningful connection matters most.
+                  </p>
                 </div>
               </div>
             </article>
@@ -130,15 +221,16 @@ export default function HomePage() {
         <div className="mx-auto w-full max-w-[1180px] rounded-[24px] bg-[#005c55] px-6 py-10 text-white shadow-[0_24px_50px_rgba(0,67,61,0.26)] sm:px-10 sm:py-12">
           <Quote size={38} className="text-white/35" />
           <blockquote className="mx-auto mt-2 max-w-[860px] text-center text-[2rem] font-semibold leading-[1.25] sm:text-[2.3rem]">
-            &quot;Fast onboarding, verified profiles, and high-quality conversations.
-            YoPartner made social companionship simple and safe.&quot;
+            &quot;Finding genuine conversations online felt impossible until I joined YoPartner. The experience was simple,
+            respectful, and exactly what I was looking for. It feels good knowing there are real people ready to
+            connect.&quot;
           </blockquote>
           <div className="mt-8 flex items-center justify-center gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/images/home-avatar-james.svg" alt="Verified member" className="h-11 w-11 rounded-full border border-white/70" />
             <div>
               <p className="text-sm font-semibold">Verified Member</p>
-              <p className="text-[11px] text-[#c8e5df]">Bengaluru</p>
+              <p className="text-[11px] text-[#c8e5df]">Mumbai</p>
             </div>
           </div>
         </div>
@@ -146,9 +238,25 @@ export default function HomePage() {
 
       <section className="px-4 pb-20 pt-6 sm:px-6 lg:px-8 lg:pb-24">
         <div className="mx-auto w-full max-w-[860px] text-center">
-          <h2 className="text-[2.6rem] font-semibold leading-[1.1] text-[#00433d] sm:text-[3.3rem]">Real conversations. Real people. Better days.</h2>
+          <h2 className="text-[2.6rem] font-semibold leading-[1.1] text-[#00433d] sm:text-[3.3rem]">
+            Meaningful Connections Start With A Simple Conversation
+          </h2>
           <p className="mx-auto mt-4 max-w-[660px] text-[15px] leading-7 text-[#4f6661]">
-            Join India&apos;s premium companionship platform for trusted chat, voice, video, and home visit companionship.
+            Thousands of people are discovering the value of genuine human connection through trusted companionship
+            experiences.
+          </p>
+          <p className="mx-auto mt-3 max-w-[760px] text-[15px] leading-7 text-[#4f6661]">
+            Whether you&apos;re looking for someone to talk to, share a hobby with, spend quality time with, or simply enjoy
+            a meaningful conversation, YoPartner makes it easier to connect with people who understand the importance of
+            companionship.
+          </p>
+          <p className="mx-auto mt-5 max-w-[760px] text-[15px] leading-7 text-[#4f6661]">
+            Join India&apos;s growing community of people who believe that meaningful conversations, shared experiences,
+            and human connection can make everyday life better.
+          </p>
+          <p className="mx-auto mt-3 max-w-[760px] text-[15px] leading-7 text-[#4f6661]">
+            From chat and voice calls to video sessions and in-person companionship, every interaction is designed to be
+            safe, respectful, and authentic.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link
@@ -161,7 +269,7 @@ export default function HomePage() {
               href="/connect-now"
               className="inline-flex h-11 items-center justify-center rounded-full border border-[#c6d9d1] bg-white px-7 text-sm font-medium text-[#224d46] transition hover:-translate-y-0.5 hover:bg-[#f9fcfb]"
             >
-              Explore Companions
+              Explore Companionships
             </Link>
           </div>
         </div>
