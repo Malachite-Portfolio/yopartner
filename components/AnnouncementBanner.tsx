@@ -27,14 +27,16 @@ export function AnnouncementBanner() {
         </p>
         <Link
           href="/login?returnUrl=%2Fonboarding%2Fprofile"
-          className="hidden h-8 shrink-0 items-center rounded-full bg-white px-3.5 text-xs font-semibold text-[#8a21d6] shadow-sm transition hover:bg-white/90 sm:inline-flex"
+          className="hidden h-8 shrink-0 items-center justify-center rounded-full bg-white px-3.5 text-xs font-semibold shadow-sm transition hover:bg-white/90 sm:inline-flex"
+          style={{ color: "#8a21d6" }}
         >
           Register Now -&gt;
         </Link>
       </div>
       <Link
         href="/login?returnUrl=%2Fonboarding%2Fprofile"
-        className="mx-auto mt-2 flex h-8 w-fit items-center rounded-full bg-white px-3.5 text-xs font-semibold text-[#8a21d6] shadow-sm sm:hidden"
+        className="mx-auto mt-2 flex h-8 w-fit items-center justify-center rounded-full bg-white px-3.5 text-xs font-semibold shadow-sm sm:hidden"
+        style={{ color: "#8a21d6" }}
       >
         Register Now -&gt;
       </Link>
