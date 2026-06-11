@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentType } from "react";
 import { BarChart3, CheckCircle2, MessageSquareText, PhoneCall, RefreshCw, Video, Wallet } from "lucide-react";
 import Link from "next/link";
@@ -18,6 +18,7 @@ import {
   VIDEO_RATE_PER_MIN,
 } from "@/lib/platformPricing";
 import { formatINR, getWalletBalance, subscribeWalletUpdates } from "@/lib/wallet";
+import { consumeTrackedHostProfileNavigation, trackMetaPixel } from "@/lib/metaPixel";
 
 type ProfileBookingPanelProps = {
   companion: ConnectCompanion;
@@ -100,6 +101,14 @@ export function ProfileBookingPanel({ companion, initialType }: ProfileBookingPa
   const [showAddMoneyPrompt, setShowAddMoneyPrompt] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
+  const profileViewTrackedRef = useRef(false);
+
+  useEffect(() => {
+    if (profileViewTrackedRef.current) return;
+    profileViewTrackedRef.current = true;
+    if (consumeTrackedHostProfileNavigation(companion.id)) return;
+    trackMetaPixel("ViewContent", { content_name: "Host Interaction" });
+  }, [companion.id]);
 
   useEffect(() => {
     return subscribeUserAuthState((state) => {
@@ -144,6 +153,7 @@ export function ProfileBookingPanel({ companion, initialType }: ProfileBookingPa
 
   const handlePrimaryAction = () => {
     if (!selectedOption) return;
+    trackMetaPixel("ViewContent", { content_name: "Host Interaction" });
     setShowAddMoneyPrompt(false);
     if (!loggedIn) {
       router.push(`/login?returnUrl=${encodeURIComponent(returnPath)}`);
@@ -255,6 +265,7 @@ export function ProfileBookingPanel({ companion, initialType }: ProfileBookingPa
               selected={option.type === selectedType}
               onSelect={() => {
                 if (option.type === "visit") {
+                  trackMetaPixel("ViewContent", { content_name: "Host Interaction" });
                   router.push(`/home-visit/${companion.id}?booking=1`);
                   return;
                 }

@@ -26,6 +26,7 @@ import { getDemoPhone, setDemoLoggedIn } from "@/lib/demoAuth";
 import { maskIndianPhoneNumber } from "@/lib/phoneMask";
 import { getUserAuthState, saveUserAuthSession } from "@/lib/auth/userAuth";
 import { normalizeUserPhone } from "@/lib/auth/userIdentity";
+import { trackMetaPixel } from "@/lib/metaPixel";
 
 const OTP_LENGTH = 6;
 const RESEND_SECONDS = 28;
@@ -182,6 +183,7 @@ export default function OtpPage() {
         setMessage("Verification successful. Redirecting...");
 
         const destination = await resolvePostAuthDestination("/connect-now");
+        trackMetaPixel("CompleteRegistration", { status: "registered" });
         router.push(destination.destination);
       } catch (verifyError) {
         setError(mapFirebaseAuthError(verifyError));
@@ -199,6 +201,7 @@ export default function OtpPage() {
     setMessage("Verification successful. Redirecting...");
 
     const destination = await resolvePostAuthDestination("/connect-now");
+    trackMetaPixel("CompleteRegistration", { status: "registered" });
     router.push(destination.destination);
   };
 

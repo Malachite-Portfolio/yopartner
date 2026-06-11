@@ -10,6 +10,7 @@ import { requestAudioPermission, requestVideoPermission } from "@/lib/agora";
 import { formatINRPrice } from "@/lib/priceFormat";
 import { getUserAuthTokenWithRestore } from "@/lib/auth/userAuth";
 import { AUDIO_RATE_PER_MIN, CHAT_RATE_PER_MIN, VIDEO_RATE_PER_MIN } from "@/lib/platformPricing";
+import { markTrackedHostProfileNavigation, trackMetaPixel } from "@/lib/metaPixel";
 import { VerifiedPartnerBadge } from "@/components/VerifiedPartnerBadge";
 
 type ConnectCompanionCardProps = {
@@ -129,6 +130,16 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
       ["verified", "approved", "cleared", "trained"].includes(item.status.toLowerCase()),
     );
 
+  const trackHostInteraction = () => {
+    trackMetaPixel("ViewContent", { content_name: "Host Interaction" });
+  };
+
+  const openProfile = () => {
+    trackHostInteraction();
+    markTrackedHostProfileNavigation(companion.id);
+    router.push(profileUrl);
+  };
+
   const createSessionAndRoute = async (
     event: React.MouseEvent<HTMLButtonElement>,
     serviceType: "chat" | "audio" | "video",
@@ -139,6 +150,7 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
       setShowAddMoneyPrompt(false);
       return;
     }
+    trackHostInteraction();
     setActionError("");
     setShowAddMoneyPrompt(false);
 
@@ -224,11 +236,11 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
   return (
     <article
       className="flex h-full min-h-[206px] cursor-pointer flex-col rounded-[20px] border border-[#e4e8ed] bg-[#f5f7fa] p-3 shadow-[0_1px_0_rgba(5,32,57,0.03)] transition hover:-translate-y-0.5"
-      onClick={() => router.push(profileUrl)}
+      onClick={openProfile}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
-          router.push(profileUrl);
+          openProfile();
         }
       }}
       tabIndex={0}
