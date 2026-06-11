@@ -32,6 +32,13 @@ type UserProfileSummaryResponse = UserProfileResponse & {
   stats?: Partial<UserProfileSummaryStats> | null;
 };
 
+export type WelcomeChatBonusResponse = {
+  available: boolean;
+  freeMinutes: number;
+  rewardId?: string | null;
+  expiresAt?: string | null;
+};
+
 export type UpdateUserProfileInput = {
   name: string;
   email: string;
@@ -134,6 +141,20 @@ export async function getCurrentUserProfileSummary() {
         lastLogin: toText(result.data?.stats?.lastLogin),
       } satisfies UserProfileSummaryStats,
     },
+    error: null,
+  };
+}
+
+export async function getWelcomeChatBonus() {
+  const result = await apiRequest<WelcomeChatBonusResponse>("/api/users/me/rewards/welcome-chat");
+  if (result.error) return { data: null, error: result.error };
+  return {
+    data: {
+      available: Boolean(result.data?.available),
+      freeMinutes: toCount(result.data?.freeMinutes),
+      rewardId: toText(result.data?.rewardId),
+      expiresAt: toText(result.data?.expiresAt),
+    } satisfies WelcomeChatBonusResponse,
     error: null,
   };
 }

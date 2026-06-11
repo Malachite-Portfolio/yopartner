@@ -11,6 +11,7 @@ import {
   listSessions,
   listUsers,
   listWalletTransactions,
+  removeAdminUser,
   type AdminUserModerationStatus,
   updateAdminUserStatus,
 } from "@/lib/api/admin";
@@ -100,6 +101,11 @@ export default function AdminUsersPage() {
   const [statusExpiresAt, setStatusExpiresAt] = useState("");
   const [statusSubmitting, setStatusSubmitting] = useState(false);
   const [statusError, setStatusError] = useState("");
+  const [removeTarget, setRemoveTarget] = useState<MemberRow | null>(null);
+  const [removeReason, setRemoveReason] = useState("");
+  const [removeConfirmation, setRemoveConfirmation] = useState("");
+  const [removeSubmitting, setRemoveSubmitting] = useState(false);
+  const [removeError, setRemoveError] = useState("");
 
   const loadMembers = useCallback(async () => {
     setLoading(true);
@@ -306,6 +312,48 @@ export default function AdminUsersPage() {
     await loadMembers();
   }
 
+  async function handleSubmitRemove(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!removeTarget || removeSubmitting) return;
+
+    const reason = removeReason.trim();
+    if (!reason) {
+      setRemoveError("Reason is required.");
+      return;
+    }
+    if (removeConfirmation.trim() !== "REMOVE") {
+      setRemoveError("Type REMOVE to confirm.");
+      return;
+    }
+
+    setRemoveSubmitting(true);
+    setRemoveError("");
+
+    const response = await removeAdminUser(removeTarget.id, {
+      reason,
+      confirmation: "REMOVE",
+    });
+
+    if (response.error?.status === 401) {
+      clearAdminAuthSession();
+      router.replace("/admin/login");
+      return;
+    }
+
+    if (response.error || !response.data) {
+      setRemoveSubmitting(false);
+      setRemoveError(response.error?.message ?? "Unable to remove user.");
+      return;
+    }
+
+    setRemoveSubmitting(false);
+    setRemoveTarget(null);
+    setRemoveReason("");
+    setRemoveConfirmation("");
+    setInfoMessage(response.data.message || "User removed successfully.");
+    await loadMembers();
+  }
+
   function openStatusModal(user: MemberRow, status: AdminUserModerationStatus) {
     setStatusTarget({ user, status });
     setStatusReason("");
@@ -379,6 +427,16 @@ export default function AdminUsersPage() {
                             { label: "Temp Ban", tone: "danger", onClick: () => openStatusModal(item, "TEMP_BANNED") },
                             { label: "Ban", tone: "danger", onClick: () => openStatusModal(item, "BANNED") },
                             { label: "Activate", tone: "success", onClick: () => openStatusModal(item, "ACTIVE") },
+                            {
+                              label: "Remove User",
+                              tone: "danger",
+                              onClick: () => {
+                                setRemoveTarget(item);
+                                setRemoveReason("");
+                                setRemoveConfirmation("");
+                                setRemoveError("");
+                              },
+                            },
                             {
                               label: "Add Wallet Credit",
                               tone: "warning",
@@ -519,6 +577,92 @@ export default function AdminUsersPage() {
 
             {statusError ? (
               <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">{statusError}</p>
+            ) : null}
+          </form>
+        ) : null}
+      </AdminDetailDrawer>
+
+      <AdminDetailDrawer
+        open={Boolean(removeTarget)}
+        title="Remove User"
+        onClose={() => {
+          if (removeSubmitting) return;
+          setRemoveTarget(null);
+          setRemoveReason("");
+          setRemoveConfirmation("");
+          setRemoveError("");
+        }}
+        footer={(
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+              onClick={() => {
+                setRemoveTarget(null);
+                setRemoveReason("");
+                setRemoveConfirmation("");
+                setRemoveError("");
+              }}
+              disabled={removeSubmitting}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="user-remove-form"
+              className="rounded-lg bg-rose-700 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={removeSubmitting}
+            >
+              {removeSubmitting ? "Removing..." : "Remove User"}
+            </button>
+          </div>
+        )}
+      >
+        {removeTarget ? (
+          <form id="user-remove-form" className="space-y-4" onSubmit={handleSubmitRemove}>
+            <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
+              <p className="font-semibold text-rose-900">Are you sure you want to remove this user?</p>
+              <p className="mt-2">
+                The user will be blocked from the app and removed from active use. Historical sessions, wallet records,
+                and audit data will be kept.
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+              <p><span className="font-semibold text-slate-900">Member:</span> {removeTarget.name}</p>
+              <p><span className="font-semibold text-slate-900">Phone:</span> {removeTarget.phone}</p>
+              <p><span className="font-semibold text-slate-900">Current Status:</span> {removeTarget.moderationStatus}</p>
+            </div>
+
+            <label className="block space-y-1">
+              <span className="text-sm font-medium text-slate-800">Reason</span>
+              <textarea
+                value={removeReason}
+                onChange={(event) => setRemoveReason(event.target.value)}
+                className="min-h-24 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none ring-0 transition focus:border-slate-500"
+                placeholder="Required reason for audit trail"
+                maxLength={500}
+                required
+                disabled={removeSubmitting}
+              />
+            </label>
+
+            <label className="block space-y-1">
+              <span className="text-sm font-medium text-slate-800">Type REMOVE to confirm</span>
+              <input
+                value={removeConfirmation}
+                onChange={(event) => setRemoveConfirmation(event.target.value)}
+                className="h-11 w-full rounded-lg border border-slate-300 px-3 text-sm text-slate-900 outline-none ring-0 transition focus:border-slate-500"
+                placeholder="REMOVE"
+                required
+                disabled={removeSubmitting}
+              />
+            </label>
+
+            {removeError ? (
+              <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">
+                {removeError}
+              </p>
             ) : null}
           </form>
         ) : null}

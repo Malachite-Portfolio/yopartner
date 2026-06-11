@@ -116,7 +116,7 @@ export const updateCompanion = (payload: Record<string, unknown>) => adminUpdate
 export const listUsers = () => adminGet<Record<string, unknown>>("/api/admin/users");
 export const updateUser = (payload: Record<string, unknown>) => adminUpdate("/api/admin/users", payload);
 export type AdminUserModerationStatus = "ACTIVE" | "RESTRICTED" | "TEMP_BANNED" | "BANNED";
-export type AdminPartnerModerationStatus = "ACTIVE" | "RESTRICTED" | "TEMP_BANNED" | "BANNED" | "HIDDEN";
+export type AdminPartnerModerationStatus = "ACTIVE" | "RESTRICTED" | "TEMP_BANNED" | "BANNED" | "HIDDEN" | "REMOVED";
 export type HomeVisitVerificationStatus =
   | "NOT_SUBMITTED"
   | "PENDING"
@@ -139,6 +139,22 @@ export async function updateAdminUserStatus(userId: string, payload: StatusUpdat
   });
 }
 
+export async function removeAdminUser(
+  userId: string,
+  payload: { reason: string; confirmation: "REMOVE"; adminEmail?: string },
+) {
+  return apiRequest<{
+    user: Record<string, unknown>;
+    cancelledPendingSessions?: number;
+    endedActiveSessions?: number;
+    hiddenCompanion?: boolean;
+    message?: string;
+  }>(`/api/admin/users/${userId}/delete`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function updateAdminPartnerStatus(
   partnerId: string,
   payload: StatusUpdatePayload<AdminPartnerModerationStatus>,
@@ -156,6 +172,7 @@ export async function removeAdminPartner(
   return apiRequest<{
     companion: Record<string, unknown>;
     cancelledPendingRequests?: number;
+    endedActiveSessions?: number;
     message?: string;
   }>(`/api/admin/partners/${partnerId}/delete`, {
     method: "PATCH",

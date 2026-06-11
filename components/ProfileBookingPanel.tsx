@@ -6,6 +6,7 @@ import { BarChart3, CheckCircle2, MessageSquareText, PhoneCall, RefreshCw, Video
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createSession } from "@/lib/api/sessions";
+import { getWelcomeChatBonus, type WelcomeChatBonusResponse } from "@/lib/api/users";
 import { getWallet } from "@/lib/api/wallet";
 import { requestAudioPermission, requestVideoPermission } from "@/lib/agora";
 import { getUserAuthTokenWithRestore, subscribeUserAuthState } from "@/lib/auth/userAuth";
@@ -100,6 +101,7 @@ export function ProfileBookingPanel({ companion, initialType }: ProfileBookingPa
   const [showAddMoneyPrompt, setShowAddMoneyPrompt] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
+  const [welcomeChatBonus, setWelcomeChatBonus] = useState<WelcomeChatBonusResponse | null>(null);
 
   useEffect(() => {
     return subscribeUserAuthState((state) => {
@@ -132,6 +134,21 @@ export function ProfileBookingPanel({ companion, initialType }: ProfileBookingPa
     return subscribeWalletUpdates(sync);
   }, [loggedIn]);
 
+  useEffect(() => {
+    if (!loggedIn) {
+      return;
+    }
+
+    let cancelled = false;
+    void getWelcomeChatBonus().then((response) => {
+      if (!cancelled) setWelcomeChatBonus(response.data);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [loggedIn]);
+
   const selectedOption = options.find((option) => option.type === selectedType) ?? options[0];
   const multiplier = selectedOption?.type === "visit" ? 1 : 5;
   const requiredAmount =
@@ -139,7 +156,9 @@ export function ProfileBookingPanel({ companion, initialType }: ProfileBookingPa
       ? MIN_CHAT_WALLET_BALANCE
       : (selectedOption?.price ?? 0) * multiplier;
   const shortfall = Math.max(requiredAmount - walletBalance, 0);
-  const hasSufficientBalance = loggedIn && walletBalance >= requiredAmount;
+  const welcomeChatApplies =
+    loggedIn && selectedOption?.type === "chat" && Boolean(welcomeChatBonus?.available && welcomeChatBonus.freeMinutes > 0);
+  const hasSufficientBalance = loggedIn && (walletBalance >= requiredAmount || welcomeChatApplies);
   const returnPath = `/connect-now/${companion.id}?type=${selectedOption?.type ?? "chat"}`;
 
   const handlePrimaryAction = () => {
@@ -156,7 +175,7 @@ export function ProfileBookingPanel({ companion, initialType }: ProfileBookingPa
     }
     if (USE_PROFILE_CLIENT_WALLET_PRECHECK && !hasSufficientBalance) {
       if (selectedType === "chat") {
-        setActionMessage("Minimum ₹50 wallet balance is required to start a chat.");
+        setActionMessage("Minimum INR 50 wallet balance is required to start a chat.");
         setShowAddMoneyPrompt(true);
       }
       return;
@@ -199,7 +218,7 @@ export function ProfileBookingPanel({ companion, initialType }: ProfileBookingPa
       }
       if (sessionResponse.error) {
         if (sessionResponse.error.code === "INSUFFICIENT_WALLET_BALANCE") {
-          setActionMessage("Minimum ₹50 wallet balance is required to start a chat.");
+          setActionMessage(sessionResponse.error.message || "Please add money to continue.");
           setShowAddMoneyPrompt(true);
           return;
         }
@@ -281,6 +300,11 @@ export function ProfileBookingPanel({ companion, initialType }: ProfileBookingPa
                 {selectedOption.badge}
               </span>
             </div>
+            {welcomeChatApplies ? (
+              <div className="mt-4 rounded-lg border border-fuchsia-200 bg-fuchsia-50 px-3 py-2 text-sm font-semibold text-fuchsia-800">
+                First chat: {welcomeChatBonus?.freeMinutes ?? 10} minutes free
+              </div>
+            ) : null}
           </div>
         ) : null}
 
@@ -311,12 +335,16 @@ export function ProfileBookingPanel({ companion, initialType }: ProfileBookingPa
               <p className="mt-4 text-[32px] font-semibold leading-none">
                 {formatINR(walletBalance)} <span className="text-base font-medium text-[#8490a4]">available</span>
               </p>
-              {USE_PROFILE_CLIENT_WALLET_PRECHECK && !hasSufficientBalance ? (
+              {welcomeChatApplies ? (
+                <div className="mt-5 rounded-xl border border-fuchsia-200 bg-fuchsia-50 p-4 text-sm font-semibold text-fuchsia-800">
+                  Your first chat includes {welcomeChatBonus?.freeMinutes ?? 10} free minutes. Audio and video use wallet balance.
+                </div>
+              ) : USE_PROFILE_CLIENT_WALLET_PRECHECK && !hasSufficientBalance ? (
                 <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4">
                   <p className="font-semibold text-red-700">Insufficient Balance</p>
                   {selectedType === "chat" ? (
                     <p className="mt-1 text-sm font-medium text-red-600">
-                      Minimum ₹50 wallet balance is required to start a chat.
+                      Minimum INR 50 wallet balance is required to start a chat.
                     </p>
                   ) : (
                     <p className="mt-1 text-sm font-medium text-red-600">

@@ -4,6 +4,7 @@ import { LogIn, Menu, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { AnnouncementBanner } from "@/components/AnnouncementBanner";
 import { ProfileMenu } from "@/components/ProfileMenu";
 import { WalletPill } from "@/components/WalletPill";
 import { logoutUserAuthSession } from "@/lib/auth/logout";
@@ -59,7 +60,9 @@ export function AppHeader() {
   }
 
   return (
-    <header className="sticky top-0 z-50 h-16 border-b border-[#d8e5df] bg-[#eff8f4]/96 backdrop-blur">
+    <>
+      <AnnouncementBanner />
+      <header className="sticky top-0 z-50 h-16 border-b border-[#d8e5df] bg-[#eff8f4]/96 backdrop-blur">
       <div className="mx-auto flex h-full w-full max-w-[1180px] items-center justify-between px-4 lg:px-8">
         <Link href="/" className="inline-flex min-w-0 items-center gap-2" onClick={() => setOpen(false)}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -204,7 +207,8 @@ export function AppHeader() {
           </div>
         </div>
       )}
-    </header>
+      </header>
+    </>
   );
 }
 
