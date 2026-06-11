@@ -7,6 +7,7 @@ import { getCurrentUserProfile, updateCurrentUserProfile } from "@/lib/api/users
 import { consumeStoredPostLoginRedirect } from "@/lib/auth/onboarding";
 import { restoreUserAuthSessionFromFirebase } from "@/lib/auth/userAuth";
 import { uploadUserProfilePhoto } from "@/lib/firebaseUserProfileUpload";
+import { trackMetaPixel } from "@/lib/metaPixel";
 
 type FormState = {
   name: string;
@@ -191,6 +192,7 @@ export default function UserOnboardingProfilePage() {
     }
 
     setMessage("Profile saved. Redirecting...");
+    trackMetaPixel("CompleteRegistration", { status: "registered" });
     router.push(consumeStoredPostLoginRedirect() || "/connect-now");
   };
 
