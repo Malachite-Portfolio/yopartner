@@ -117,6 +117,7 @@ export const listUsers = () => adminGet<Record<string, unknown>>("/api/admin/use
 export const updateUser = (payload: Record<string, unknown>) => adminUpdate("/api/admin/users", payload);
 export type AdminUserModerationStatus = "ACTIVE" | "RESTRICTED" | "TEMP_BANNED" | "BANNED";
 export type AdminPartnerModerationStatus = "ACTIVE" | "RESTRICTED" | "TEMP_BANNED" | "BANNED" | "HIDDEN" | "REMOVED";
+export type AdminPartnerAvailability = "ONLINE" | "BUSY" | "OFFLINE";
 export type HomeVisitVerificationStatus =
   | "NOT_SUBMITTED"
   | "PENDING"
@@ -162,6 +163,19 @@ export async function updateAdminPartnerStatus(
   return apiRequest<{ companion: Record<string, unknown> }>(`/api/admin/partners/${partnerId}/status`, {
     method: "PATCH",
     body: JSON.stringify(payload),
+  });
+}
+
+export async function updateAdminPartnerAvailability(
+  partnerId: string,
+  availability: AdminPartnerAvailability,
+) {
+  return apiRequest<{
+    companion: Record<string, unknown>;
+    message?: string;
+  }>(`/api/admin/companions/${partnerId}/availability`, {
+    method: "PATCH",
+    body: JSON.stringify({ availability }),
   });
 }
 

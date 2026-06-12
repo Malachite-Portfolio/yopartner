@@ -9,7 +9,9 @@ import { AdminTableToolbar } from "@/components/admin/AdminTableToolbar";
 import {
   listCompanions,
   removeAdminPartner,
+  type AdminPartnerAvailability,
   type AdminPartnerModerationStatus,
+  updateAdminPartnerAvailability,
   updateAdminPartnerStatus,
 } from "@/lib/api/admin";
 import { clearAdminAuthSession } from "@/lib/adminAuth";
@@ -33,7 +35,7 @@ type PartnerRow = {
   chatPrice: number;
   audioPrice: number;
   videoPrice: number;
-  online: boolean;
+  availability: AdminPartnerAvailability;
   createdAt: string;
   updatedAt: string;
 };
@@ -73,6 +75,12 @@ function normalizePartnerStatus(value: unknown): AdminPartnerModerationStatus {
     return raw;
   }
   return "ACTIVE";
+}
+
+function normalizeAvailability(value: unknown): AdminPartnerAvailability {
+  const raw = String(value ?? "").trim().toUpperCase();
+  if (raw === "ONLINE" || raw === "BUSY" || raw === "OFFLINE") return raw;
+  return "OFFLINE";
 }
 
 function formatINR(value: number) {
@@ -121,7 +129,9 @@ function toPartnerRows(data: unknown): PartnerRow[] {
         chatPrice: CHAT_RATE_PER_MIN,
         audioPrice: AUDIO_RATE_PER_MIN,
         videoPrice: asNumber(record.videoPrice) > 0 ? VIDEO_RATE_PER_MIN : 0,
-        online: Boolean(record.isOnline),
+        availability: normalizeAvailability(
+          record.effectiveStatus ?? record.availability ?? (asBoolean(record.isOnline) ? "ONLINE" : "OFFLINE"),
+        ),
         createdAt: asString(record.createdAt),
         updatedAt: asString(record.updatedAt),
       } satisfies PartnerRow;
@@ -147,6 +157,11 @@ export default function AdminCompanionsPage() {
   const [removeReason, setRemoveReason] = useState("");
   const [removeSubmitting, setRemoveSubmitting] = useState(false);
   const [removeError, setRemoveError] = useState("");
+  const [availabilityPendingId, setAvailabilityPendingId] = useState("");
+  const [availabilityNotice, setAvailabilityNotice] = useState<{
+    tone: "success" | "error";
+    message: string;
+  } | null>(null);
 
   const loadCompanions = useCallback(async () => {
     setLoading(true);
@@ -175,6 +190,12 @@ export default function AdminCompanionsPage() {
       window.clearTimeout(timer);
     };
   }, [loadCompanions]);
+
+  useEffect(() => {
+    if (!availabilityNotice) return;
+    const timer = window.setTimeout(() => setAvailabilityNotice(null), 4000);
+    return () => window.clearTimeout(timer);
+  }, [availabilityNotice]);
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -254,6 +275,71 @@ export default function AdminCompanionsPage() {
     setRemoveError("");
   }
 
+  async function handleAvailabilityChange(
+    partner: PartnerRow,
+    availability: AdminPartnerAvailability,
+  ) {
+    if (availabilityPendingId) return;
+
+    const eligible =
+      !partner.isRemoved &&
+      partner.companionStatus.toUpperCase() === "ACTIVE" &&
+      partner.verificationStatus.toUpperCase() === "VERIFIED" &&
+      partner.moderationStatus === "ACTIVE";
+    if (!eligible) {
+      setAvailabilityNotice({
+        tone: "error",
+        message: "Only approved, active hosts can have availability changed.",
+      });
+      return;
+    }
+
+    if (
+      availability !== "ONLINE" &&
+      !window.confirm(`Set ${partner.name} ${availability.toLowerCase()}?`)
+    ) {
+      return;
+    }
+
+    setAvailabilityPendingId(partner.id);
+    setAvailabilityNotice(null);
+    const response = await updateAdminPartnerAvailability(partner.id, availability);
+
+    if (response.error?.status === 401) {
+      clearAdminAuthSession();
+      router.replace("/admin/login");
+      return;
+    }
+
+    if (response.error || !response.data) {
+      setAvailabilityPendingId("");
+      setAvailabilityNotice({
+        tone: "error",
+        message: response.error?.message ?? "Unable to update host availability.",
+      });
+      return;
+    }
+
+    const updated = asRecord(response.data.companion);
+    const effectiveStatus = normalizeAvailability(updated.effectiveStatus ?? updated.availability);
+    setRows((current) =>
+      current.map((row) =>
+        row.id === partner.id
+          ? {
+              ...row,
+              availability: effectiveStatus,
+              updatedAt: asString(updated.updatedAt, row.updatedAt),
+            }
+          : row,
+      ),
+    );
+    setAvailabilityPendingId("");
+    setAvailabilityNotice({
+      tone: "success",
+      message: response.data.message ?? `${partner.name} is now ${effectiveStatus.toLowerCase()}.`,
+    });
+  }
+
   async function handleSubmitRemove(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!removeTarget || removeSubmitting) return;
@@ -290,6 +376,18 @@ export default function AdminCompanionsPage() {
 
   return (
     <section className="space-y-4">
+      {availabilityNotice ? (
+        <div
+          role={availabilityNotice.tone === "error" ? "alert" : "status"}
+          className={`fixed right-5 top-20 z-50 max-w-sm rounded-xl border px-4 py-3 text-sm font-semibold shadow-lg ${
+            availabilityNotice.tone === "error"
+              ? "border-rose-200 bg-rose-50 text-rose-700"
+              : "border-emerald-200 bg-emerald-50 text-emerald-700"
+          }`}
+        >
+          {availabilityNotice.message}
+        </div>
+      ) : null}
       <div className="rounded-3xl border border-[#dceae5] bg-white p-5 shadow-sm shadow-teal-900/5">
         <p className="text-sm font-semibold text-[#0f766e]">Partner Moderation</p>
         <h2 className="mt-2 text-2xl font-semibold text-slate-950">Partners</h2>
@@ -339,7 +437,7 @@ export default function AdminCompanionsPage() {
                   <th className="px-2 py-2">Moderation</th>
                   <th className="px-2 py-2">Services</th>
                   <th className="px-2 py-2">Pricing</th>
-                  <th className="px-2 py-2">Online</th>
+                  <th className="px-2 py-2">Availability</th>
                   <th className="px-2 py-2">Updated</th>
                   <th className="px-2 py-2">Actions</th>
                 </tr>
@@ -351,6 +449,15 @@ export default function AdminCompanionsPage() {
                   </tr>
                 ) : (
                   filtered.map((item) => {
+                    const availabilityBlocked =
+                      item.isRemoved ||
+                      item.companionStatus.toUpperCase() !== "ACTIVE" ||
+                      item.verificationStatus.toUpperCase() !== "VERIFIED" ||
+                      item.moderationStatus !== "ACTIVE";
+                    const availabilityPending = availabilityPendingId === item.id;
+                    const availabilityTitle = availabilityBlocked
+                      ? "Availability requires an approved, active host."
+                      : undefined;
                     const actions = item.isRemoved
                       ? [{ label: "Restore Host", tone: "success" as const, onClick: () => openStatusModal(item, "ACTIVE") }]
                       : [
@@ -381,7 +488,33 @@ export default function AdminCompanionsPage() {
                           Chat {formatINR(item.chatPrice)} | Audio {formatINR(item.audioPrice)} | Video {formatINR(item.videoPrice)}
                         </td>
                         <td className="px-2 py-2">
-                          <AdminStatusBadge status={item.online ? "ONLINE" : "OFFLINE"} />
+                          <AdminStatusBadge status={item.availability} />
+                          <div className="mt-2 flex min-w-48 flex-wrap gap-1">
+                            {(["ONLINE", "BUSY", "OFFLINE"] as const).map((availability) => (
+                              <button
+                                key={availability}
+                                type="button"
+                                onClick={() => {
+                                  void handleAvailabilityChange(item, availability);
+                                }}
+                                disabled={
+                                  availabilityBlocked ||
+                                  Boolean(availabilityPendingId) ||
+                                  item.availability === availability
+                                }
+                                title={availabilityTitle}
+                                className={`rounded-lg border px-2 py-1 text-[11px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-45 ${
+                                  availability === "ONLINE"
+                                    ? "border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                                    : availability === "BUSY"
+                                      ? "border-rose-200 text-rose-700 hover:bg-rose-50"
+                                      : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                                }`}
+                              >
+                                {availabilityPending ? "Updating..." : availability[0] + availability.slice(1).toLowerCase()}
+                              </button>
+                            ))}
+                          </div>
                         </td>
                         <td className="px-2 py-2 text-slate-700">{item.updatedAt ? formatDateTime(item.updatedAt) : "-"}</td>
                         <td className="px-2 py-2">

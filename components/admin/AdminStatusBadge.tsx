@@ -9,6 +9,7 @@ const styleMap: Record<string, string> = {
   paid: "bg-emerald-50 text-emerald-700",
   completed: "bg-emerald-50 text-emerald-700",
   online: "bg-emerald-50 text-emerald-700",
+  busy: "bg-red-50 text-red-700",
   pending: "bg-amber-50 text-amber-700",
   "under review": "bg-amber-50 text-amber-700",
   requested: "bg-amber-50 text-amber-700",
