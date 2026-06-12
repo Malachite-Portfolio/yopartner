@@ -23,18 +23,19 @@ export function Footer() {
     {
       title: "Platform",
       links: [
-        { label: "How it Works", href: "/how-it-works" },
-        { label: "About Us", href: "/about" },
-        { label: "Safety & Trust", href: "/trust-safety" },
-        { label: "Help Center", href: "/faqs" },
+        { label: "Talk Now", href: "/connect-now" },
+        { label: "How YoPartner Works", href: "/how-it-works" },
+        { label: "About YoPartner", href: "/about" },
+        { label: "YoPartner Safety", href: "/trust-safety" },
       ],
     },
     {
       title: "Connect",
       links: [
-        { label: "Support", href: "/support" },
+        { label: "Become a Companion", href: "/become-companion" },
+        { label: "FAQs", href: "/faqs" },
+        { label: "Contact Support", href: "/support" },
         { label: "Media", href: "/media" },
-        { label: "Client Diaries", href: "/client-diaries" },
       ],
     },
   ];

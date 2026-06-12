@@ -16,7 +16,7 @@ export default function BecomeCompanionPage() {
   return (
     <>
       <PageHero
-        title="Become a YoPartner Companion"
+        title="Become a Verified Companion on YoPartner"
         subtitle="Help people feel heard, supported, and less alone."
       />
 

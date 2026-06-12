@@ -60,7 +60,7 @@ export default function SupportPage() {
   return (
     <section className="min-h-screen bg-[#f8fbfc]">
       <div className="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
-        <h1 className="text-4xl font-semibold text-slate-900">Support</h1>
+        <h1 className="text-4xl font-semibold text-slate-900">YoPartner Support and Safety Help</h1>
         <p className="mt-3 text-base text-slate-600">Need help? YoPartner support is here for you.</p>
 
         <div className="mt-8 grid gap-4 md:grid-cols-3">

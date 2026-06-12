@@ -138,6 +138,14 @@ export default function ConnectNowPage() {
           />
 
           <div className="px-4 pb-8 sm:px-6 lg:px-8">
+            <div className="mb-6 pt-6">
+              <h1 className="text-3xl font-semibold tracking-tight text-[#0e2230] sm:text-4xl">
+                Talk Now with Verified YoPartner Companions
+              </h1>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-[#4f5f6d] sm:text-base">
+                Browse verified profiles and start a safe platonic chat, audio call, or video call without downloading an app.
+              </p>
+            </div>
             <div className="mb-4 lg:hidden">
               <button
                 type="button"

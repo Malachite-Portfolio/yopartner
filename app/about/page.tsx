@@ -96,7 +96,7 @@ export default function AboutPage() {
         <div>
           <p className="text-xs font-semibold tracking-[0.2em] text-[#00A6B2]">ABOUT YOPARTNER</p>
           <h1 className="mt-4 max-w-2xl text-4xl font-semibold leading-tight text-[#111827] sm:text-5xl">
-            Premium companionship, built for modern life.
+            About YoPartner: Safe Platonic Companionship
           </h1>
           <p className="mt-5 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">
             YoPartner exists to make verified human connection easy, private, and trustworthy.
@@ -111,7 +111,7 @@ export default function AboutPage() {
               Connect Now
             </Link>
             <Link
-              href="/partner"
+              href="/become-companion"
               className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-[#111827] transition hover:border-[#00A6B2]/40"
             >
               Become a Companion

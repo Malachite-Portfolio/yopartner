@@ -1,5 +1,6 @@
 import { HeartHandshake, MessageCircleHeart, Quote, ShieldCheck, Sparkles } from "lucide-react";
 import { Outfit } from "next/font/google";
+import type { Metadata } from "next";
 import Link from "next/link";
 
 const outfit = Outfit({
@@ -9,9 +10,50 @@ const outfit = Outfit({
 
 const statPills = ["ID + Background Verified", "Private by Design", "Secure In-App Sessions"];
 
+export const metadata: Metadata = {
+  alternates: {
+    canonical: "/",
+  },
+};
+
+const priorityLinks = [
+  { label: "Talk Now", href: "/connect-now" },
+  { label: "About YoPartner", href: "/about" },
+  { label: "YoPartner Safety", href: "/trust-safety" },
+  { label: "How YoPartner Works", href: "/how-it-works" },
+  { label: "Become a Companion", href: "/become-companion" },
+  { label: "FAQs", href: "/faqs" },
+];
+
+const organizationStructuredData = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "YoPartner",
+  url: "https://yopartner.com",
+  logo: "https://yopartner.com/logo.png",
+  description: "A safe platonic companionship platform with verified profiles.",
+  areaServed: {
+    "@type": "Country",
+    name: "India",
+  },
+};
+
+const websiteStructuredData = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "YoPartner",
+  url: "https://yopartner.com",
+};
+
 export default function HomePage() {
   return (
     <div className={`${outfit.variable} overflow-hidden bg-[#FFFDF8] font-[var(--font-outfit-home)] text-[#0f2f2c]`}>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify([organizationStructuredData, websiteStructuredData]).replace(/</g, "\\u003c"),
+        }}
+      />
       <section className="relative min-h-[640px] overflow-hidden bg-[#f4f6ef] sm:min-h-[720px] lg:min-h-[760px]">
         <video
           className="absolute inset-0 h-full w-full object-cover"
@@ -28,10 +70,10 @@ export default function HomePage() {
         <div className="relative z-10 mx-auto flex min-h-[640px] w-full max-w-[1180px] flex-col items-center px-4 pt-8 text-center sm:min-h-[720px] sm:px-6 sm:pt-10 lg:min-h-[760px] lg:px-8">
           <div className="mx-auto max-w-[1040px]">
             <h1 className="text-[1.3rem] font-semibold leading-[1.16] text-black drop-shadow-[0_1px_14px_rgba(255,255,255,0.72)] sm:text-[1.55rem] lg:whitespace-nowrap lg:text-[1.72rem]">
-              You Don&apos;t Have To Go Through It Alone.
+              YoPartner: 100% Verified Profiles, No App Needed
             </h1>
             <p className="mt-2 text-[1.08rem] font-medium leading-tight text-black drop-shadow-[0_1px_12px_rgba(255,255,255,0.72)] sm:text-[1.2rem] lg:text-[1.28rem]">
-              Hum Hai Na...
+              Safe, strictly platonic companionship through chat, audio, and video calls.
             </p>
           </div>
 
@@ -152,7 +194,7 @@ export default function HomePage() {
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link
-              href="/partner"
+              href="/become-companion"
               className="inline-flex h-11 items-center justify-center rounded-full bg-[#00433d] px-7 text-sm font-semibold !text-white shadow-[0_10px_24px_rgba(0,67,61,0.22)] transition hover:-translate-y-0.5 hover:bg-[#005c55]"
             >
               Become a Verified Companion
@@ -164,6 +206,13 @@ export default function HomePage() {
               Explore Companions
             </Link>
           </div>
+          <nav aria-label="Explore YoPartner" className="mt-10 flex flex-wrap justify-center gap-x-6 gap-y-3 text-sm font-semibold text-[#0f766e]">
+            {priorityLinks.map((item) => (
+              <Link key={item.href} href={item.href} className="transition hover:text-[#00433d] hover:underline">
+                {item.label}
+              </Link>
+            ))}
+          </nav>
         </div>
       </section>
     </div>

@@ -60,7 +60,7 @@ export default function TrustSafetyPage() {
         <div className="mx-auto w-full max-w-[1180px]">
           <div className="max-w-[760px]">
             <h1 className="font-['Georgia','Times_New_Roman',serif] text-[2.7rem] font-semibold leading-[1.05] text-[#0d3832] sm:text-[3.4rem] lg:text-[4.5rem]">
-              Trust and Safety Built In
+              YoPartner Safety: Verified Profiles and Privacy First
             </h1>
             <p className="mt-6 max-w-[650px] text-[16px] leading-8 text-[#4f6762] sm:text-[17px]">
               YoPartner is a premium companionship platform with verified companions, strict standards, and privacy-first

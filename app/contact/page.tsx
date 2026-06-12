@@ -24,7 +24,7 @@ export default function ContactPage() {
   return (
     <>
       <PageHero
-        title="Contact YoPartner"
+        title="Contact YoPartner Support"
         subtitle="Questions, support, or partnership ideas? We are here to help."
       />
 

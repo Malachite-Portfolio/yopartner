@@ -12,11 +12,12 @@ import { getUserAuthState, restoreUserAuthSessionFromFirebase, subscribeUserAuth
 
 const navItems = [
   { label: "Home", href: "/" },
-  { label: "About Us", href: "/faqs" },
   { label: "Talk Now", href: "/connect-now" },
-  { label: "Home Visit", href: "/home-visit" },
+  { label: "How It Works", href: "/how-it-works" },
+  { label: "About Us", href: "/about" },
   { label: "Safety", href: "/trust-safety" },
-  { label: "Become a Companion", href: "/partner" },
+  { label: "FAQs", href: "/faqs" },
+  { label: "Become a Companion", href: "/become-companion" },
 ];
 
 function isActive(pathname: string, href: string) {

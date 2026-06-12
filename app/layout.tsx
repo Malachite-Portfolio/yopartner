@@ -12,21 +12,60 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "YoPartner | Premium Verified Companionship Platform",
-  description:
-    "YoPartner is India's premium companionship platform for verified companions, voice call companionship, video companionship, home visit companionship, social companionship, and trusted human connection.",
-  keywords: [
-    "companionship platform",
-    "verified companions",
-    "voice call companionship",
-    "video companionship",
-    "home visit companionship",
-    "social companionship",
-    "human connection",
-  ],
   metadataBase: new URL("https://yopartner.com"),
-  alternates: {
-    canonical: "/",
+  title: {
+    default: "YoPartner - 100% Verified Profiles, No App Needed",
+    template: "%s | YoPartner",
+  },
+  description:
+    "YoPartner is a safe platonic companionship platform with 100% verified profiles. Connect instantly through chat, audio, and video calls. No app needed.",
+  keywords: [
+    "YoPartner",
+    "verified profiles",
+    "platonic companionship",
+    "no app needed",
+    "chat companion",
+    "audio call companion",
+    "video call companion",
+    "safe companionship platform",
+    "verified companion India",
+  ],
+  openGraph: {
+    type: "website",
+    locale: "en_IN",
+    siteName: "YoPartner",
+    url: "/",
+    title: "YoPartner - 100% Verified Profiles, No App Needed",
+    description:
+      "YoPartner is a safe platonic companionship platform with 100% verified profiles. Connect instantly through chat, audio, and video calls. No app needed.",
+    images: [
+      {
+        url: "/logo.png",
+        alt: "YoPartner - Safe platonic companionship",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "YoPartner - 100% Verified Profiles, No App Needed",
+    description:
+      "YoPartner is a safe platonic companionship platform with 100% verified profiles. Connect instantly through chat, audio, and video calls. No app needed.",
+    images: ["/logo.png"],
+  },
+  icons: {
+    icon: "/logo.png",
+    apple: "/logo.png",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
   },
 };
 

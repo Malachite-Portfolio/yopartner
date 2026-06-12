@@ -128,6 +128,21 @@ const faqCategories = [
   },
 ];
 
+const faqStructuredData = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: faqCategories.flatMap((category) =>
+    category.questions.map((item) => ({
+      "@type": "Question",
+      name: item.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: item.answer,
+      },
+    })),
+  ),
+};
+
 function normalize(value: string) {
   return value.toLowerCase().trim();
 }
@@ -152,6 +167,12 @@ export default function FAQsPage() {
 
   return (
     <div className="min-h-screen bg-[#f5f7f8] text-[#101828]">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(faqStructuredData).replace(/</g, "\\u003c"),
+        }}
+      />
       <section className="relative isolate overflow-hidden bg-[linear-gradient(135deg,#fbf8ff_0%,#eef9f7_48%,#edf8ff_100%)]">
         <div className="absolute left-1/2 top-8 -z-10 h-56 w-56 -translate-x-1/2 rounded-full bg-[#8b5cf6]/18 blur-3xl" />
         <div className="absolute right-[12%] top-24 -z-10 h-48 w-48 rounded-full bg-[#0f766e]/12 blur-3xl" />
@@ -161,7 +182,7 @@ export default function FAQsPage() {
             Help Center
           </span>
           <h1 className="mt-6 max-w-3xl text-4xl font-bold tracking-tight text-[#111827] sm:text-5xl lg:text-6xl">
-            Clear answers. <span className="text-[#007065]">Fast decisions.</span>
+            YoPartner FAQ: <span className="text-[#007065]">Verified Companionship Answers</span>
           </h1>
           <p className="mt-5 max-w-2xl text-base leading-8 text-[#5d6b68] sm:text-lg">
             Everything you need to know about verified companions, safety, privacy, and sessions.
