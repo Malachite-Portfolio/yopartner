@@ -78,6 +78,18 @@ export default function RootLayout({
   return (
     <html lang="en" className={manrope.variable}>
       <head>
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-8PMNJLDEZP"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-8PMNJLDEZP');
+          `}
+        </Script>
         <Script id="meta-pixel" strategy="afterInteractive">
           {`
             !function(f,b,e,v,n,t,s)
@@ -88,9 +100,14 @@ export default function RootLayout({
             t.src=v;s=b.getElementsByTagName(e)[0];
             s.parentNode.insertBefore(t,s)}(window, document,'script',
             'https://connect.facebook.net/en_US/fbevents.js');
+            fbq.disablePushState = true;
             fbq('init', '1756224879086245');
             (window.__metaPixelPendingEvents || []).forEach(function(event) {
-              fbq('track', event.eventName, event.params);
+              if (event.eventName === 'PageView') {
+                fbq('trackSingle', '1756224879086245', event.eventName, event.params);
+              } else {
+                fbq('track', event.eventName, event.params);
+              }
             });
             window.__metaPixelPendingEvents = [];
           `}

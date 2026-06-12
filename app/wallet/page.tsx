@@ -32,6 +32,7 @@ import {
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { getUserAuthState, getUserAuthTokenWithRestore } from "@/lib/auth/userAuth";
 import { WALLET_UPDATED_EVENT } from "@/lib/wallet";
+import { trackMetaPixel } from "@/lib/metaPixel";
 
 type WalletTab = "overview" | "transactions" | "recharge";
 type ModalStep = "amount" | "checkout";
@@ -306,6 +307,7 @@ export default function WalletPage() {
     if (params.get("addMoney") !== "1") return;
 
     const timer = window.setTimeout(() => {
+      trackMetaPixel("InitiateCheckout");
       setIsModalOpen(true);
       setModalStep("amount");
       params.delete("addMoney");
@@ -351,6 +353,7 @@ export default function WalletPage() {
     .reduce((sum, tx) => sum + Math.max(tx.amountAdded, 0), 0);
 
   const openModal = () => {
+    trackMetaPixel("InitiateCheckout");
     setIsModalOpen(true);
     setModalStep("amount");
     setSuccessMessage("");
@@ -370,6 +373,12 @@ export default function WalletPage() {
     if (!canProceed) {
       setRechargeError("Select a recharge plan or enter a custom amount between ₹1 and ₹50,000.");
       return;
+    }
+    if (!selectedPlan && validCustom && parsedCustom > 0) {
+      trackMetaPixel("AddPaymentInfo", {
+        currency: "INR",
+        value: parsedCustom,
+      });
     }
     setModalStep("checkout");
     setRechargeError("");
@@ -410,17 +419,18 @@ export default function WalletPage() {
         setRechargeError(orderResponse.error?.message ?? "Unable to create payment order.");
         return;
       }
+      const orderData = orderResponse.data;
 
       const authState = getUserAuthState();
       const prefillPhone = authState.phone?.replace(/^\+91/, "");
 
       const instance = new window.Razorpay({
-        key: orderResponse.data.keyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "",
-        amount: orderResponse.data.amount,
-        currency: orderResponse.data.currency,
+        key: orderData.keyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "",
+        amount: orderData.amount,
+        currency: orderData.currency,
         name: "YoPartner",
         description: "Wallet Recharge",
-        order_id: orderResponse.data.orderId,
+        order_id: orderData.orderId,
         prefill: {
           contact: prefillPhone,
         },
@@ -452,6 +462,14 @@ export default function WalletPage() {
               return;
             }
 
+            const actualPaidAmount = orderData.amount / 100;
+            trackMetaPixel("Purchase", {
+              currency: "INR",
+              value:
+                Number.isFinite(actualPaidAmount) && actualPaidAmount > 0
+                  ? actualPaidAmount
+                  : rechargeSummary.payAmount,
+            });
             await refreshWalletDataFromApi();
             if (typeof window !== "undefined") {
               window.dispatchEvent(new CustomEvent(WALLET_UPDATED_EVENT));
@@ -663,6 +681,10 @@ export default function WalletPage() {
                       plan={plan}
                       selected={selectedPlanId === plan.id}
                       onSelect={() => {
+                        trackMetaPixel("AddPaymentInfo", {
+                          currency: "INR",
+                          value: plan.rechargeAmount,
+                        });
                         setSelectedPlanId(plan.id);
                         setCustomAmount("");
                         setRechargeError("");
@@ -714,6 +736,10 @@ export default function WalletPage() {
                       plan={plan}
                       selected={selectedPlanId === plan.id}
                       onSelect={() => {
+                        trackMetaPixel("AddPaymentInfo", {
+                          currency: "INR",
+                          value: plan.rechargeAmount,
+                        });
                         setSelectedPlanId(plan.id);
                         setCustomAmount("");
                         setRechargeError("");
