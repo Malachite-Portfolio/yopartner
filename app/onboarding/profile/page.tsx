@@ -7,6 +7,7 @@ import { getCurrentUserProfile, updateCurrentUserProfile } from "@/lib/api/users
 import { consumeStoredPostLoginRedirect } from "@/lib/auth/onboarding";
 import { restoreUserAuthSessionFromFirebase } from "@/lib/auth/userAuth";
 import { uploadUserProfilePhoto } from "@/lib/firebaseUserProfileUpload";
+import { shouldTrackCompleteRegistration, trackMetaPixel } from "@/lib/metaPixel";
 
 type FormState = {
   name: string;
@@ -39,6 +40,8 @@ export default function UserOnboardingProfilePage() {
   const [uploadedProfileImageUrl, setUploadedProfileImageUrl] = useState<string>("");
   const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const wasProfileIncompleteRef = useRef(false);
+  const registrationTrackedRef = useRef(false);
 
   const ageValue = useMemo(() => {
     const parsed = Number(form.age);
@@ -95,6 +98,7 @@ export default function UserOnboardingProfilePage() {
         return;
       }
 
+      wasProfileIncompleteRef.current = true;
       const existing = profileResult.data?.user;
       setForm({
         name: existing?.name ?? "",
@@ -183,14 +187,20 @@ export default function UserOnboardingProfilePage() {
       profileImageUrl: uploadedProfileImageUrl,
     });
 
-    setSaving(false);
-
     if (result.error) {
+      setSaving(false);
       setError(result.error.message || "Unable to save profile. Please try again.");
       return;
     }
 
     setMessage("Profile saved. Redirecting...");
+
+    if (shouldTrackCompleteRegistration(wasProfileIncompleteRef.current, registrationTrackedRef.current)) {
+      registrationTrackedRef.current = true;
+      trackMetaPixel("CompleteRegistration", { status: "registered" });
+      await new Promise((resolve) => window.setTimeout(resolve, 200));
+    }
+
     router.push(consumeStoredPostLoginRedirect() || "/connect-now");
   };
 

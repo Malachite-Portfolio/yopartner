@@ -4,6 +4,7 @@ import Script from "next/script";
 import { AppHeader } from "@/components/AppHeader";
 import { Footer } from "@/components/Footer";
 import { LuckyWheelLauncher } from "@/components/LuckyWheelLauncher";
+import { MetaPixelPageView } from "@/components/MetaPixelPageView";
 import "./globals.css";
 
 const manrope = Manrope({
@@ -88,21 +89,15 @@ export default function RootLayout({
             s.parentNode.insertBefore(t,s)}(window, document,'script',
             'https://connect.facebook.net/en_US/fbevents.js');
             fbq('init', '1756224879086245');
-            fbq('track', 'PageView');
+            (window.__metaPixelPendingEvents || []).forEach(function(event) {
+              fbq('track', event.eventName, event.params);
+            });
+            window.__metaPixelPendingEvents = [];
           `}
         </Script>
       </head>
       <body className="min-h-screen bg-background text-foreground">
-        <noscript>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            height="1"
-            width="1"
-            style={{ display: "none" }}
-            src="https://www.facebook.com/tr?id=1756224879086245&ev=PageView&noscript=1"
-            alt=""
-          />
-        </noscript>
+        <MetaPixelPageView />
         <div className="flex min-h-screen flex-col">
           <AppHeader />
           <main className="flex-1">{children}</main>
