@@ -515,6 +515,24 @@ function toCompanionItem(item: RawCompanionItem, options?: { assumePublicVerifie
   };
 }
 
+function availabilityRank(companion: CompanionItem) {
+  const status = companion.effectiveStatus ?? (companion.isBusy ? "BUSY" : companion.online ? "ONLINE" : "OFFLINE");
+  if (status === "ONLINE") return 0;
+  if (status === "BUSY") return 1;
+  if (status === "OFFLINE") return 2;
+  return 3;
+}
+
+function sortCompanionsByAvailability(companions: CompanionItem[]) {
+  return companions
+    .map((companion, index) => ({ companion, index }))
+    .sort((first, second) => {
+      const rankDelta = availabilityRank(first.companion) - availabilityRank(second.companion);
+      return rankDelta || first.index - second.index;
+    })
+    .map(({ companion }) => companion);
+}
+
 export async function listCompanions(filters?: CompanionFilters) {
   const query = new URLSearchParams();
   if (filters?.search) query.set("search", filters.search);
@@ -532,8 +550,11 @@ export async function listCompanions(filters?: CompanionFilters) {
       error: { ...result.error, message },
     };
   }
+  const companions = (result.data?.companions ?? []).map((item) =>
+    toCompanionItem(item, { assumePublicVerified: true }),
+  );
   return {
-    data: (result.data?.companions ?? []).map((item) => toCompanionItem(item, { assumePublicVerified: true })),
+    data: sortCompanionsByAvailability(companions),
     error: null,
   };
 }
