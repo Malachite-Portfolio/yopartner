@@ -24,7 +24,6 @@ export function Footer() {
       title: "Platform",
       links: [
         { label: "Talk Now", href: "/connect-now" },
-        { label: "How YoPartner Works", href: "/how-it-works" },
         { label: "About YoPartner", href: "/about" },
         { label: "YoPartner Safety", href: "/trust-safety" },
       ],
@@ -32,8 +31,7 @@ export function Footer() {
     {
       title: "Connect",
       links: [
-        { label: "Become a Companion", href: "/become-companion" },
-        { label: "FAQs", href: "/faqs" },
+        { label: "Become a Companion", href: "/partner/login" },
         { label: "Contact Support", href: "/support" },
         { label: "Media", href: "/media" },
       ],
