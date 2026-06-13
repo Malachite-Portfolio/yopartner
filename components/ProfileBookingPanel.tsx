@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentType } from "react";
-import { BarChart3, CheckCircle2, MessageSquareText, PhoneCall, RefreshCw, Video, Wallet } from "lucide-react";
+import { BarChart3, MessageSquareText, PhoneCall, RefreshCw, Video, Wallet } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createSession } from "@/lib/api/sessions";
@@ -15,7 +15,6 @@ import type { ConnectCompanion } from "@/lib/data";
 import {
   AUDIO_RATE_PER_MIN,
   CHAT_RATE_PER_MIN,
-  HOME_VISIT_RATE_PER_HOUR,
   VIDEO_RATE_PER_MIN,
 } from "@/lib/platformPricing";
 import { formatINR, getWalletBalance, subscribeWalletUpdates } from "@/lib/wallet";
@@ -26,15 +25,15 @@ type ProfileBookingPanelProps = {
   initialType?: SessionType;
 };
 
-type SessionType = "chat" | "audio" | "video" | "visit";
+type SessionType = "chat" | "audio" | "video";
 
 type SessionOption = {
   type: SessionType;
   label: string;
   icon: ComponentType<{ size?: number; className?: string }>;
-  unit: "/ min" | "/ hour";
+  unit: "/ min";
   price: number;
-  badge: "CHAT" | "AUDIO" | "VIDEO" | "HOME VISIT";
+  badge: "CHAT" | "AUDIO" | "VIDEO";
 };
 
 const MIN_CHAT_WALLET_BALANCE = 50;
@@ -82,19 +81,8 @@ export function ProfileBookingPanel({ companion, initialType }: ProfileBookingPa
     ];
     const available = base.filter((option) => option.price > 0);
 
-    if (companion.visitPrice > 0) {
-      available.push({
-        type: "visit",
-        label: "Home Visit",
-        icon: CheckCircle2,
-        unit: "/ hour",
-        price: HOME_VISIT_RATE_PER_HOUR,
-        badge: "HOME VISIT",
-      });
-    }
-
     return available;
-  }, [companion.chatPrice, companion.voicePrice, companion.videoPrice, companion.visitPrice]);
+  }, [companion.chatPrice, companion.voicePrice, companion.videoPrice]);
 
   const [selectedType, setSelectedType] = useState<SessionType>(initialType ?? "chat");
   const [walletBalance, setWalletBalance] = useState(0);
@@ -159,11 +147,10 @@ export function ProfileBookingPanel({ companion, initialType }: ProfileBookingPa
   }, [loggedIn]);
 
   const selectedOption = options.find((option) => option.type === selectedType) ?? options[0];
-  const multiplier = selectedOption?.type === "visit" ? 1 : 5;
   const requiredAmount =
     selectedOption?.type === "chat"
       ? MIN_CHAT_WALLET_BALANCE
-      : (selectedOption?.price ?? 0) * multiplier;
+      : (selectedOption?.price ?? 0) * 5;
   const shortfall = Math.max(requiredAmount - walletBalance, 0);
   const welcomeChatApplies =
     loggedIn && selectedOption?.type === "chat" && Boolean(welcomeChatBonus?.available && welcomeChatBonus.freeMinutes > 0);
@@ -179,10 +166,6 @@ export function ProfileBookingPanel({ companion, initialType }: ProfileBookingPa
       return;
     }
 
-    if (selectedType === "visit") {
-      router.push(`/home-visit/${companion.id}?booking=1`);
-      return;
-    }
     if (USE_PROFILE_CLIENT_WALLET_PRECHECK && !hasSufficientBalance) {
       if (selectedType === "chat") {
         setActionMessage("Minimum INR 50 wallet balance is required to start a chat.");
@@ -259,9 +242,7 @@ export function ProfileBookingPanel({ companion, initialType }: ProfileBookingPa
       ? "Start Chat"
       : selectedType === "audio"
         ? "Start Audio"
-        : selectedType === "video"
-          ? "Start Video"
-          : "Request Home Visit";
+        : "Start Video";
 
   return (
     <aside className="space-y-6 lg:sticky lg:top-5">
@@ -283,11 +264,6 @@ export function ProfileBookingPanel({ companion, initialType }: ProfileBookingPa
               option={option}
               selected={option.type === selectedType}
               onSelect={() => {
-                if (option.type === "visit") {
-                  trackMetaPixel("ViewContent", { content_name: "Host Interaction" });
-                  router.push(`/home-visit/${companion.id}?booking=1`);
-                  return;
-                }
                 setSelectedType(option.type);
                 setActionMessage("");
               }}
@@ -359,7 +335,7 @@ export function ProfileBookingPanel({ companion, initialType }: ProfileBookingPa
                     </p>
                   ) : (
                     <p className="mt-1 text-sm font-medium text-red-600">
-                      Required: {formatINR(requiredAmount)} ({multiplier}x service price)
+                      Required: {formatINR(requiredAmount)} (5x service price)
                     </p>
                   )}
                   <p className="text-sm font-medium text-red-600">Shortfall: {formatINR(shortfall)}</p>

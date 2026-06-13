@@ -190,7 +190,7 @@ export default function HomePage() {
         <div className="mx-auto w-full max-w-[860px] text-center">
           <h2 className="text-[2.6rem] font-semibold leading-[1.1] text-[#00433d] sm:text-[3.3rem]">Real conversations. Real people. Better days.</h2>
           <p className="mx-auto mt-4 max-w-[660px] text-[15px] leading-7 text-[#4f6661]">
-            Join India&apos;s premium companionship platform for trusted chat, voice, video, and home visit companionship.
+            Join India&apos;s premium companionship platform for trusted chat, audio call, and video call companionship.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link

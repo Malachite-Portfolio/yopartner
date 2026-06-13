@@ -11,7 +11,7 @@ const steps = [
   },
   {
     title: "Step 2: Select your session format",
-    description: "Pick chat companionship, voice call companionship, video companionship, or home visit companionship.",
+    description: "Pick chat companionship, audio call companionship, or video call companionship.",
     icon: Handshake,
   },
   {

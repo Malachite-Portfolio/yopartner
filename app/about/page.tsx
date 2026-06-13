@@ -6,7 +6,6 @@ import {
   CreditCard,
   HeartHandshake,
   HelpCircle,
-  Home,
   MessageCircle,
   Search,
   ShieldCheck,
@@ -24,7 +23,7 @@ const faqCategories = [
       {
         question: "What is YoPartner?",
         answer:
-          "YoPartner is India's premium companionship platform for adults. Connect with verified companions through chat, voice calls, video companionship, and approved home visit companionship.",
+          "YoPartner is India's premium companionship platform for adults. Connect with verified companions through chat, audio calls, and video calls without downloading an app.",
       },
       {
         question: "Is YoPartner a dating platform?",
@@ -51,7 +50,7 @@ const faqCategories = [
       {
         question: "Which formats can I choose?",
         answer:
-          "You can choose chat companionship, voice call companionship, video companionship, and approved home visit companionship.",
+          "You can choose chat companionship, audio call companionship, and video call companionship.",
       },
       {
         question: "Can I filter by language and availability?",
@@ -101,28 +100,6 @@ const faqCategories = [
         question: "Are payment options fixed?",
         answer:
           "Available recharge options may vary by payment provider, bank, and device.",
-      },
-    ],
-  },
-  {
-    title: "Home Visits",
-    icon: Home,
-    tint: "bg-[#f3eeff] text-[#6d28d9]",
-    questions: [
-      {
-        question: "Are home visits available everywhere?",
-        answer:
-          "Home visit companionship is enabled only in approved locations and for companions with additional verification.",
-      },
-      {
-        question: "How is home visit companionship reviewed?",
-        answer:
-          "Home visit sessions follow stricter safety checks, platform protocols, and support oversight.",
-      },
-      {
-        question: "Can every request be instant?",
-        answer:
-          "Some requests are instant, while others may require a short manual review before confirmation.",
       },
     ],
   },
@@ -206,7 +183,7 @@ export default function AboutPage() {
           {filteredCategories.length === 0 ? (
             <div className="rounded-[28px] border border-[#e1e8e6] bg-white p-8 text-center shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
               <p className="text-lg font-semibold text-[#10201e]">No answers found</p>
-              <p className="mt-2 text-sm text-[#667572]">Try searching for verification, privacy, payments, or home visits.</p>
+              <p className="mt-2 text-sm text-[#667572]">Try searching for verification, privacy, payments, or video calls.</p>
             </div>
           ) : (
             filteredCategories.map((category) => {

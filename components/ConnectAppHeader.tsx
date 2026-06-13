@@ -13,7 +13,6 @@ const navItems = [
   { label: "Home", href: "/" },
   { label: "About Us", href: "/about" },
   { label: "Talk Now", href: "/connect-now" },
-  { label: "Home Visit", href: "/home-visit" },
   { label: "Safety", href: "/trust-safety" },
   { label: "Become a Companion", href: "/partner/login" },
 ];

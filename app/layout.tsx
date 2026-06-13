@@ -19,7 +19,7 @@ export const metadata: Metadata = {
     template: "%s | YoPartner",
   },
   description:
-    "YoPartner is a safe platonic companionship platform with 100% verified profiles. Connect instantly through chat, audio, and video calls. No app needed.",
+    "YoPartner offers safe, verified, strictly platonic companionship through chat, audio, and video calls. Connect with verified profiles online, no app needed.",
   keywords: [
     "YoPartner",
     "verified profiles",
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
     url: "/",
     title: "YoPartner - 100% Verified Profiles, No App Needed",
     description:
-      "YoPartner is a safe platonic companionship platform with 100% verified profiles. Connect instantly through chat, audio, and video calls. No app needed.",
+      "YoPartner offers safe, verified, strictly platonic companionship through chat, audio, and video calls. Connect with verified profiles online, no app needed.",
     images: [
       {
         url: "/logo.png",
@@ -50,7 +50,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "YoPartner - 100% Verified Profiles, No App Needed",
     description:
-      "YoPartner is a safe platonic companionship platform with 100% verified profiles. Connect instantly through chat, audio, and video calls. No app needed.",
+      "YoPartner offers safe, verified, strictly platonic companionship through chat, audio, and video calls. Connect with verified profiles online, no app needed.",
     images: ["/logo.png"],
   },
   icons: {

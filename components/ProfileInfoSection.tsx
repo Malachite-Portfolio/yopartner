@@ -5,7 +5,9 @@ type ProfileInfoSectionProps = {
 };
 
 export function ProfileInfoSection({ companion }: ProfileInfoSectionProps) {
-  const chips = companion.servicesOffered.filter(Boolean);
+  const chips = companion.servicesOffered.filter(
+    (service) => service && !["home visit", "home_visit", "in-person visits"].includes(service.trim().toLowerCase()),
+  );
   const aboutText = companion.about.trim();
 
   return (

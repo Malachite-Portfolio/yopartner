@@ -4,7 +4,7 @@ import { createPageMetadata } from "@/lib/seo";
 export const metadata = createPageMetadata({
   title: "YoPartner Services - Chat, Audio & Video Companionship",
   description:
-    "Explore safe platonic companionship on YoPartner through verified chat, audio calls, video calls, and approved home visits.",
+    "Explore safe, strictly platonic companionship on YoPartner through verified chat, audio calls, and video calls. No app needed.",
   path: "/services",
 });
 

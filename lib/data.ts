@@ -185,7 +185,7 @@ export const processSteps: ProcessStep[] = [
   {
     title: "Select Your Session Format",
     description:
-      "Pick chat, voice call companionship, video companionship, or home visit companionship.",
+      "Pick chat companionship, audio call companionship, or video call companionship.",
     icon: "calendar",
   },
   {
@@ -211,11 +211,6 @@ export const services: Service[] = [
     title: "Video Companionship",
     description: "Face-to-face sessions with verified companions in secure channels.",
     icon: "video",
-  },
-  {
-    title: "Home Visit Companionship",
-    description: "Approved in-person companionship with additional safety review.",
-    icon: "map-pin",
   },
 ];
 
@@ -248,16 +243,6 @@ export const serviceDetails: ServiceDetail[] = [
       "Secure in-app video sessions",
       "Ideal for richer social interaction",
       "Strictly platonic platform standards",
-    ],
-  },
-  {
-    title: "Home Visit Companionship",
-    description:
-      "In-person companionship in approved locations with additional verification controls.",
-    highlights: [
-      "Extra safety checks before activation",
-      "Strictly platonic interactions only",
-      "Platform-monitored standards and support",
     ],
   },
 ];

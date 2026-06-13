@@ -5,7 +5,7 @@ export const metadata = {
   ...createPageMetadata({
     title: "About Us | YoPartner FAQs",
     description:
-      "Find answers about YoPartner, verified profiles, strictly platonic companionship, chat, calls, home visits, safety, payments, and partner onboarding.",
+      "Find answers about YoPartner, verified profiles, strictly platonic companionship, chat, audio calls, video calls, safety, payments, and partner onboarding.",
     path: "/about",
   }),
   title: {
