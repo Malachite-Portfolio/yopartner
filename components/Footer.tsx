@@ -24,7 +24,7 @@ export function Footer() {
       title: "Platform",
       links: [
         { label: "Talk Now", href: "/connect-now" },
-        { label: "About YoPartner", href: "/about" },
+        { label: "About Us", href: "/about" },
         { label: "YoPartner Safety", href: "/trust-safety" },
       ],
     },

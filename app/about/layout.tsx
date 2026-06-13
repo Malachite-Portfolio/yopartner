@@ -1,12 +1,17 @@
 import type { ReactNode } from "react";
 import { createPageMetadata } from "@/lib/seo";
 
-export const metadata = createPageMetadata({
-  title: "About YoPartner - Safe Platonic Companionship",
-  description:
-    "Learn about YoPartner's mission to provide safe, verified, and respectful platonic companionship through chat, audio, and video calls.",
-  path: "/about",
-});
+export const metadata = {
+  ...createPageMetadata({
+    title: "About Us | YoPartner FAQs",
+    description:
+      "Find answers about YoPartner, verified profiles, strictly platonic companionship, chat, calls, home visits, safety, payments, and partner onboarding.",
+    path: "/about",
+  }),
+  title: {
+    absolute: "About Us | YoPartner FAQs",
+  },
+};
 
 export default function AboutLayout({ children }: { children: ReactNode }) {
   return children;
