@@ -48,7 +48,7 @@ export function CompanionCard({ companion }: CompanionCardProps) {
         </div>
 
         <div className="mt-5 flex items-center justify-between">
-          <p className="text-sm font-semibold text-foreground">Chat ₹5/min | Audio ₹18/min | Video ₹24/min</p>
+          <p className="text-sm font-semibold text-foreground">Chat ₹5/message | Audio ₹18/min | Video ₹24/min</p>
           <Link
             href={`/companions/${companion.id}`}
             className="yp-btn-pop rounded-full bg-gradient-to-r from-brand to-brand-purple px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"

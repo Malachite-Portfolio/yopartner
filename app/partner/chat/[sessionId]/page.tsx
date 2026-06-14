@@ -199,8 +199,12 @@ export default function PartnerChatSessionPage() {
     if (!text || !session || session.status !== "LIVE") return;
     setInput("");
 
+    const optimisticId =
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? `temp-${crypto.randomUUID()}`
+        : `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const optimistic: SessionMessageRecord = {
-      id: `temp-${Date.now()}`,
+      id: optimisticId,
       sessionId: session.id,
       senderId: String(session.companion?.userId ?? ""),
       senderUserId: String(session.companion?.userId ?? ""),
@@ -211,7 +215,7 @@ export default function PartnerChatSessionPage() {
       isMine: true,
     };
     setMessages((current) => [...current, optimistic]);
-    const response = await sendSessionMessage(session.id, text);
+    const response = await sendSessionMessage(session.id, text, optimisticId);
     if (!response.data) {
       setMessages((current) => current.filter((item) => item.id !== optimistic.id));
       setError(response.error?.message || "Unable to send message.");

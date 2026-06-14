@@ -101,6 +101,23 @@ export type SessionMessageRecord = {
 export type GiftKey = string;
 export type GiftQuantity = 1 | 10 | 50 | 100;
 
+export function getSessionRewardLimitSeconds(
+  session: SessionRecord | null | undefined,
+  rewardType: string,
+) {
+  const reward = session?.reward;
+  if (reward?.appliedRewardType !== rewardType) return null;
+  if (reward.shouldAutoEndAtFreeLimit === false) return null;
+
+  const candidates = [
+    reward.freeSeconds,
+    session?.billingLimit?.maxAllowedSeconds,
+    session?.billingLimit?.billingLimitSeconds,
+  ];
+  const limitSeconds = candidates.find((value) => typeof value === "number" && Number.isFinite(value) && value > 0);
+  return typeof limitSeconds === "number" ? limitSeconds : null;
+}
+
 export async function createSession(payload: {
   companionId: string;
   serviceType: SessionServiceType;
@@ -150,13 +167,30 @@ export async function getSessionMessages(sessionId: string) {
   return { data: result.data?.messages ?? [], error: null };
 }
 
-export async function sendSessionMessage(sessionId: string, body: string) {
-  const result = await apiRequest<{ message: SessionMessageRecord }>(`/api/sessions/${sessionId}/messages`, {
+export async function sendSessionMessage(sessionId: string, body: string, clientMessageId?: string) {
+  const messageClientId = clientMessageId ?? (
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `msg-${Date.now()}-${Math.random().toString(36).slice(2)}`
+  );
+  const result = await apiRequest<{
+    message: SessionMessageRecord;
+    walletBalance?: number;
+    chargeAmount?: number;
+  }>(`/api/sessions/${sessionId}/messages`, {
     method: "POST",
-    body: JSON.stringify({ body }),
+    headers: {
+      "Idempotency-Key": messageClientId,
+    },
+    body: JSON.stringify({ body, clientMessageId: messageClientId }),
   });
   if (result.error) return { data: null, error: result.error };
-  return { data: result.data?.message ?? null, error: null };
+  return {
+    data: result.data?.message ?? null,
+    error: null,
+    walletBalance: result.data?.walletBalance,
+    chargeAmount: result.data?.chargeAmount,
+  };
 }
 
 export async function sendSessionGift(sessionId: string, giftKey: GiftKey, quantity: GiftQuantity = 1) {

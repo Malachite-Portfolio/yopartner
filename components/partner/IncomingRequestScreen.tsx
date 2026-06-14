@@ -85,7 +85,7 @@ export function IncomingRequestScreen({
               <h3 className="mt-1 truncate text-base font-semibold text-[#0f172a]">{memberLabel}</h3>
               <p className="mt-1 text-sm text-[#475569]">A member would like to start a conversation.</p>
               <p className="mt-1 text-xs font-medium text-[#64748b]">
-                {serviceLabel} - {formatINR(Math.max(request.expectedRate, 0))}
+                {serviceLabel} - {formatINR(Math.max(request.expectedRate, 0))}/message
               </p>
             </div>
           </div>

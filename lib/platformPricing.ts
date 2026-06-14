@@ -1,4 +1,5 @@
-export const CHAT_RATE_PER_MIN = 5;
+export const CHAT_RATE_PER_MESSAGE = 5;
+export const CHAT_RATE_PER_MIN = CHAT_RATE_PER_MESSAGE;
 export const AUDIO_RATE_PER_MIN = 18;
 export const VIDEO_RATE_PER_MIN = 24;
 export const HOME_VISIT_RATE_PER_HOUR = 2000;
@@ -18,7 +19,7 @@ export function getFixedPlatformRate(serviceType: "chat" | "audio" | "video" | "
 }
 
 export const FIXED_PLATFORM_PRICE_LABELS = {
-  chat: `\u20b9${CHAT_RATE_PER_MIN}/min`,
+  chat: `\u20b9${CHAT_RATE_PER_MESSAGE}/message`,
   audio: `\u20b9${AUDIO_RATE_PER_MIN}/min`,
   video: `\u20b9${VIDEO_RATE_PER_MIN}/min`,
   homeVisit: `\u20b9${HOME_VISIT_RATE_PER_HOUR}/hour`,

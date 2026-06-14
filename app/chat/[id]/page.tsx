@@ -13,6 +13,7 @@ import {
   type GiftQuantity,
   getSessionById,
   getSessionMessages,
+  getSessionRewardLimitSeconds,
   sendSessionGift,
   sendSessionMessage,
   type SessionRecord,
@@ -38,9 +39,11 @@ import {
 import { isActiveSessionStatus, isTerminalSessionStatus } from "@/lib/sessionStatus";
 import { getUserAuthTokenWithRestore } from "@/lib/auth/userAuth";
 import { WALLET_UPDATED_EVENT } from "@/lib/wallet";
+import { CHAT_RATE_PER_MESSAGE } from "@/lib/platformPricing";
 
 const FREE_CHAT_TIME_OVER_MESSAGE = "Your free chat time is over. Please add money to continue.";
 const SESSION_TIME_OVER_MESSAGE = "Your available balance is over. Please add money to continue.";
+const LOW_CHAT_BALANCE_MESSAGE = "User wallet balance is low. Please add money to continue chatting.";
 
 function toLoginUrl(returnUrl: string) {
   return `/login?returnUrl=${encodeURIComponent(returnUrl)}`;
@@ -56,6 +59,13 @@ function getCallAvailabilityErrorMessage(error: { message?: string; status?: num
     return "Could not check partner availability. Please try again.";
   }
   return message || "Unable to start call right now.";
+}
+
+function getElapsedSeconds(baseTimeIso: string | null | undefined, nowMs = Date.now()) {
+  if (!baseTimeIso) return 0;
+  const timestamp = new Date(baseTimeIso).getTime();
+  if (Number.isNaN(timestamp)) return 0;
+  return Math.max(0, Math.floor((nowMs - timestamp) / 1000));
 }
 
 function toScreenMessages(messages: SessionMessageRecord[]): ChatScreenMessage[] {
@@ -323,7 +333,7 @@ export default function ChatPage() {
       }
       if (created.error) {
         if (created.error.code === "INSUFFICIENT_WALLET_BALANCE") {
-          setErrorMessage(created.error.message || "Please add money to continue.");
+          setErrorMessage(created.error.message || LOW_CHAT_BALANCE_MESSAGE);
           setShowAddMoneyPrompt(true);
         } else {
           setErrorMessage(created.error.message || "Unable to create chat session.");
@@ -577,10 +587,27 @@ export default function ChatPage() {
     if (!session?.id || session.status !== "LIVE") return;
     const body = messageInput.trim();
     if (!body) return;
+
+    const freeChatLimitSeconds = getSessionRewardLimitSeconds(session, "FREE_CHAT_MINUTES");
+    const freeChatBaseIso = session.liveStartedAt ?? session.startedAt ?? session.acceptedAt;
+    const isInsideFreeChatWindow = Boolean(
+      freeChatLimitSeconds &&
+        freeChatBaseIso &&
+        getElapsedSeconds(freeChatBaseIso, Date.now()) < freeChatLimitSeconds,
+    );
+    if (!isInsideFreeChatWindow && walletBalance < CHAT_RATE_PER_MESSAGE) {
+      setMessageError(LOW_CHAT_BALANCE_MESSAGE);
+      return;
+    }
+
     setMessageInput("");
 
+    const optimisticId =
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? `temp-${crypto.randomUUID()}`
+        : `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const optimistic: SessionMessageRecord = {
-      id: `temp-${Date.now()}`,
+      id: optimisticId,
       sessionId: session.id,
       senderId: session.userId ?? "",
       senderUserId: session.userId ?? "",
@@ -592,15 +619,24 @@ export default function ChatPage() {
     };
     setMessages((current) => [...current, optimistic]);
 
-    const response = await sendSessionMessage(session.id, body);
+    const response = await sendSessionMessage(session.id, body, optimisticId);
     if (!response.data) {
       setMessageError(response.error?.message || "Unable to send message.");
+      if (response.error?.status === 402 || response.error?.message === LOW_CHAT_BALANCE_MESSAGE) {
+        void refreshWalletBalance();
+      }
       setMessages((current) => current.filter((item) => item.id !== optimistic.id));
       return;
     }
     const createdMessage = response.data;
     setMessageError("");
     setMessages((current) => [...current.filter((item) => item.id !== optimistic.id), createdMessage]);
+    if (typeof response.walletBalance === "number") {
+      setWalletBalance(response.walletBalance);
+      window.dispatchEvent(new CustomEvent(WALLET_UPDATED_EVENT));
+    } else {
+      void refreshWalletBalance();
+    }
   };
 
   const handleSendGift = async () => {

@@ -14,7 +14,7 @@ import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import type { ConnectCompanion } from "@/lib/data";
 import {
   AUDIO_RATE_PER_MIN,
-  CHAT_RATE_PER_MIN,
+  CHAT_RATE_PER_MESSAGE,
   VIDEO_RATE_PER_MIN,
 } from "@/lib/platformPricing";
 import { formatINR, getWalletBalance, subscribeWalletUpdates } from "@/lib/wallet";
@@ -31,13 +31,14 @@ type SessionOption = {
   type: SessionType;
   label: string;
   icon: ComponentType<{ size?: number; className?: string }>;
-  unit: "/ min";
+  unit: "/ message" | "/ min";
   price: number;
   badge: "CHAT" | "AUDIO" | "VIDEO";
 };
 
-const MIN_CHAT_WALLET_BALANCE = 50;
+const MIN_CHAT_WALLET_BALANCE = CHAT_RATE_PER_MESSAGE;
 const USE_PROFILE_CLIENT_WALLET_PRECHECK = false;
+const LOW_CHAT_BALANCE_MESSAGE = "User wallet balance is low. Please add money to continue chatting.";
 
 function SessionCard({
   option,
@@ -75,7 +76,7 @@ export function ProfileBookingPanel({ companion, initialType }: ProfileBookingPa
   const router = useRouter();
   const options = useMemo<SessionOption[]>(() => {
     const base: SessionOption[] = [
-      { type: "chat", label: "Chat", icon: MessageSquareText, unit: "/ min", price: companion.chatPrice > 0 ? CHAT_RATE_PER_MIN : 0, badge: "CHAT" },
+      { type: "chat", label: "Chat", icon: MessageSquareText, unit: "/ message", price: companion.chatPrice > 0 ? CHAT_RATE_PER_MESSAGE : 0, badge: "CHAT" },
       { type: "audio", label: "Audio", icon: PhoneCall, unit: "/ min", price: companion.voicePrice > 0 ? AUDIO_RATE_PER_MIN : 0, badge: "AUDIO" },
       { type: "video", label: "Video", icon: Video, unit: "/ min", price: (companion.videoPrice ?? 0) > 0 ? VIDEO_RATE_PER_MIN : 0, badge: "VIDEO" },
     ];
@@ -168,7 +169,7 @@ export function ProfileBookingPanel({ companion, initialType }: ProfileBookingPa
 
     if (USE_PROFILE_CLIENT_WALLET_PRECHECK && !hasSufficientBalance) {
       if (selectedType === "chat") {
-        setActionMessage("Minimum INR 50 wallet balance is required to start a chat.");
+        setActionMessage(LOW_CHAT_BALANCE_MESSAGE);
         setShowAddMoneyPrompt(true);
       }
       return;
@@ -211,7 +212,7 @@ export function ProfileBookingPanel({ companion, initialType }: ProfileBookingPa
       }
       if (sessionResponse.error) {
         if (sessionResponse.error.code === "INSUFFICIENT_WALLET_BALANCE") {
-          setActionMessage(sessionResponse.error.message || "Please add money to continue.");
+          setActionMessage(sessionResponse.error.message || LOW_CHAT_BALANCE_MESSAGE);
           setShowAddMoneyPrompt(true);
           return;
         }
@@ -324,14 +325,14 @@ export function ProfileBookingPanel({ companion, initialType }: ProfileBookingPa
               </p>
               {welcomeChatApplies ? (
                 <div className="mt-5 rounded-xl border border-fuchsia-200 bg-fuchsia-50 p-4 text-sm font-semibold text-fuchsia-800">
-                  Your first chat includes {welcomeChatBonus?.freeMinutes ?? 10} free minutes. Audio and video use wallet balance.
+                  Your first chat includes {welcomeChatBonus?.freeMinutes ?? 10} free minutes. Chat billing starts at ₹5/message after that.
                 </div>
               ) : USE_PROFILE_CLIENT_WALLET_PRECHECK && !hasSufficientBalance ? (
                 <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4">
                   <p className="font-semibold text-red-700">Insufficient Balance</p>
                   {selectedType === "chat" ? (
                     <p className="mt-1 text-sm font-medium text-red-600">
-                      Minimum INR 50 wallet balance is required to start a chat.
+                      {LOW_CHAT_BALANCE_MESSAGE}
                     </p>
                   ) : (
                     <p className="mt-1 text-sm font-medium text-red-600">

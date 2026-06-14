@@ -434,7 +434,7 @@ export const faqs: FAQ[] = [
   {
     question: "How much does a session cost?",
     answer:
-      "YoPartner uses fixed platform prices by service: chat is ₹5/min, audio call is ₹18/min, video call is ₹24/min, and home visit is ₹2000/hour.",
+      "YoPartner uses fixed platform prices by service: chat is ₹5/message, audio call is ₹18/min, video call is ₹24/min, and home visit is ₹2000/hour.",
   },
   {
     question: "What if I am not satisfied with my session?",

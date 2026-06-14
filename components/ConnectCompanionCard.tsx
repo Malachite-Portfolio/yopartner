@@ -9,7 +9,7 @@ import type { ConnectCompanion } from "@/lib/data";
 import { requestAudioPermission, requestVideoPermission } from "@/lib/agora";
 import { formatINRPrice } from "@/lib/priceFormat";
 import { getUserAuthTokenWithRestore } from "@/lib/auth/userAuth";
-import { AUDIO_RATE_PER_MIN, CHAT_RATE_PER_MIN, VIDEO_RATE_PER_MIN } from "@/lib/platformPricing";
+import { AUDIO_RATE_PER_MIN, CHAT_RATE_PER_MESSAGE, VIDEO_RATE_PER_MIN } from "@/lib/platformPricing";
 import { markTrackedHostProfileNavigation, trackMetaPixel } from "@/lib/metaPixel";
 import { VerifiedPartnerBadge } from "@/components/VerifiedPartnerBadge";
 
@@ -17,8 +17,9 @@ type ConnectCompanionCardProps = {
   companion: ConnectCompanion;
 };
 
-const MIN_CHAT_WALLET_BALANCE = 50;
+const MIN_CHAT_WALLET_BALANCE = CHAT_RATE_PER_MESSAGE;
 const USE_CLIENT_WALLET_PRECHECK = false;
+const LOW_CHAT_BALANCE_MESSAGE = "User wallet balance is low. Please add money to continue chatting.";
 
 function Initials({ name }: { name: string }) {
   const text = (name || "Verified Partner")
@@ -87,7 +88,7 @@ function ActionPriceButton({
       {icon === "chat" ? <MessageSquareText size={14} /> : null}
       {icon === "voice" ? <Mic size={14} /> : null}
       {icon === "video" ? <Video size={14} /> : null}
-      <span>{formatINRPrice(price)}</span>
+      <span>{icon === "chat" && typeof price === "number" ? `${formatINRPrice(price)}/msg` : formatINRPrice(price)}</span>
     </button>
   );
 }
@@ -111,7 +112,7 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
   const hasVideo = hasExplicitServices
     ? services.some((service) => service.includes("video"))
     : typeof safeNumber(companion.videoPrice) === "number";
-  const chatPrice = hasChat ? CHAT_RATE_PER_MIN : undefined;
+  const chatPrice = hasChat ? CHAT_RATE_PER_MESSAGE : undefined;
   const voicePrice = hasAudio ? AUDIO_RATE_PER_MIN : undefined;
   const videoPrice = hasVideo ? VIDEO_RATE_PER_MIN : undefined;
   const status = String(companion.effectiveStatus ?? (companion.isBusy ? "BUSY" : companion.online ? "ONLINE" : "OFFLINE")).toUpperCase();
@@ -170,7 +171,7 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
       }
       const walletBalance = walletResponse.data?.balance ?? 0;
       if (walletBalance < MIN_CHAT_WALLET_BALANCE) {
-        setActionError("Minimum ₹50 wallet balance is required to start a chat.");
+        setActionError(LOW_CHAT_BALANCE_MESSAGE);
         setShowAddMoneyPrompt(true);
         return;
       }
@@ -205,13 +206,13 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
     }
 
     if (sessionResponse.error?.code === "INSUFFICIENT_WALLET_BALANCE") {
-      setActionError(sessionResponse.error.message || "Please add money to continue.");
+      setActionError(sessionResponse.error.message || LOW_CHAT_BALANCE_MESSAGE);
       setShowAddMoneyPrompt(true);
       return;
     }
 
     if (USE_CLIENT_WALLET_PRECHECK && sessionResponse.error?.code === "INSUFFICIENT_WALLET_BALANCE") {
-      setActionError("Minimum ₹50 wallet balance is required to start a chat.");
+      setActionError(LOW_CHAT_BALANCE_MESSAGE);
       setShowAddMoneyPrompt(true);
       return;
     }

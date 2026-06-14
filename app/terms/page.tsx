@@ -106,7 +106,7 @@ const termsSections: TermsSection[] = [
       "Account creation and browsing may be free, but the Company may charge fees for services, sessions, premium features, wallet usage, bookings, and other platform functionality.",
       "Users may be required to maintain sufficient wallet balance before session initiation, including prescribed minimum balances for chat, audio, video, or in-person sessions.",
       "Users must not bypass wallet or billing systems, make direct payments to Happiness Executives, or manipulate deduction and recharge mechanisms.",
-      "Chat, audio, and video sessions may be billed per minute. In-person sessions may be billed hourly with minimum duration and verification requirements.",
+      "Chat sessions may be billed per message. Audio and video sessions may be billed per minute. In-person sessions may be billed hourly with minimum duration and verification requirements.",
       "Cancellation and refund rules apply as per Company policy. Refunds may be limited and may be denied for user-side issues, late cancellation, no-shows, misuse, or policy violations.",
       "If a scheduled session is unavailable due to assigned executive unavailability, the Company may offer replacement or wallet credit as per policy.",
     ],
