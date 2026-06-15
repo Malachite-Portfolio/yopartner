@@ -80,7 +80,7 @@ export default function PartnerApplicationStatusPage() {
             <li>Profile details submitted</li>
             <li>Safety checklist accepted</li>
             <li>
-              Verification documents {profile.selfieFileName || profile.aadhaarFrontFileName || profile.aadhaarBackFileName || profile.panFileName ? "uploaded / pending review" : "pending upload"}
+              Verification documents {profile.selfieFileName || profile.aadhaarFrontFileName || profile.aadhaarBackFileName ? "uploaded / pending review" : "pending upload"}
             </li>
             <li>{isApproved ? "KYC verified" : "KYC pending"}</li>
             <li>{isApproved ? "Admin approval completed" : "Admin approval required"}</li>

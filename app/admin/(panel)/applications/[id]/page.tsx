@@ -254,9 +254,9 @@ function extractApplication(applicationRaw: unknown): ApplicationDetails {
     }
   }
 
-  const uploadedDocs = [selfie.uploaded, aadhaarFront.uploaded, aadhaarBack.uploaded, pan.uploaded].filter(Boolean).length;
+  const uploadedDocs = [selfie.uploaded, aadhaarFront.uploaded, aadhaarBack.uploaded].filter(Boolean).length;
   const kycStatus: ApplicationDetails["kycStatus"] =
-    uploadedDocs === 4 ? "Complete" : uploadedDocs > 0 ? "Partial" : "Missing";
+    uploadedDocs === 3 ? "Complete" : uploadedDocs > 0 ? "Partial" : "Missing";
 
   return {
     id: asString(application.id),
@@ -659,7 +659,7 @@ export default function AdminApplicationDetailsPage() {
           {renderDocumentCard("Selfie", "selfie", details.selfie)}
           {renderDocumentCard("Aadhaar Front", "aadhaarFront", details.aadhaarFront)}
           {renderDocumentCard("Aadhaar Back", "aadhaarBack", details.aadhaarBack)}
-          {renderDocumentCard("PAN", "pan", details.pan)}
+          {details.pan.uploaded ? renderDocumentCard("PAN (legacy optional)", "pan", details.pan) : null}
         </div>
 
         <h3 className="text-base font-semibold text-slate-900">Live verification</h3>

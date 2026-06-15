@@ -106,10 +106,9 @@ function toApplicationRows(data: unknown): ApplicationRow[] {
         hasKycDocument(record, payload, "selfie"),
         hasKycDocument(record, payload, "aadhaarFront"),
         hasKycDocument(record, payload, "aadhaarBack"),
-        hasKycDocument(record, payload, "pan"),
       ];
       const uploadedCount = documentFlags.filter(Boolean).length;
-      if (uploadedCount === 4) return "Complete";
+      if (uploadedCount === 3) return "Complete";
       if (uploadedCount > 0) return "Partial";
       return "Missing";
     })();
@@ -270,7 +269,7 @@ export default function AdminApplicationsPage() {
         <p className="text-sm font-semibold text-[#0f766e]">Partner Reviews</p>
         <h2 className="mt-2 text-2xl font-semibold text-slate-950">Partner Reviews</h2>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-          Review profile details, Aadhaar, PAN, selfie, safety checklist, and approve verified partners.
+          Review profile details, Aadhaar, selfie, safety checklist, and approve verified partners.
         </p>
       </div>
       {apiError ? (

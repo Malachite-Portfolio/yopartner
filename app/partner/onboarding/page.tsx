@@ -65,12 +65,11 @@ type OnboardingProfile = Omit<PartnerProfile, "servicesOffered"> & {
   servicesOffered: OnboardingServiceType[];
 };
 type ValidationErrors = Partial<Record<keyof OnboardingProfile | "base", string>>;
-type KycUploadType = "selfie" | "aadhaar-front" | "aadhaar-back" | "pan";
+type KycUploadType = "selfie" | "aadhaar-front" | "aadhaar-back";
 type KycUploadState = {
   selfie: PartnerKycUploadResult | null;
   aadhaarFront: PartnerKycUploadResult | null;
   aadhaarBack: PartnerKycUploadResult | null;
-  pan: PartnerKycUploadResult | null;
 };
 type LiveVideoState = {
   file: File | null;
@@ -398,7 +397,6 @@ function mergeWithBackendProfile(
     selfieFileName: mergeIfEmpty(current.selfieFileName, toOptionalString(application.selfieFileName)),
     aadhaarFrontFileName: mergeIfEmpty(current.aadhaarFrontFileName, toOptionalString(application.aadhaarFrontFileName)),
     aadhaarBackFileName: mergeIfEmpty(current.aadhaarBackFileName, toOptionalString(application.aadhaarBackFileName)),
-    panFileName: mergeIfEmpty(current.panFileName, toOptionalString(application.panFileName)),
     aadhaarFileName: mergeIfEmpty(
       current.aadhaarFileName,
       toOptionalString(application.aadhaarFrontFileName) || toOptionalString(application.aadhaarBackFileName),
@@ -437,7 +435,6 @@ function toPartnerOnboardingPayload(
   const aadhaarBackUploaded = Boolean(
     uploads.aadhaarBack?.downloadUrl || uploads.aadhaarBack?.storagePath || uploads.aadhaarBack?.fileName,
   );
-  const panUploaded = Boolean(uploads.pan?.downloadUrl || uploads.pan?.storagePath || uploads.pan?.fileName);
   const liveVideoUploaded = Boolean(
     liveVideoUpload?.downloadUrl || liveVideoUpload?.storagePath || liveVideoUpload?.fileName,
   );
@@ -476,10 +473,6 @@ function toPartnerOnboardingPayload(
     aadhaarBackFileName: uploads.aadhaarBack?.fileName || undefined,
     aadhaarBackStoragePath: uploads.aadhaarBack?.storagePath || undefined,
     aadhaarBackUrl: uploads.aadhaarBack?.downloadUrl || undefined,
-    panUploaded,
-    panFileName: uploads.pan?.fileName || undefined,
-    panStoragePath: uploads.pan?.storagePath || undefined,
-    panUrl: uploads.pan?.downloadUrl || undefined,
     liveVerificationName: profile.fullName.trim(),
     liveVerificationAge: Number(profile.age) || 0,
     liveVerificationHobbies: profile.hobbies.join(", "),
@@ -546,12 +539,10 @@ export default function PartnerOnboardingPage() {
   const [selfieFile, setSelfieFile] = useState<File | null>(null);
   const [aadhaarFrontFile, setAadhaarFrontFile] = useState<File | null>(null);
   const [aadhaarBackFile, setAadhaarBackFile] = useState<File | null>(null);
-  const [panFile, setPanFile] = useState<File | null>(null);
   const [kycUploads, setKycUploads] = useState<KycUploadState>({
     selfie: null,
     aadhaarFront: null,
     aadhaarBack: null,
-    pan: null,
   });
   const [liveVideo, setLiveVideo] = useState<LiveVideoState>({
     file: null,
@@ -667,7 +658,6 @@ export default function PartnerOnboardingPage() {
           selfie: toExistingUpload(application, "selfie"),
           aadhaarFront: toExistingUpload(application, "aadhaarFront"),
           aadhaarBack: toExistingUpload(application, "aadhaarBack"),
-          pan: toExistingUpload(application, "pan"),
         });
         setLiveVideo((current) => ({
           ...current,
@@ -712,8 +702,7 @@ export default function PartnerOnboardingPage() {
   const requiredDocumentsSelected = Boolean(
     (selfieFile || kycUploads.selfie) &&
       (aadhaarFrontFile || kycUploads.aadhaarFront) &&
-      (aadhaarBackFile || kycUploads.aadhaarBack) &&
-      (panFile || kycUploads.pan),
+      (aadhaarBackFile || kycUploads.aadhaarBack),
   );
   const liveVerificationScript = `My name is ${profile.fullName || "[name]"}. I am ${
     profile.age || "[age]"
@@ -770,15 +759,11 @@ export default function PartnerOnboardingPage() {
         ),
       },
       {
-        label: "PAN",
-        value: formatDocumentSelectionStatus(Boolean(panFile || kycUploads.pan || profile.panFileName)),
-      },
-      {
         label: "Live video",
         value: formatDocumentSelectionStatus(Boolean(liveVideo.file || liveVideo.upload)),
       },
     ],
-    [aadhaarBackFile, aadhaarFrontFile, kycUploads, liveVideo.file, liveVideo.upload, panFile, profile, selfieFile],
+    [aadhaarBackFile, aadhaarFrontFile, kycUploads, liveVideo.file, liveVideo.upload, profile, selfieFile],
   );
 
   const validateStep = (stepIndex: number): ValidationErrors => {
@@ -892,7 +877,7 @@ export default function PartnerOnboardingPage() {
       normalized.includes("about yourself")
     ) return 3;
     if (normalized.includes("service") || normalized.includes("categor")) return 4;
-    if (normalized.includes("document") || normalized.includes("aadhaar") || normalized.includes("pan") || normalized.includes("selfie")) return 5;
+    if (normalized.includes("document") || normalized.includes("aadhaar") || normalized.includes("selfie")) return 5;
     if (normalized.includes("live video") || normalized.includes("live verification")) return 6;
     if (normalized.includes("safety")) return 7;
     return null;
@@ -920,9 +905,6 @@ export default function PartnerOnboardingPage() {
     }
     if (!hasUploadedArtifact(uploads.aadhaarBack)) {
       return { stepIndex: 5, message: "Aadhaar Back upload path is missing. Please reselect and upload Aadhaar Back." };
-    }
-    if (!hasUploadedArtifact(uploads.pan)) {
-      return { stepIndex: 5, message: "PAN upload path is missing. Please reselect and upload PAN." };
     }
     if (!hasLiveVideoArtifact(liveVideoUpload)) {
       return { stepIndex: 6, message: "Live video upload path is missing. Please record and upload live verification again." };
@@ -1222,17 +1204,15 @@ export default function PartnerOnboardingPage() {
             return uploadPartnerKycFile({ file, uid, type });
           };
 
-          const [selfieUpload, aadhaarFrontUpload, aadhaarBackUpload, panUpload] = await Promise.all([
+          const [selfieUpload, aadhaarFrontUpload, aadhaarBackUpload] = await Promise.all([
             uploadIfSelected(selfieFile, "selfie"),
             uploadIfSelected(aadhaarFrontFile, "aadhaar-front"),
             uploadIfSelected(aadhaarBackFile, "aadhaar-back"),
-            uploadIfSelected(panFile, "pan"),
           ]);
 
           if (selfieUpload) nextUploads = { ...nextUploads, selfie: selfieUpload };
           if (aadhaarFrontUpload) nextUploads = { ...nextUploads, aadhaarFront: aadhaarFrontUpload };
           if (aadhaarBackUpload) nextUploads = { ...nextUploads, aadhaarBack: aadhaarBackUpload };
-          if (panUpload) nextUploads = { ...nextUploads, pan: panUpload };
           if (liveVideo.file) {
             nextLiveVideoUpload = await uploadPartnerKycFile({
               file: liveVideo.file,
@@ -1250,7 +1230,6 @@ export default function PartnerOnboardingPage() {
           setSelfieFile(null);
           setAadhaarFrontFile(null);
           setAadhaarBackFile(null);
-          setPanFile(null);
         } catch (uploadError) {
           const uploadMessage =
             uploadError instanceof Error && uploadError.message
@@ -1310,7 +1289,6 @@ export default function PartnerOnboardingPage() {
             nextUploads.aadhaarFront?.fileName ||
             nextUploads.aadhaarBack?.fileName ||
             finalProfile.aadhaarFileName,
-          panFileName: nextUploads.pan?.fileName || finalProfile.panFileName,
         };
         setProfile(savedProfile);
         saveLocalPartnerApprovalState({
@@ -1671,7 +1649,7 @@ export default function PartnerOnboardingPage() {
                   Documents are reviewed securely by the YoPartner verification team.
                 </p>
                 <p className="mt-1 text-xs text-slate-500">
-                  Selfie, Aadhaar front, Aadhaar back, and PAN are required. Allowed formats: JPG, PNG, WEBP, PDF. Maximum 5 MB per document.
+                  Selfie, Aadhaar front, and Aadhaar back are required. Allowed formats: JPG, PNG, WEBP, PDF. Maximum 5 MB per document.
                 </p>
               </div>
 
@@ -1774,38 +1752,6 @@ export default function PartnerOnboardingPage() {
                         setAadhaarBackFile(null);
                         setKycUploads((current) => ({ ...current, aadhaarBack: null }));
                         setProfile((current) => ({ ...current, aadhaarBackFileName: "" }));
-                      }}
-                      className="mt-2 text-xs font-semibold text-rose-600"
-                    >
-                      Remove file
-                    </button>
-                  ) : null}
-                </label>
-
-                <label className="rounded-xl border border-slate-200 p-3 sm:col-span-2">
-                  <p className="text-sm font-medium text-slate-800">PAN card</p>
-                  <p className="mt-1 text-xs text-slate-500">Upload PAN card scan or PDF for verification review.</p>
-                  <input
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp,application/pdf"
-                    onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      setPanFile(file ?? null);
-                      setKycUploads((current) => ({ ...current, pan: null }));
-                      setProfile((current) => ({ ...current, panFileName: file?.name ?? current.panFileName }));
-                    }}
-                    className="mt-3 block w-full text-xs text-slate-600 file:mr-3 file:rounded-lg file:border file:border-slate-200 file:bg-white file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-slate-700"
-                  />
-                  <p className="mt-2 text-xs text-slate-600">
-                    Selected: {panFile?.name || kycUploads.pan?.fileName || profile.panFileName || "Pending"}
-                  </p>
-                  {panFile || profile.panFileName ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPanFile(null);
-                        setKycUploads((current) => ({ ...current, pan: null }));
-                        setProfile((current) => ({ ...current, panFileName: "" }));
                       }}
                       className="mt-2 text-xs font-semibold text-rose-600"
                     >
@@ -2092,7 +2038,6 @@ export default function PartnerOnboardingPage() {
                   <div className="mt-2 grid gap-1 text-xs text-emerald-700 sm:grid-cols-2">
                     <p>Selfie: Verified</p>
                     <p>Aadhaar: Verified</p>
-                    <p>PAN: Verified</p>
                     <p>Overall: Verified</p>
                   </div>
                 </div>
