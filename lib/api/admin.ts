@@ -179,6 +179,16 @@ export async function updateAdminPartnerAvailability(
   });
 }
 
+export async function updateAdminPartnerPin(partnerId: string, isPinned: boolean) {
+  return apiRequest<{
+    companion: Record<string, unknown>;
+    message?: string;
+  }>(`/api/admin/companions/${partnerId}/pin`, {
+    method: "PATCH",
+    body: JSON.stringify({ isPinned }),
+  });
+}
+
 export async function removeAdminPartner(
   partnerId: string,
   payload: { reason: string; adminEmail?: string },

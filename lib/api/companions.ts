@@ -27,6 +27,8 @@ export type CompanionItem = {
   online: boolean;
   isBusy?: boolean;
   effectiveStatus?: "ONLINE" | "BUSY" | "OFFLINE";
+  isPinned?: boolean;
+  pinnedAt?: string | null;
   languages: string[];
   galleryImages: string[];
   interests?: string[];
@@ -134,6 +136,8 @@ type RawCompanionItem = {
   isOnline?: boolean | null;
   isBusy?: boolean | null;
   effectiveStatus?: "ONLINE" | "BUSY" | "OFFLINE" | string | null;
+  isPinned?: boolean | null;
+  pinnedAt?: string | null;
   chatPrice?: number | string | null;
   chatRate?: number | string | null;
   voicePrice?: number | string | null;
@@ -498,6 +502,8 @@ function toCompanionItem(item: RawCompanionItem, options?: { assumePublicVerifie
       item.effectiveStatus === "BUSY" || item.effectiveStatus === "OFFLINE" || item.effectiveStatus === "ONLINE"
         ? item.effectiveStatus
         : undefined,
+    isPinned: Boolean(item.isPinned),
+    pinnedAt: typeof item.pinnedAt === "string" ? item.pinnedAt : null,
     languages,
     galleryImages,
     interests,
@@ -527,6 +533,14 @@ function sortCompanionsByAvailability(companions: CompanionItem[]) {
   return companions
     .map((companion, index) => ({ companion, index }))
     .sort((first, second) => {
+      const pinnedDelta = Number(Boolean(second.companion.isPinned)) - Number(Boolean(first.companion.isPinned));
+      if (pinnedDelta) return pinnedDelta;
+      if (first.companion.isPinned && second.companion.isPinned) {
+        const firstPinnedAt = first.companion.pinnedAt ? Date.parse(first.companion.pinnedAt) : 0;
+        const secondPinnedAt = second.companion.pinnedAt ? Date.parse(second.companion.pinnedAt) : 0;
+        const pinnedAtDelta = (Number.isFinite(secondPinnedAt) ? secondPinnedAt : 0) - (Number.isFinite(firstPinnedAt) ? firstPinnedAt : 0);
+        if (pinnedAtDelta) return pinnedAtDelta;
+      }
       const rankDelta = availabilityRank(first.companion) - availabilityRank(second.companion);
       return rankDelta || first.index - second.index;
     })

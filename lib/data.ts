@@ -98,6 +98,8 @@ export type ConnectCompanion = {
   online: boolean;
   isBusy?: boolean;
   effectiveStatus?: "ONLINE" | "BUSY" | "OFFLINE";
+  isPinned?: boolean;
+  pinnedAt?: string | null;
   image?: string;
   galleryImages: string[];
   chatPrice: number;

@@ -12,6 +12,7 @@ import {
   type AdminPartnerAvailability,
   type AdminPartnerModerationStatus,
   updateAdminPartnerAvailability,
+  updateAdminPartnerPin,
   updateAdminPartnerStatus,
 } from "@/lib/api/admin";
 import { clearAdminAuthSession } from "@/lib/adminAuth";
@@ -36,6 +37,8 @@ type PartnerRow = {
   audioPrice: number;
   videoPrice: number;
   availability: AdminPartnerAvailability;
+  isPinned: boolean;
+  pinnedAt: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -132,12 +135,22 @@ function toPartnerRows(data: unknown): PartnerRow[] {
         availability: normalizeAvailability(
           record.effectiveStatus ?? record.availability ?? (asBoolean(record.isOnline) ? "ONLINE" : "OFFLINE"),
         ),
+        isPinned: asBoolean(record.isPinned),
+        pinnedAt: asString(record.pinnedAt),
         createdAt: asString(record.createdAt),
         updatedAt: asString(record.updatedAt),
       } satisfies PartnerRow;
     })
     .filter((item) => Boolean(item.id))
-    .sort((a, b) => +new Date(b.updatedAt) - +new Date(a.updatedAt));
+    .sort((a, b) => {
+      const pinnedDelta = Number(b.isPinned) - Number(a.isPinned);
+      if (pinnedDelta) return pinnedDelta;
+      if (a.isPinned && b.isPinned) {
+        const pinnedAtDelta = +new Date(b.pinnedAt) - +new Date(a.pinnedAt);
+        if (Number.isFinite(pinnedAtDelta) && pinnedAtDelta !== 0) return pinnedAtDelta;
+      }
+      return +new Date(b.updatedAt) - +new Date(a.updatedAt);
+    });
 }
 
 export default function AdminCompanionsPage() {
@@ -158,6 +171,7 @@ export default function AdminCompanionsPage() {
   const [removeSubmitting, setRemoveSubmitting] = useState(false);
   const [removeError, setRemoveError] = useState("");
   const [availabilityPendingId, setAvailabilityPendingId] = useState("");
+  const [pinPendingId, setPinPendingId] = useState("");
   const [availabilityNotice, setAvailabilityNotice] = useState<{
     tone: "success" | "error";
     message: string;
@@ -340,6 +354,59 @@ export default function AdminCompanionsPage() {
     });
   }
 
+  async function handlePinChange(partner: PartnerRow) {
+    if (pinPendingId) return;
+
+    const nextPinned = !partner.isPinned;
+    setPinPendingId(partner.id);
+    setAvailabilityNotice(null);
+    const response = await updateAdminPartnerPin(partner.id, nextPinned);
+
+    if (response.error?.status === 401) {
+      clearAdminAuthSession();
+      router.replace("/admin/login");
+      return;
+    }
+
+    if (response.error || !response.data) {
+      setPinPendingId("");
+      setAvailabilityNotice({
+        tone: "error",
+        message: response.error?.message ?? "Unable to update pinned host.",
+      });
+      return;
+    }
+
+    const updated = asRecord(response.data.companion);
+    setRows((current) =>
+      current
+        .map((row) =>
+          row.id === partner.id
+            ? {
+                ...row,
+                isPinned: asBoolean(updated.isPinned),
+                pinnedAt: asString(updated.pinnedAt),
+                updatedAt: asString(updated.updatedAt, row.updatedAt),
+              }
+            : row,
+        )
+        .sort((a, b) => {
+          const pinnedDelta = Number(b.isPinned) - Number(a.isPinned);
+          if (pinnedDelta) return pinnedDelta;
+          if (a.isPinned && b.isPinned) {
+            const pinnedAtDelta = +new Date(b.pinnedAt) - +new Date(a.pinnedAt);
+            if (Number.isFinite(pinnedAtDelta) && pinnedAtDelta !== 0) return pinnedAtDelta;
+          }
+          return +new Date(b.updatedAt) - +new Date(a.updatedAt);
+        }),
+    );
+    setPinPendingId("");
+    setAvailabilityNotice({
+      tone: "success",
+      message: response.data.message ?? (nextPinned ? "Host pinned successfully" : "Host unpinned successfully"),
+    });
+  }
+
   async function handleSubmitRemove(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!removeTarget || removeSubmitting) return;
@@ -470,7 +537,26 @@ export default function AdminCompanionsPage() {
                         ];
                     return (
                       <tr key={item.id} className="border-t border-slate-100 align-top">
-                        <td className="px-2 py-2 text-slate-800">{item.name}</td>
+                        <td className="px-2 py-2 text-slate-800">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span>{item.name}</span>
+                            {item.isPinned ? (
+                              <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700">
+                                Pinned
+                              </span>
+                            ) : null}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              void handlePinChange(item);
+                            }}
+                            disabled={Boolean(pinPendingId)}
+                            className="mt-1 rounded-lg border border-amber-200 px-2 py-1 text-[11px] font-semibold text-amber-700 transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {pinPendingId === item.id ? "Updating..." : item.isPinned ? "Unpin" : "Pin"}
+                          </button>
+                        </td>
                         <td className="px-2 py-2 text-slate-700">{item.loginPhone}</td>
                         <td className="px-2 py-2">
                           <div className="space-y-1">

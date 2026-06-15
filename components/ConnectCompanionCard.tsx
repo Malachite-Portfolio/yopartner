@@ -268,7 +268,14 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
                 <span className="min-w-0 truncate">{name}</span>
                 {isVerifiedPartner ? <VerifiedPartnerBadge /> : null}
               </h3>
-              <p className="mt-0.5 line-clamp-1 text-[13px] leading-4 text-[#637382]">{tagline}</p>
+              <div className="mt-0.5 flex min-w-0 items-center gap-1.5">
+                {companion.isPinned ? (
+                  <span className="shrink-0 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700">
+                    Pinned
+                  </span>
+                ) : null}
+                <p className="line-clamp-1 min-w-0 text-[13px] leading-4 text-[#637382]">{tagline}</p>
+              </div>
             </div>
             <span className={`inline-flex max-w-[72px] shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${getStatusBadgeClass(status)}`}>
               <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${getStatusDotClass(status)}`} />
