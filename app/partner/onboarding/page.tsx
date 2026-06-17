@@ -6,9 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import {
-  PARTNER_FIREBASE_PHONE_KEY,
   clearPartnerStoredFirebaseToken,
-  getPartnerStoredFirebaseToken,
   setPartnerStoredFirebaseToken,
 } from "@/lib/auth/firebasePhoneAuth";
 import { getPartnerApplications, getPartnerProfile as getPartnerProfileApi, submitPartnerApplication } from "@/lib/api/partner";
@@ -18,7 +16,6 @@ import { uploadPartnerKycFile, type PartnerKycUploadResult } from "@/lib/firebas
 import {
   AUDIO_RATE_PER_MIN,
   CHAT_RATE_PER_MIN,
-  FIXED_PLATFORM_PRICE_LABELS,
   VIDEO_RATE_PER_MIN,
 } from "@/lib/platformPricing";
 import {
@@ -102,6 +99,7 @@ const stepTitles = [
 ];
 const REQUIRED_DOCUMENTS_MESSAGE = "Please upload all required verification documents before submitting.";
 const LIVE_VIDEO_REQUIRED_MESSAGE = "Please complete live video verification before submitting.";
+const PARTNER_SUBMIT_SESSION_EXPIRED_MESSAGE = "Your login session expired. Please login again to submit.";
 const UPLOAD_NOT_COMPLETED_MESSAGE = "Upload not completed, please re-upload.";
 const VIDEO_FORMAT_NOT_SUPPORTED_MESSAGE = "Video format not supported. Please record again or upload MP4/MOV.";
 const LIVE_VIDEO_UNSUPPORTED_MESSAGE =
@@ -145,6 +143,11 @@ const LIVE_VIDEO_ALLOWED_MIME_TYPES = new Set([
   "video/3gpp2",
 ]);
 const LIVE_VIDEO_ALLOWED_EXTENSIONS = [".webm", ".mp4", ".mov", ".m4v", ".3gp", ".3gpp"];
+const ONBOARDING_REVIEW_PRICE_LABELS = {
+  chat: "₹2.5/message",
+  audio: "₹18/min",
+  video: "₹24/min",
+} as const;
 
 function toggleArrayValue(values: string[], value: string) {
   return values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
@@ -567,6 +570,15 @@ async function waitForFirebaseUser(timeoutMs = 8000) {
   });
 }
 
+function getPartnerLoginReturnUrl() {
+  const params = new URLSearchParams({
+    reason: "session-expired",
+    message: PARTNER_SUBMIT_SESSION_EXPIRED_MESSAGE,
+    returnUrl: "/partner/onboarding",
+  });
+  return `/partner/login?${params.toString()}`;
+}
+
 export default function PartnerOnboardingPage() {
   const router = useRouter();
   const isDemoPartnerSession = isClientDemoPartnerSessionActive();
@@ -790,7 +802,7 @@ export default function PartnerOnboardingPage() {
       { label: "Services", value: profile.servicesOffered.join(", ") || "-" },
       {
         label: "Pricing",
-        value: `Chat ${FIXED_PLATFORM_PRICE_LABELS.chat}, Audio ${FIXED_PLATFORM_PRICE_LABELS.audio}, Video ${FIXED_PLATFORM_PRICE_LABELS.video}`,
+        value: `Chat ${ONBOARDING_REVIEW_PRICE_LABELS.chat}, Audio ${ONBOARDING_REVIEW_PRICE_LABELS.audio}, Video ${ONBOARDING_REVIEW_PRICE_LABELS.video}`,
       },
       { label: "Categories", value: profile.categories.join(", ") || "-" },
       {
@@ -1176,6 +1188,7 @@ export default function PartnerOnboardingPage() {
   };
 
   const handleSubmit = () => {
+    if (isSubmitting) return;
     const firstValidationError = findFirstSubmitValidationError();
     setSubmitMessage("");
     if (firstValidationError) {
@@ -1218,34 +1231,36 @@ export default function PartnerOnboardingPage() {
           setIsSubmitting(false);
           return;
         }
-        let hadTokenBeforeSubmit = Boolean(getPartnerStoredFirebaseToken());
         const user = await waitForFirebaseUser();
-        if (user) {
-          try {
-            const freshToken = await user.getIdToken(true);
-            if (process.env.NODE_ENV !== "production") {
-              const tokenResult = await user.getIdTokenResult();
-              const tokenAud = String(tokenResult.claims.aud ?? "");
-              const firebaseProject = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? "";
-              if (tokenAud && firebaseProject && tokenAud !== firebaseProject) {
-                console.warn("[partner onboarding] Firebase project mismatch detected", {
-                  tokenProject: tokenAud,
-                  frontendProject: firebaseProject,
-                });
-              }
-            }
-            setPartnerStoredFirebaseToken(freshToken);
-            hadTokenBeforeSubmit = true;
-          } catch {
-            setErrors({ base: "Your login session could not be verified. Please login again as a partner." });
-            setIsSubmitting(false);
-            router.replace("/partner/login?reason=session-expired");
-            return;
-          }
-        } else {
-          setErrors({ base: "Your login session could not be verified. Please login again as a partner." });
+        if (!user) {
+          setErrors({ base: PARTNER_SUBMIT_SESSION_EXPIRED_MESSAGE });
           setIsSubmitting(false);
-          router.replace("/partner/login?reason=session-expired");
+          router.replace(getPartnerLoginReturnUrl());
+          return;
+        }
+
+        let submitToken = "";
+        try {
+          submitToken = await user.getIdToken(true);
+          if (!submitToken.trim()) {
+            throw new Error("EMPTY_PARTNER_ID_TOKEN");
+          }
+          if (process.env.NODE_ENV !== "production") {
+            const tokenResult = await user.getIdTokenResult();
+            const tokenAud = String(tokenResult.claims.aud ?? "");
+            const firebaseProject = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? "";
+            if (tokenAud && firebaseProject && tokenAud !== firebaseProject) {
+              console.warn("[partner onboarding] Firebase project mismatch detected", {
+                tokenProject: tokenAud,
+                frontendProject: firebaseProject,
+              });
+            }
+          }
+          setPartnerStoredFirebaseToken(submitToken);
+        } catch {
+          setErrors({ base: PARTNER_SUBMIT_SESSION_EXPIRED_MESSAGE });
+          setIsSubmitting(false);
+          router.replace(getPartnerLoginReturnUrl());
           return;
         }
         const uid = user.uid;
@@ -1303,22 +1318,16 @@ export default function PartnerOnboardingPage() {
         if (process.env.NODE_ENV !== "production") {
           console.info("[partner onboarding] submit payload", payload);
         }
-        const response = await submitPartnerApplication(payload);
+        const response = await submitPartnerApplication(payload, submitToken);
         if (response.error) {
           if (process.env.NODE_ENV !== "production") {
             console.warn("[partner onboarding] submit response body", response.error.details ?? response.error);
           }
           if (response.error.status === 401) {
             clearPartnerStoredFirebaseToken();
-            if (typeof window !== "undefined") {
-              window.localStorage.removeItem(PARTNER_FIREBASE_PHONE_KEY);
-            }
-            if (process.env.NODE_ENV !== "production") {
-              console.warn("[partner onboarding] submit returned 401", { hadTokenBeforeSubmit });
-            }
-            setErrors({ base: "Your login session could not be verified. Please login again as a partner." });
+            setErrors({ base: PARTNER_SUBMIT_SESSION_EXPIRED_MESSAGE });
             setIsSubmitting(false);
-            router.replace("/partner/login?reason=session-expired");
+            router.replace(getPartnerLoginReturnUrl());
             return;
           }
           const message = getSubmitErrorMessage(response.error);
@@ -1667,9 +1676,9 @@ export default function PartnerOnboardingPage() {
 
               <div className="grid gap-4 sm:grid-cols-2">
                 {[
-                  ["Chat", FIXED_PLATFORM_PRICE_LABELS.chat],
-                  ["Audio call", FIXED_PLATFORM_PRICE_LABELS.audio],
-                  ["Video call", FIXED_PLATFORM_PRICE_LABELS.video],
+                  ["Chat", ONBOARDING_REVIEW_PRICE_LABELS.chat],
+                  ["Audio call", ONBOARDING_REVIEW_PRICE_LABELS.audio],
+                  ["Video call", ONBOARDING_REVIEW_PRICE_LABELS.video],
                 ].map(([label, price]) => (
                   <div key={label} className="rounded-xl border border-slate-200 px-3 py-3">
                     <p className="text-sm font-medium text-slate-700">{label}</p>

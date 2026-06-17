@@ -1,4 +1,4 @@
-import { apiRequest } from "@/lib/api/client";
+import { apiRequest, type ApiResult } from "@/lib/api/client";
 import { PARTNER_FIREBASE_TOKEN_KEY } from "@/lib/auth/firebasePhoneAuth";
 
 export type PartnerRequestType = "CHAT" | "AUDIO" | "VIDEO";
@@ -101,7 +101,58 @@ export type SerializedPushSubscription = {
   userAgent?: string;
 };
 
-export async function submitPartnerApplication(payload: Record<string, unknown>) {
+function resolveBackendApiUrl(input: string) {
+  if (!input.startsWith("/")) return input;
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
+  if (!baseUrl) return input;
+  return `${baseUrl.replace(/\/+$/, "")}${input}`;
+}
+
+async function parsePartnerApiResponse<T>(response: Response): Promise<ApiResult<T>> {
+  const payload = (await response.json().catch(() => ({}))) as {
+    error?: string;
+    message?: string;
+    validationErrors?: unknown;
+  } & T;
+
+  if (response.ok) {
+    return { data: payload as T, error: null };
+  }
+
+  return {
+    data: null,
+    error: {
+      code: payload.error,
+      status: response.status,
+      details: payload,
+      message: payload.message || payload.error || "Request failed.",
+    },
+  };
+}
+
+export async function submitPartnerApplication(payload: Record<string, unknown>, idToken?: string) {
+  if (idToken?.trim()) {
+    try {
+      const response = await fetch(resolveBackendApiUrl("/api/partner/applications"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken.trim()}`,
+        },
+        body: JSON.stringify(payload),
+        cache: "no-store",
+      });
+      return parsePartnerApiResponse<{ success: boolean; message?: string }>(response);
+    } catch {
+      return {
+        data: null,
+        error: {
+          message: "Network error. Please check your connection and try again.",
+        },
+      };
+    }
+  }
+
   return apiRequest<{ success: boolean; message?: string }>("/api/partner/applications", {
     method: "POST",
     body: JSON.stringify(payload),
