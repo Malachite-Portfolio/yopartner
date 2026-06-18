@@ -2001,6 +2001,13 @@ export default function PartnerOnboardingPage() {
                 </div>
               ) : null}
 
+              <div className="rounded-xl border border-[#dceae5] bg-[#f7fbf9] p-3 sm:p-4">
+                <p className="text-sm font-semibold text-slate-900">Read this script while recording</p>
+                <div className="mt-2 max-h-[132px] overflow-y-auto rounded-lg border border-[#dceae5] bg-white px-3 py-2 text-sm leading-6 text-slate-700">
+                  {liveVerificationScript}
+                </div>
+              </div>
+
               <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
                 <div className="rounded-xl border border-slate-200 bg-slate-950 p-3">
                   {isCameraEnabled || isRecordingLiveVideo ? (
@@ -2179,17 +2186,6 @@ export default function PartnerOnboardingPage() {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-[#dceae5] bg-white p-4 sm:p-5">
-                <p className="text-base font-semibold text-slate-900">Read this script while recording</p>
-                <p className="mt-2 rounded-xl bg-slate-50 p-3 text-base leading-7 text-slate-700 sm:p-4">
-                  {liveVerificationScript}
-                </p>
-                <div className="mt-3 grid gap-2 text-sm text-slate-600 sm:grid-cols-3">
-                  <p><span className="font-semibold text-slate-800">Name:</span> {profile.fullName || "Missing"}</p>
-                  <p><span className="font-semibold text-slate-800">Age:</span> {profile.age || "Missing"}</p>
-                  <p><span className="font-semibold text-slate-800">Hobbies:</span> {profile.hobbies.join(", ") || "Missing"}</p>
-                </div>
-              </div>
             </div>
           ) : null}
 
