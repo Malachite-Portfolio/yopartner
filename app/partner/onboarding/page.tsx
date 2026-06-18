@@ -177,11 +177,27 @@ function sanitizeServices(services: string[]): OnboardingServiceType[] {
 }
 
 function formatDocumentSelectionStatus(status: UploadStatus) {
-  if (status === "uploading") return "Uploading";
+  if (status === "uploading") return "Uploading...";
   if (status === "uploaded") return "Uploaded";
   if (status === "selected") return "Selected";
-  if (status === "error") return "Upload failed";
+  if (status === "error") return "Error";
   return "Pending";
+}
+
+function UploadStatusBadge({ status }: { status: UploadStatus }) {
+  const styles: Record<UploadStatus, string> = {
+    pending: "border-slate-200 bg-slate-100 text-slate-600",
+    selected: "border-amber-200 bg-amber-50 text-amber-700",
+    uploading: "border-sky-200 bg-sky-50 text-sky-700",
+    uploaded: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    error: "border-rose-200 bg-rose-50 text-rose-700",
+  };
+
+  return (
+    <span className={`inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${styles[status]}`}>
+      {formatDocumentSelectionStatus(status)}
+    </span>
+  );
 }
 
 function isValidPartnerAge(value: string) {
@@ -198,19 +214,14 @@ function hasLiveVideoArtifact(upload: PartnerKycUploadResult | null) {
 }
 
 function formatUploadSelectionStatus(
-  status: UploadStatus,
   file: File | null,
   upload: PartnerKycUploadResult | null,
   legacyFileName?: string,
 ) {
-  if (status === "uploading") return `Uploading: ${file?.name || "selected file"}`;
-  if (status === "uploaded" && hasUploadedArtifact(upload)) {
-    return `Uploaded: ${upload?.fileName || "uploaded file"}`;
-  }
-  if (status === "selected" && file) return `Selected: ${file.name}`;
-  if (status === "error") return `Upload failed: ${file?.name || legacyFileName || "selected file"}`;
-  if (legacyFileName?.trim()) return UPLOAD_NOT_COMPLETED_MESSAGE;
-  return "Pending";
+  if (hasUploadedArtifact(upload)) return upload?.fileName || "Uploaded file";
+  if (file) return file.name;
+  if (legacyFileName?.trim()) return `${legacyFileName} - ${UPLOAD_NOT_COMPLETED_MESSAGE}`;
+  return "No file selected";
 }
 
 function getLiveVideoMimeType() {
@@ -1889,7 +1900,10 @@ export default function PartnerOnboardingPage() {
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="rounded-xl border border-slate-200 p-3">
-                  <p className="text-sm font-medium text-slate-800">Selfie photo</p>
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-sm font-medium text-slate-800">Selfie photo</p>
+                    <UploadStatusBadge status={kycUploadProgress.selfie.status} />
+                  </div>
                   <p className="mt-1 text-xs text-slate-500">Upload a clear selfie image for profile verification.</p>
                   <input
                     type="file"
@@ -1912,7 +1926,6 @@ export default function PartnerOnboardingPage() {
                   />
                   <p className="mt-2 text-xs text-slate-600">
                     {formatUploadSelectionStatus(
-                      kycUploadProgress.selfie.status,
                       selfieFile,
                       kycUploads.selfie,
                       profile.selfieFileName,
@@ -1939,7 +1952,10 @@ export default function PartnerOnboardingPage() {
                 </label>
 
                 <label className="rounded-xl border border-slate-200 p-3">
-                  <p className="text-sm font-medium text-slate-800">Aadhaar front</p>
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-sm font-medium text-slate-800">Aadhaar front</p>
+                    <UploadStatusBadge status={kycUploadProgress.aadhaarFront.status} />
+                  </div>
                   <p className="mt-1 text-xs text-slate-500">
                     Upload Aadhaar front image or PDF.
                   </p>
@@ -1968,7 +1984,6 @@ export default function PartnerOnboardingPage() {
                   />
                   <p className="mt-2 text-xs text-slate-600">
                     {formatUploadSelectionStatus(
-                      kycUploadProgress.aadhaarFront.status,
                       aadhaarFrontFile,
                       kycUploads.aadhaarFront,
                       profile.aadhaarFrontFileName,
@@ -1995,7 +2010,10 @@ export default function PartnerOnboardingPage() {
                 </label>
 
                 <label className="rounded-xl border border-slate-200 p-3">
-                  <p className="text-sm font-medium text-slate-800">Aadhaar back</p>
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-sm font-medium text-slate-800">Aadhaar back</p>
+                    <UploadStatusBadge status={kycUploadProgress.aadhaarBack.status} />
+                  </div>
                   <p className="mt-1 text-xs text-slate-500">Upload Aadhaar back image or PDF.</p>
                   <input
                     type="file"
@@ -2022,7 +2040,6 @@ export default function PartnerOnboardingPage() {
                   />
                   <p className="mt-2 text-xs text-slate-600">
                     {formatUploadSelectionStatus(
-                      kycUploadProgress.aadhaarBack.status,
                       aadhaarBackFile,
                       kycUploads.aadhaarBack,
                       profile.aadhaarBackFileName,
@@ -2119,19 +2136,24 @@ export default function PartnerOnboardingPage() {
                 </div>
 
                 <div className="rounded-xl border border-slate-200 p-4">
-                  <p className="text-sm font-semibold text-slate-900">
-                    {isRecordingLiveVideo
-                      ? `Recording ${recordingSeconds}s`
-                      : liveVideoUploadProgress.status === "uploading"
-                        ? "Recording saved. Uploading..."
-                        : liveVideoUploaded
-                          ? "Live video uploaded"
-                          : liveVideo.file
-                            ? "Recording saved. Uploading..."
-                            : isCameraEnabled
-                              ? "Camera enabled"
-                              : "Camera permission required"}
-                  </p>
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-sm font-semibold text-slate-900">
+                      {isRecordingLiveVideo
+                        ? `Recording ${recordingSeconds}s`
+                        : liveVideoUploadProgress.status === "uploading"
+                          ? "Recording saved. Uploading..."
+                          : liveVideoUploaded
+                            ? "Live video uploaded"
+                            : liveVideo.file
+                              ? "Recording saved. Uploading..."
+                              : isCameraEnabled
+                                ? "Camera enabled"
+                                : "Camera permission required"}
+                    </p>
+                    <UploadStatusBadge
+                      status={isRecordingLiveVideo ? "selected" : liveVideoUploadProgress.status}
+                    />
+                  </div>
                   <p className="mt-1 text-xs text-slate-500">
                     {liveVideoUploaded
                       ? "Your live verification video is uploaded. Re-record only if you want to replace it."
@@ -2139,7 +2161,6 @@ export default function PartnerOnboardingPage() {
                   </p>
                   <p className="mt-2 text-xs font-medium text-slate-600">
                     {formatUploadSelectionStatus(
-                      liveVideoUploadProgress.status,
                       liveVideo.file,
                       liveVideo.upload,
                       liveVideo.upload?.fileName,
