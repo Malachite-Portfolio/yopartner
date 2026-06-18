@@ -49,7 +49,6 @@ import {
   demoPartnerMessages,
   getPartnerInbox,
   getPartnerSessions,
-  partnerCategoryOptions,
   partnerCommunicationStyleOptions,
   partnerHobbyOptions,
   partnerLanguageOptions,
@@ -96,7 +95,6 @@ type BrowserEnvironment = {
 
 const stepTitles = [
   "Basic details",
-  "Background",
   "Languages & comfort style",
   "About your support style",
   "Services & pricing",
@@ -139,7 +137,8 @@ const OTHER_PERMISSION_HELP_STEPS = [
   "Refresh this page and tap Retry Camera.",
 ];
 const LIVE_VIDEO_MIN_SECONDS = 10;
-const LIVE_VIDEO_MAX_SECONDS = 30;
+const LIVE_VIDEO_MAX_SECONDS = 20;
+const QUALIFICATION_OPTIONS = ["10th Pass", "12th Pass", "Graduate", "Post Graduate", "Diploma", "Other"];
 const LIVE_VIDEO_ALLOWED_MIME_TYPES = new Set([
   "video/webm",
   "video/mp4",
@@ -163,9 +162,9 @@ function hasAnyValue(profile: PartnerProfile) {
   return Boolean(
     profile.fullName ||
       profile.age ||
-      profile.school ||
+      profile.qualification ||
       profile.languagesKnown.length ||
-      profile.profileTagline,
+      profile.aboutYourself,
   );
 }
 
@@ -432,31 +431,23 @@ function mergeWithBackendProfile(
   const application = applicationInput ?? {};
   const applicationServices = toOnboardingServices(application.servicesOffered);
   const companionServices = toOnboardingServices(companion.servicesOffered);
-  const categoryFromCompanion = toOptionalString(companion.category);
-
   return {
     ...current,
     fullName: mergeIfEmpty(current.fullName, toOptionalString(application.fullName) || toOptionalString(companion.displayName)),
     age: mergeIfEmpty(current.age, toOptionalNumericString(application.age)),
     gender: current.gender || toPartnerGender(application.gender),
-    religion: mergeIfEmpty(current.religion, toOptionalString(application.religion)),
-    bornCity: mergeIfEmpty(current.bornCity, toOptionalString(application.bornCity) || toOptionalString(companion.city)),
-    nationality: mergeIfEmpty(current.nationality, toOptionalString(application.nationality)),
-    school: mergeIfEmpty(current.school, toOptionalString(application.school)),
-    college: mergeIfEmpty(current.college, toOptionalString(application.college)),
     qualification: mergeIfEmpty(current.qualification, toOptionalString(application.qualification)),
     languagesKnown: mergeArrayIfEmpty(
       current.languagesKnown,
       toOptionalStringArray(application.languagesKnown).length
         ? toOptionalStringArray(application.languagesKnown)
         : toOptionalStringArray(companion.languages),
-    ),
-    communicationStyle: mergeArrayIfEmpty(current.communicationStyle, toOptionalStringArray(application.communicationStyle)),
+    ).slice(0, 3),
+    communicationStyle: mergeArrayIfEmpty(
+      current.communicationStyle,
+      toOptionalStringArray(application.communicationStyle),
+    ).slice(0, 1),
     hobbies: mergeArrayIfEmpty(current.hobbies, toOptionalStringArray(application.hobbies)),
-    profileTagline: mergeIfEmpty(
-      current.profileTagline,
-      toOptionalString(application.profileTagline) || toOptionalString(companion.tagline),
-    ),
     aboutYourself: mergeIfEmpty(current.aboutYourself, toOptionalString(application.aboutYourself)),
     servicesOffered: mergeArrayIfEmpty(
       current.servicesOffered,
@@ -474,14 +465,6 @@ function mergeWithBackendProfile(
       current.videoPricePerMinute,
       toOptionalNumericString(application.videoPrice) || toOptionalNumericString(companion.videoPrice),
     ),
-    categories: mergeArrayIfEmpty(
-      current.categories,
-      toOptionalStringArray(application.categories).length
-        ? toOptionalStringArray(application.categories)
-        : categoryFromCompanion
-          ? [categoryFromCompanion]
-          : [],
-    ),
     selfieFileName: mergeIfEmpty(current.selfieFileName, toOptionalString(application.selfieFileName)),
     aadhaarFrontFileName: mergeIfEmpty(current.aadhaarFrontFileName, toOptionalString(application.aadhaarFrontFileName)),
     aadhaarBackFileName: mergeIfEmpty(current.aadhaarBackFileName, toOptionalString(application.aadhaarBackFileName)),
@@ -495,6 +478,8 @@ function mergeWithBackendProfile(
 function toOnboardingProfile(source: PartnerProfile): OnboardingProfile {
   return {
     ...source,
+    languagesKnown: source.languagesKnown.slice(0, 3),
+    communicationStyle: source.communicationStyle.slice(0, 1),
     servicesOffered: sanitizeServices(source.servicesOffered as string[]),
   };
 }
@@ -525,23 +510,16 @@ function toPartnerOnboardingPayload(
     fullName: profile.fullName.trim(),
     age: Number(profile.age) || 0,
     gender: String(profile.gender || ""),
-    religion: profile.religion.trim() || undefined,
-    bornCity: profile.bornCity.trim() || undefined,
-    nationality: profile.nationality.trim() || undefined,
-    school: profile.school.trim() || undefined,
-    college: profile.college.trim() || undefined,
     qualification: profile.qualification.trim() || undefined,
-    languagesKnown: profile.languagesKnown,
-    communicationStyle: profile.communicationStyle,
+    languagesKnown: profile.languagesKnown.slice(0, 3),
+    communicationStyle: profile.communicationStyle.slice(0, 1),
     hobbies: profile.hobbies,
-    profileTagline: profile.profileTagline.trim(),
     aboutYourself: profile.aboutYourself.trim(),
     servicesOffered: backendSupportedServices,
     chatPrice: CHAT_RATE_PER_MIN,
     audioPrice: AUDIO_RATE_PER_MIN,
     videoPrice: VIDEO_RATE_PER_MIN,
     homeVisitRequested: false,
-    categories: profile.categories,
     safetyChecklist,
     selfieUploaded,
     selfieFileName: selfieUploaded ? uploads.selfie?.fileName || undefined : undefined,
@@ -824,11 +802,9 @@ export default function PartnerOnboardingPage() {
   const isDocumentUploadInProgress = Object.values(kycUploadProgress).some(
     ({ status }) => status === "selected" || status === "uploading",
   );
-  const liveVerificationScript = `My name is ${profile.fullName || "[name]"}. I am ${
-    profile.age || "[age]"
-  } years old. I am applying to become a YoPartner partner. My hobbies are ${
-    profile.hobbies.length > 0 ? profile.hobbies.join(", ") : "[hobbies]"
-  }. I agree to follow YoPartner safety and respectful communication rules.`;
+  const liveVerificationScript = `Hello, my name is ${
+    profile.fullName.trim() || "[Host Name]"
+  }. I am applying to become a verified YoPartner host. I confirm that the documents and profile details I submitted are genuine and belong to me. I understand that YoPartner is a safe, respectful, and platonic conversation platform.`;
   const permissionBlocked =
     permissionStates.camera === "denied" || permissionStates.microphone === "denied";
   const shouldEmphasizePermissionHelp = permissionBlocked || cameraErrorKind === "permission";
@@ -847,23 +823,16 @@ export default function PartnerOnboardingPage() {
       { label: "Full Name", value: profile.fullName || "-" },
       { label: "Age", value: profile.age || "-" },
       { label: "Gender", value: profile.gender || "-" },
-      { label: "Religion", value: profile.religion || "-" },
-      { label: "Born City", value: profile.bornCity || "-" },
-      { label: "Nationality", value: profile.nationality || "-" },
-      { label: "School", value: profile.school || "-" },
-      { label: "College", value: profile.college || "-" },
       { label: "Qualification", value: profile.qualification || "-" },
       { label: "Languages", value: profile.languagesKnown.join(", ") || "-" },
       { label: "Communication Style", value: profile.communicationStyle.join(", ") || "-" },
       { label: "Hobbies", value: profile.hobbies.join(", ") || "-" },
-      { label: "Tagline", value: profile.profileTagline || "-" },
       { label: "About", value: profile.aboutYourself || "-" },
       { label: "Services", value: profile.servicesOffered.join(", ") || "-" },
       {
         label: "Pricing",
         value: `Chat ${ONBOARDING_REVIEW_PRICE_LABELS.chat}, Audio ${ONBOARDING_REVIEW_PRICE_LABELS.audio}, Video ${ONBOARDING_REVIEW_PRICE_LABELS.video}`,
       },
-      { label: "Categories", value: profile.categories.join(", ") || "-" },
       {
         label: "Selfie",
         value: formatDocumentSelectionStatus(kycUploadProgress.selfie.status),
@@ -897,44 +866,29 @@ export default function PartnerOnboardingPage() {
         nextErrors.age = "Age must be a number between 18 and 70.";
       }
       if (!profile.gender) nextErrors.gender = "Gender is required.";
-      if (!profile.religion.trim()) nextErrors.religion = "Religion is required.";
-      if (!profile.bornCity.trim()) nextErrors.bornCity = "Born City is required.";
-      if (!profile.nationality.trim()) nextErrors.nationality = "Nationality is required.";
-    }
-
-    if (stepIndex === 1) {
-      if (!profile.school.trim()) nextErrors.school = "School is required.";
-      if (!profile.college.trim()) nextErrors.college = "College is required.";
       if (!profile.qualification.trim()) nextErrors.qualification = "Qualification is required.";
     }
 
-    if (stepIndex === 2) {
+    if (stepIndex === 1) {
       if (profile.languagesKnown.length === 0) nextErrors.languagesKnown = "Select at least one language.";
-      if (profile.communicationStyle.length === 0) nextErrors.communicationStyle = "Select at least one style.";
+      if (profile.languagesKnown.length > 3) nextErrors.languagesKnown = "Select no more than 3 languages.";
+      if (profile.communicationStyle.length !== 1) nextErrors.communicationStyle = "Select one communication style.";
       if (profile.hobbies.length === 0) nextErrors.hobbies = "Select at least one hobby.";
     }
 
-    if (stepIndex === 3) {
-      if (!profile.profileTagline.trim()) nextErrors.profileTagline = "Profile Tagline is required.";
-      if (profile.profileTagline.trim() && profile.profileTagline.trim().length < 6) {
-        nextErrors.profileTagline = "Profile Tagline must be at least 6 characters.";
-      }
+    if (stepIndex === 2) {
       if (!profile.aboutYourself.trim()) nextErrors.aboutYourself = "About Yourself is required.";
-      if (profile.aboutYourself.trim().length < 80) {
-        nextErrors.aboutYourself = "About Yourself must be at least 80 characters.";
-      }
     }
 
-    if (stepIndex === 4) {
+    if (stepIndex === 3) {
       if (profile.servicesOffered.length === 0) nextErrors.servicesOffered = "Select at least one service.";
-      if (profile.categories.length === 0) nextErrors.categories = "Select at least one category.";
     }
 
-    if (stepIndex === 5 && !requiredDocumentsUploaded) {
+    if (stepIndex === 4 && !requiredDocumentsUploaded) {
       nextErrors.base = REQUIRED_DOCUMENTS_MESSAGE;
     }
 
-    if (stepIndex === 6) {
+    if (stepIndex === 5) {
       if (!profile.fullName.trim()) nextErrors.fullName = "Full Name is required.";
       if (!profile.age.trim()) nextErrors.age = "Age is required.";
       if (profile.age.trim() && !isValidPartnerAge(profile.age)) {
@@ -946,7 +900,7 @@ export default function PartnerOnboardingPage() {
       }
     }
 
-    if (stepIndex === 7) {
+    if (stepIndex === 6) {
       if (
         !profile.safetyPlatonicOnly ||
         !profile.safetyRespectfulRules ||
@@ -976,28 +930,18 @@ export default function PartnerOnboardingPage() {
       normalized.includes("full name") ||
       normalized.includes("age") ||
       normalized.includes("gender") ||
-      normalized.includes("religion") ||
-      normalized.includes("born city") ||
-      normalized.includes("nationality")
-    ) return 0;
-    if (
-      normalized.includes("school") ||
-      normalized.includes("college") ||
       normalized.includes("qualification")
-    ) return 1;
+    ) return 0;
     if (
       normalized.includes("language") ||
       normalized.includes("communication") ||
       normalized.includes("hobbies")
-    ) return 2;
-    if (
-      normalized.includes("profile tagline") ||
-      normalized.includes("about yourself")
-    ) return 3;
-    if (normalized.includes("service") || normalized.includes("categor")) return 4;
-    if (normalized.includes("document") || normalized.includes("aadhaar") || normalized.includes("selfie")) return 5;
-    if (normalized.includes("live video") || normalized.includes("live verification")) return 6;
-    if (normalized.includes("safety")) return 7;
+    ) return 1;
+    if (normalized.includes("about yourself")) return 2;
+    if (normalized.includes("service")) return 3;
+    if (normalized.includes("document") || normalized.includes("aadhaar") || normalized.includes("selfie")) return 4;
+    if (normalized.includes("live video") || normalized.includes("live verification")) return 5;
+    if (normalized.includes("safety")) return 6;
     return null;
   };
 
@@ -1016,16 +960,16 @@ export default function PartnerOnboardingPage() {
     liveVideoUpload: PartnerKycUploadResult | null,
   ) => {
     if (!hasUploadedArtifact(uploads.selfie)) {
-      return { stepIndex: 5, message: "Selfie upload path is missing. Please reselect and upload your selfie." };
+      return { stepIndex: 4, message: "Selfie upload path is missing. Please reselect and upload your selfie." };
     }
     if (!hasUploadedArtifact(uploads.aadhaarFront)) {
-      return { stepIndex: 5, message: "Aadhaar Front upload path is missing. Please reselect and upload Aadhaar Front." };
+      return { stepIndex: 4, message: "Aadhaar Front upload path is missing. Please reselect and upload Aadhaar Front." };
     }
     if (!hasUploadedArtifact(uploads.aadhaarBack)) {
-      return { stepIndex: 5, message: "Aadhaar Back upload path is missing. Please reselect and upload Aadhaar Back." };
+      return { stepIndex: 4, message: "Aadhaar Back upload path is missing. Please reselect and upload Aadhaar Back." };
     }
     if (!hasLiveVideoArtifact(liveVideoUpload)) {
-      return { stepIndex: 6, message: "Live video upload path is missing. Please record and upload live verification again." };
+      return { stepIndex: 5, message: "Live video upload path is missing. Please record and upload live verification again." };
     }
     return null;
   };
@@ -1359,12 +1303,12 @@ export default function PartnerOnboardingPage() {
     }
     if (!requiredDocumentsUploaded) {
       setErrors({ base: REQUIRED_DOCUMENTS_MESSAGE });
-      setStep(5);
+      setStep(4);
       return;
     }
     if (!liveVideoUploaded) {
       setErrors({ base: "Please wait until your live verification video is uploaded." });
-      setStep(6);
+      setStep(5);
       return;
     }
 
@@ -1462,7 +1406,7 @@ export default function PartnerOnboardingPage() {
         } catch (uploadError) {
           const uploadMessage = toFriendlyUploadError(uploadError);
           setErrors({ base: uploadMessage });
-          setStep(uploadMessage.toLowerCase().includes("video") ? 6 : 5);
+          setStep(uploadMessage.toLowerCase().includes("video") ? 5 : 4);
           setIsSubmitting(false);
           return;
         }
@@ -1597,6 +1541,24 @@ export default function PartnerOnboardingPage() {
     </div>
   );
 
+  const handleLanguageToggle = (value: string) => {
+    const isSelected = profile.languagesKnown.includes(value);
+    if (!isSelected && profile.languagesKnown.length >= 3) {
+      setErrors((current) => ({ ...current, languagesKnown: "You can select up to 3 languages." }));
+      return;
+    }
+    setProfile((current) => ({
+      ...current,
+      languagesKnown: toggleArrayValue(current.languagesKnown, value),
+    }));
+    setErrors((current) => ({ ...current, languagesKnown: undefined }));
+  };
+
+  const handleCommunicationStyleSelect = (value: string) => {
+    setProfile((current) => ({ ...current, communicationStyle: [value] }));
+    setErrors((current) => ({ ...current, communicationStyle: undefined }));
+  };
+
   if (isEditMode === null || isHydratingExistingApplication) {
     return (
       <section className="flex min-h-screen items-center justify-center bg-[#fffdf8] px-4">
@@ -1685,80 +1647,32 @@ export default function PartnerOnboardingPage() {
                 {errors.gender ? <p className="mt-1 text-xs text-rose-600">{errors.gender}</p> : null}
               </label>
               <label>
-                <p className="mb-1.5 text-sm font-medium text-slate-700">Religion</p>
-                <input
-                  value={profile.religion}
-                  onChange={(event) => setProfile((current) => ({ ...current, religion: event.target.value }))}
-                  className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-[#2563eb]"
-                />
-                {errors.religion ? <p className="mt-1 text-xs text-rose-600">{errors.religion}</p> : null}
-              </label>
-              <label>
-                <p className="mb-1.5 text-sm font-medium text-slate-700">Born City</p>
-                <input
-                  value={profile.bornCity}
-                  onChange={(event) => setProfile((current) => ({ ...current, bornCity: event.target.value }))}
-                  className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-[#2563eb]"
-                />
-                {errors.bornCity ? <p className="mt-1 text-xs text-rose-600">{errors.bornCity}</p> : null}
-              </label>
-              <label>
-                <p className="mb-1.5 text-sm font-medium text-slate-700">Nationality</p>
-                <input
-                  value={profile.nationality}
-                  onChange={(event) => setProfile((current) => ({ ...current, nationality: event.target.value }))}
-                  className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-[#2563eb]"
-                />
-                {errors.nationality ? <p className="mt-1 text-xs text-rose-600">{errors.nationality}</p> : null}
-              </label>
-            </div>
-          ) : null}
-
-          {step === 1 ? (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label>
-                <p className="mb-1.5 text-sm font-medium text-slate-700">School</p>
-                <input
-                  value={profile.school}
-                  onChange={(event) => setProfile((current) => ({ ...current, school: event.target.value }))}
-                  className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-[#2563eb]"
-                />
-                {errors.school ? <p className="mt-1 text-xs text-rose-600">{errors.school}</p> : null}
-              </label>
-              <label>
-                <p className="mb-1.5 text-sm font-medium text-slate-700">College</p>
-                <input
-                  value={profile.college}
-                  onChange={(event) => setProfile((current) => ({ ...current, college: event.target.value }))}
-                  className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-[#2563eb]"
-                />
-                {errors.college ? <p className="mt-1 text-xs text-rose-600">{errors.college}</p> : null}
-              </label>
-              <label className="sm:col-span-2">
                 <p className="mb-1.5 text-sm font-medium text-slate-700">Qualification</p>
-                <input
+                <select
                   value={profile.qualification}
                   onChange={(event) => setProfile((current) => ({ ...current, qualification: event.target.value }))}
                   className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-[#2563eb]"
-                />
+                >
+                  <option value="">Select qualification</option>
+                  {QUALIFICATION_OPTIONS.map((option) => (
+                    <option key={option}>{option}</option>
+                  ))}
+                </select>
                 {errors.qualification ? <p className="mt-1 text-xs text-rose-600">{errors.qualification}</p> : null}
               </label>
             </div>
           ) : null}
 
-          {step === 2 ? (
+          {step === 1 ? (
             <div className="space-y-5">
               <div>
                 <p className="mb-2 text-sm font-medium text-slate-700">Languages Known</p>
                 {renderChipGroup(
                   partnerLanguageOptions,
                   profile.languagesKnown,
-                  (value) =>
-                    setProfile((current) => ({
-                      ...current,
-                      languagesKnown: toggleArrayValue(current.languagesKnown, value),
-                    })),
+                  handleLanguageToggle,
                 )}
+                <p className="mt-2 text-xs text-slate-500">Select between 1 and 3 languages.</p>
                 {errors.languagesKnown ? (
                   <p className="mt-1 text-xs text-rose-600">{errors.languagesKnown}</p>
                 ) : null}
@@ -1768,12 +1682,9 @@ export default function PartnerOnboardingPage() {
                 {renderChipGroup(
                   partnerCommunicationStyleOptions,
                   profile.communicationStyle,
-                  (value) =>
-                    setProfile((current) => ({
-                      ...current,
-                      communicationStyle: toggleArrayValue(current.communicationStyle, value),
-                    })),
+                  handleCommunicationStyleSelect,
                 )}
+                <p className="mt-2 text-xs text-slate-500">Select one communication style.</p>
                 {errors.communicationStyle ? (
                   <p className="mt-1 text-xs text-rose-600">{errors.communicationStyle}</p>
                 ) : null}
@@ -1791,22 +1702,8 @@ export default function PartnerOnboardingPage() {
             </div>
           ) : null}
 
-          {step === 3 ? (
+          {step === 2 ? (
             <div className="space-y-4">
-              <label>
-                <p className="mb-1.5 text-sm font-medium text-slate-700">Profile Tagline</p>
-                <input
-                  value={profile.profileTagline}
-                  onChange={(event) =>
-                    setProfile((current) => ({ ...current, profileTagline: event.target.value }))
-                  }
-                  placeholder="Calm conversations with a cheerful listener"
-                  className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-[#2563eb]"
-                />
-                {errors.profileTagline ? (
-                  <p className="mt-1 text-xs text-rose-600">{errors.profileTagline}</p>
-                ) : null}
-              </label>
               <label>
                 <p className="mb-1.5 text-sm font-medium text-slate-700">About Yourself</p>
                 <textarea
@@ -1817,9 +1714,6 @@ export default function PartnerOnboardingPage() {
                   placeholder="Tell clients about your personality, how you support people, and what kind of conversations you enjoy."
                   className="min-h-40 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-[#2563eb]"
                 />
-                <p className="mt-1 text-xs text-slate-500">
-                  {profile.aboutYourself.trim().length} / 80 minimum characters
-                </p>
                 {errors.aboutYourself ? (
                   <p className="mt-1 text-xs text-rose-600">{errors.aboutYourself}</p>
                 ) : null}
@@ -1827,7 +1721,7 @@ export default function PartnerOnboardingPage() {
             </div>
           ) : null}
 
-          {step === 4 ? (
+          {step === 3 ? (
             <div className="space-y-4">
               <div>
                 <p className="mb-2 text-sm font-medium text-slate-700">Services offered</p>
@@ -1873,20 +1767,10 @@ export default function PartnerOnboardingPage() {
                 ))}
               </div>
 
-              <div>
-                <p className="mb-2 text-sm font-medium text-slate-700">Categories</p>
-                {renderChipGroup(partnerCategoryOptions, profile.categories, (value) =>
-                  setProfile((current) => ({
-                    ...current,
-                    categories: toggleArrayValue(current.categories, value),
-                  }))
-                )}
-                {errors.categories ? <p className="mt-1 text-xs text-rose-600">{errors.categories}</p> : null}
-              </div>
             </div>
           ) : null}
 
-          {step === 5 ? (
+          {step === 4 ? (
             <div className="space-y-4">
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                 <h3 className="text-sm font-semibold text-slate-900">Verification Documents</h3>
@@ -2069,12 +1953,15 @@ export default function PartnerOnboardingPage() {
             </div>
           ) : null}
 
-          {step === 6 ? (
+          {step === 5 ? (
             <div className="space-y-4">
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                 <h3 className="text-sm font-semibold text-slate-900">Live Video Verification</h3>
                 <p className="mt-1 text-xs text-slate-600">
                   Record a short live video inside this flow. Keep it between {LIVE_VIDEO_MIN_SECONDS} and {LIVE_VIDEO_MAX_SECONDS} seconds.
+                </p>
+                <p className="mt-1 text-xs font-semibold text-[#0f766e]">
+                  Recording stops automatically after {LIVE_VIDEO_MAX_SECONDS} seconds.
                 </p>
               </div>
 
@@ -2139,7 +2026,7 @@ export default function PartnerOnboardingPage() {
                   <div className="flex items-start justify-between gap-3">
                     <p className="text-sm font-semibold text-slate-900">
                       {isRecordingLiveVideo
-                        ? `Recording ${recordingSeconds}s`
+                        ? `Recording ${recordingSeconds}s · ${Math.max(0, LIVE_VIDEO_MAX_SECONDS - recordingSeconds)}s remaining`
                         : liveVideoUploadProgress.status === "uploading"
                           ? "Recording saved. Uploading..."
                           : liveVideoUploaded
@@ -2286,7 +2173,7 @@ export default function PartnerOnboardingPage() {
             </div>
           ) : null}
 
-          {step === 7 ? (
+          {step === 6 ? (
             <div className="space-y-4">
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                 <h3 className="text-sm font-semibold text-slate-900">Profile Summary</h3>
@@ -2349,7 +2236,7 @@ export default function PartnerOnboardingPage() {
                     type="button"
                     onClick={() => {
                       setErrors({ base: "Please wait until your live verification video is uploaded." });
-                      setStep(6);
+                      setStep(5);
                     }}
                     className="mt-2 inline-flex h-10 items-center rounded-xl border border-rose-200 px-4 text-sm font-semibold text-rose-700"
                   >
@@ -2387,8 +2274,8 @@ export default function PartnerOnboardingPage() {
                 type="button"
                 onClick={handleContinue}
                 disabled={
-                  (step === 5 && (!requiredDocumentsUploaded || isDocumentUploadInProgress)) ||
-                  (step === 6 && (!liveVideoUploaded || isLiveVideoUploadInProgress))
+                  (step === 4 && (!requiredDocumentsUploaded || isDocumentUploadInProgress)) ||
+                  (step === 5 && (!liveVideoUploaded || isLiveVideoUploadInProgress))
                 }
                 className="inline-flex h-10 items-center gap-1 rounded-full bg-[#0f766e] px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
               >
