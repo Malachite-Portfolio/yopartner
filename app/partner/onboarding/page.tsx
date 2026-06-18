@@ -805,7 +805,7 @@ export default function PartnerOnboardingPage() {
   );
   const liveVerificationScript = `Hello, my name is ${
     profile.fullName.trim() || "[Host Name]"
-  }. I am applying to become a verified YoPartner host. I confirm that the documents and profile details I submitted are genuine and belong to me. I understand that YoPartner is a safe, respectful, and platonic conversation platform.`;
+  }. I want to become a verified YoPartner host. My details are genuine. I understand YoPartner is a safe and respectful platform.`;
   const permissionBlocked =
     permissionStates.camera === "denied" || permissionStates.microphone === "denied";
   const shouldEmphasizePermissionHelp = permissionBlocked || cameraErrorKind === "permission";
@@ -2003,7 +2003,7 @@ export default function PartnerOnboardingPage() {
 
               <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
                 <div className="rounded-xl border border-slate-200 bg-slate-950 p-3">
-                  <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-black">
+                  <div className="relative aspect-[3/2] w-full overflow-hidden rounded-lg bg-black sm:aspect-video">
                     {isCameraEnabled || isRecordingLiveVideo ? (
                       <video
                         ref={liveStreamVideoRef}
@@ -2025,9 +2025,9 @@ export default function PartnerOnboardingPage() {
                         Your recorded verification video preview will appear here.
                       </div>
                     )}
-                    <div className="absolute inset-x-2 top-2 z-10 max-h-[96px] overflow-hidden rounded-lg border border-white/15 bg-slate-950/80 px-3 py-2 text-white shadow-lg backdrop-blur-sm">
-                      <p className="text-xs font-semibold">Read while recording</p>
-                      <div className="mt-1 max-h-[60px] overflow-y-auto pr-1 text-[11px] leading-4 text-white/90">
+                    <div className="absolute inset-x-1.5 top-1.5 z-10 rounded-lg border border-white/15 bg-slate-950/85 px-3 py-2.5 text-white shadow-lg backdrop-blur-sm">
+                      <p className="text-sm font-bold">Read while recording</p>
+                      <div className="mt-1.5 text-[13px] font-medium leading-[18px] text-white/95">
                         {liveVerificationScript}
                       </div>
                     </div>
