@@ -68,6 +68,13 @@ type KycUploadState = {
   aadhaarFront: PartnerKycUploadResult | null;
   aadhaarBack: PartnerKycUploadResult | null;
 };
+type KycUploadKey = keyof KycUploadState;
+type UploadStatus = "pending" | "selected" | "uploading" | "uploaded" | "error";
+type UploadProgress = {
+  status: UploadStatus;
+  error: string;
+};
+type KycUploadProgressState = Record<KycUploadKey, UploadProgress>;
 type LiveVideoState = {
   file: File | null;
   upload: PartnerKycUploadResult | null;
@@ -98,7 +105,6 @@ const stepTitles = [
   "Safety agreement",
 ];
 const REQUIRED_DOCUMENTS_MESSAGE = "Please upload all required verification documents before submitting.";
-const LIVE_VIDEO_REQUIRED_MESSAGE = "Please complete live video verification before submitting.";
 const PARTNER_SUBMIT_SESSION_EXPIRED_MESSAGE = "Your login session expired. Please login again to submit.";
 const UPLOAD_NOT_COMPLETED_MESSAGE = "Upload not completed, please re-upload.";
 const VIDEO_FORMAT_NOT_SUPPORTED_MESSAGE = "Video format not supported. Please record again or upload MP4/MOV.";
@@ -170,9 +176,11 @@ function sanitizeServices(services: string[]): OnboardingServiceType[] {
   );
 }
 
-function formatDocumentSelectionStatus(hasUploadedDocument: boolean, hasPendingFile = false) {
-  if (hasUploadedDocument) return "Selected";
-  if (hasPendingFile) return "Ready to upload";
+function formatDocumentSelectionStatus(status: UploadStatus) {
+  if (status === "uploading") return "Uploading";
+  if (status === "uploaded") return "Uploaded";
+  if (status === "selected") return "Selected";
+  if (status === "error") return "Upload failed";
   return "Pending";
 }
 
@@ -189,9 +197,18 @@ function hasLiveVideoArtifact(upload: PartnerKycUploadResult | null) {
   return hasUploadedArtifact(upload) && Boolean(upload?.storagePath.includes("/live-video/"));
 }
 
-function formatUploadSelectionStatus(file: File | null, upload: PartnerKycUploadResult | null, legacyFileName?: string) {
-  if (hasUploadedArtifact(upload)) return `Selected: ${upload?.fileName || "uploaded file"}`;
-  if (file) return `Ready to upload: ${file.name}`;
+function formatUploadSelectionStatus(
+  status: UploadStatus,
+  file: File | null,
+  upload: PartnerKycUploadResult | null,
+  legacyFileName?: string,
+) {
+  if (status === "uploading") return `Uploading: ${file?.name || "selected file"}`;
+  if (status === "uploaded" && hasUploadedArtifact(upload)) {
+    return `Uploaded: ${upload?.fileName || "uploaded file"}`;
+  }
+  if (status === "selected" && file) return `Selected: ${file.name}`;
+  if (status === "error") return `Upload failed: ${file?.name || legacyFileName || "selected file"}`;
   if (legacyFileName?.trim()) return UPLOAD_NOT_COMPLETED_MESSAGE;
   return "Pending";
 }
@@ -607,10 +624,19 @@ export default function PartnerOnboardingPage() {
     aadhaarFront: null,
     aadhaarBack: null,
   });
+  const [kycUploadProgress, setKycUploadProgress] = useState<KycUploadProgressState>({
+    selfie: { status: "pending", error: "" },
+    aadhaarFront: { status: "pending", error: "" },
+    aadhaarBack: { status: "pending", error: "" },
+  });
   const [liveVideo, setLiveVideo] = useState<LiveVideoState>({
     file: null,
     upload: null,
     objectUrl: "",
+  });
+  const [liveVideoUploadProgress, setLiveVideoUploadProgress] = useState<UploadProgress>({
+    status: "pending",
+    error: "",
   });
   const [isRecordingLiveVideo, setIsRecordingLiveVideo] = useState(false);
   const [isCameraEnabled, setIsCameraEnabled] = useState(false);
@@ -636,6 +662,12 @@ export default function PartnerOnboardingPage() {
   const recordingStartedAtRef = useRef(0);
   const recordingTimerRef = useRef<number | null>(null);
   const recordingStopTimerRef = useRef<number | null>(null);
+  const uploadRequestIdsRef = useRef<Record<KycUploadKey | "liveVideo", number>>({
+    selfie: 0,
+    aadhaarFront: 0,
+    aadhaarBack: 0,
+    liveVideo: 0,
+  });
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -717,15 +749,26 @@ export default function PartnerOnboardingPage() {
 
         if (Object.keys(application).length === 0 && Object.keys(companion).length === 0) return;
         setProfile((current) => mergeWithBackendProfile(current, companion, application));
-        setKycUploads({
+        const restoredUploads = {
           selfie: toExistingUpload(application, "selfie"),
           aadhaarFront: toExistingUpload(application, "aadhaarFront"),
           aadhaarBack: toExistingUpload(application, "aadhaarBack"),
+        };
+        const restoredLiveVideo = toExistingLiveVideoUpload(application);
+        setKycUploads(restoredUploads);
+        setKycUploadProgress({
+          selfie: { status: hasUploadedArtifact(restoredUploads.selfie) ? "uploaded" : "pending", error: "" },
+          aadhaarFront: { status: hasUploadedArtifact(restoredUploads.aadhaarFront) ? "uploaded" : "pending", error: "" },
+          aadhaarBack: { status: hasUploadedArtifact(restoredUploads.aadhaarBack) ? "uploaded" : "pending", error: "" },
         });
         setLiveVideo((current) => ({
           ...current,
-          upload: toExistingLiveVideoUpload(application),
+          upload: restoredLiveVideo,
         }));
+        setLiveVideoUploadProgress({
+          status: hasLiveVideoArtifact(restoredLiveVideo) ? "uploaded" : "pending",
+          error: "",
+        });
       } finally {
         if (active) setIsHydratingExistingApplication(false);
       }
@@ -762,10 +805,13 @@ export default function PartnerOnboardingPage() {
     }
   }, [isCameraEnabled, isRecordingLiveVideo]);
 
-  const requiredDocumentsSelected = Boolean(
-    (selfieFile || hasUploadedArtifact(kycUploads.selfie)) &&
-      (aadhaarFrontFile || hasUploadedArtifact(kycUploads.aadhaarFront)) &&
-      (aadhaarBackFile || hasUploadedArtifact(kycUploads.aadhaarBack)),
+  const requiredDocumentsUploaded = Boolean(
+    hasUploadedArtifact(kycUploads.selfie) &&
+      hasUploadedArtifact(kycUploads.aadhaarFront) &&
+      hasUploadedArtifact(kycUploads.aadhaarBack),
+  );
+  const isDocumentUploadInProgress = Object.values(kycUploadProgress).some(
+    ({ status }) => status === "selected" || status === "uploading",
   );
   const liveVerificationScript = `My name is ${profile.fullName || "[name]"}. I am ${
     profile.age || "[age]"
@@ -781,7 +827,9 @@ export default function PartnerOnboardingPage() {
       : browserEnvironment.permissionGuide === "android-chrome"
         ? ANDROID_PERMISSION_HELP_STEPS
         : OTHER_PERMISSION_HELP_STEPS;
-  const hasSelectedLiveVideo = Boolean(liveVideo.file || hasLiveVideoArtifact(liveVideo.upload));
+  const liveVideoUploaded = hasLiveVideoArtifact(liveVideo.upload);
+  const isLiveVideoUploadInProgress =
+    liveVideoUploadProgress.status === "selected" || liveVideoUploadProgress.status === "uploading";
 
   const summaryRows = useMemo(
     () => [
@@ -807,28 +855,22 @@ export default function PartnerOnboardingPage() {
       { label: "Categories", value: profile.categories.join(", ") || "-" },
       {
         label: "Selfie",
-        value: formatDocumentSelectionStatus(hasUploadedArtifact(kycUploads.selfie), Boolean(selfieFile)),
+        value: formatDocumentSelectionStatus(kycUploadProgress.selfie.status),
       },
       {
         label: "Aadhaar Front",
-        value: formatDocumentSelectionStatus(
-          hasUploadedArtifact(kycUploads.aadhaarFront),
-          Boolean(aadhaarFrontFile),
-        ),
+        value: formatDocumentSelectionStatus(kycUploadProgress.aadhaarFront.status),
       },
       {
         label: "Aadhaar Back",
-        value: formatDocumentSelectionStatus(
-          hasUploadedArtifact(kycUploads.aadhaarBack),
-          Boolean(aadhaarBackFile),
-        ),
+        value: formatDocumentSelectionStatus(kycUploadProgress.aadhaarBack.status),
       },
       {
         label: "Live video",
-        value: formatDocumentSelectionStatus(hasLiveVideoArtifact(liveVideo.upload), Boolean(liveVideo.file)),
+        value: formatDocumentSelectionStatus(liveVideoUploadProgress.status),
       },
     ],
-    [aadhaarBackFile, aadhaarFrontFile, kycUploads, liveVideo.file, liveVideo.upload, profile, selfieFile],
+    [kycUploadProgress, liveVideoUploadProgress.status, profile],
   );
 
   const validateStep = (stepIndex: number): ValidationErrors => {
@@ -877,7 +919,7 @@ export default function PartnerOnboardingPage() {
       if (profile.categories.length === 0) nextErrors.categories = "Select at least one category.";
     }
 
-    if (stepIndex === 5 && !requiredDocumentsSelected) {
+    if (stepIndex === 5 && !requiredDocumentsUploaded) {
       nextErrors.base = REQUIRED_DOCUMENTS_MESSAGE;
     }
 
@@ -888,8 +930,8 @@ export default function PartnerOnboardingPage() {
         nextErrors.age = "Age must be a number between 18 and 70.";
       }
       if (profile.hobbies.length === 0) nextErrors.hobbies = "Select at least one hobby.";
-      if (!liveVideo.file && !hasLiveVideoArtifact(liveVideo.upload)) {
-        nextErrors.base = LIVE_VIDEO_REQUIRED_MESSAGE;
+      if (!liveVideoUploaded) {
+        nextErrors.base = "Please wait until your live verification video is uploaded.";
       }
     }
 
@@ -1074,6 +1116,107 @@ export default function PartnerOnboardingPage() {
     setPermissionCheckMessage(`Camera: ${cameraState}. Microphone: ${microphoneState}.`);
   };
 
+  const getUploadUser = async () => {
+    const user = await waitForFirebaseUser();
+    if (!user) {
+      setErrors({ base: PARTNER_SUBMIT_SESSION_EXPIRED_MESSAGE });
+      router.replace(getPartnerLoginReturnUrl());
+      return null;
+    }
+    try {
+      const token = await user.getIdToken(true);
+      if (!token.trim()) throw new Error("EMPTY_PARTNER_ID_TOKEN");
+      setPartnerStoredFirebaseToken(token);
+      return user;
+    } catch {
+      setErrors({ base: PARTNER_SUBMIT_SESSION_EXPIRED_MESSAGE });
+      router.replace(getPartnerLoginReturnUrl());
+      return null;
+    }
+  };
+
+  const updateDocumentProgress = (key: KycUploadKey, progress: UploadProgress) => {
+    setKycUploadProgress((current) => ({ ...current, [key]: progress }));
+  };
+
+  const updateUploadedDocumentProfile = (key: KycUploadKey, fileName: string) => {
+    setProfile((current) => {
+      if (key === "selfie") return { ...current, selfieFileName: fileName };
+      if (key === "aadhaarFront") {
+        return { ...current, aadhaarFrontFileName: fileName, aadhaarFileName: fileName };
+      }
+      return { ...current, aadhaarBackFileName: fileName, aadhaarFileName: current.aadhaarFileName || fileName };
+    });
+  };
+
+  const uploadDocumentFile = async (
+    file: File,
+    key: KycUploadKey,
+    type: KycUploadType,
+    clearSelectedFile: () => void,
+  ) => {
+    const requestId = uploadRequestIdsRef.current[key] + 1;
+    uploadRequestIdsRef.current[key] = requestId;
+    setKycUploads((current) => ({ ...current, [key]: null }));
+    updateDocumentProgress(key, { status: "uploading", error: "" });
+    setErrors({});
+
+    const user = await getUploadUser();
+    if (!user) {
+      if (uploadRequestIdsRef.current[key] === requestId) {
+        updateDocumentProgress(key, { status: "error", error: PARTNER_SUBMIT_SESSION_EXPIRED_MESSAGE });
+      }
+      return;
+    }
+
+    try {
+      const upload = await uploadPartnerKycFile({ file, uid: user.uid, type });
+      if (uploadRequestIdsRef.current[key] !== requestId) return;
+      if (!hasUploadedArtifact(upload)) {
+        throw new Error("Upload completed without a saved document path. Please try again.");
+      }
+      setKycUploads((current) => ({ ...current, [key]: upload }));
+      updateUploadedDocumentProfile(key, upload.fileName || file.name);
+      clearSelectedFile();
+      updateDocumentProgress(key, { status: "uploaded", error: "" });
+    } catch (error) {
+      if (uploadRequestIdsRef.current[key] !== requestId) return;
+      updateDocumentProgress(key, { status: "error", error: toFriendlyUploadError(error) });
+    }
+  };
+
+  const uploadLiveVideoFile = async (file: File) => {
+    const requestId = uploadRequestIdsRef.current.liveVideo + 1;
+    uploadRequestIdsRef.current.liveVideo = requestId;
+    setLiveVideoUploadProgress({ status: "uploading", error: "" });
+    setErrors({});
+
+    const user = await getUploadUser();
+    if (!user) {
+      if (uploadRequestIdsRef.current.liveVideo === requestId) {
+        setLiveVideoUploadProgress({ status: "error", error: PARTNER_SUBMIT_SESSION_EXPIRED_MESSAGE });
+      }
+      return;
+    }
+
+    try {
+      const upload = await uploadPartnerKycFile({
+        file: normalizeLiveVideoForUpload(file),
+        uid: user.uid,
+        type: "live-video",
+      });
+      if (uploadRequestIdsRef.current.liveVideo !== requestId) return;
+      if (!hasLiveVideoArtifact(upload)) {
+        throw new Error("Upload completed without a saved live video path. Please record and try again.");
+      }
+      setLiveVideo((current) => ({ ...current, file: null, upload }));
+      setLiveVideoUploadProgress({ status: "uploaded", error: "" });
+    } catch (error) {
+      if (uploadRequestIdsRef.current.liveVideo !== requestId) return;
+      setLiveVideoUploadProgress({ status: "error", error: toFriendlyUploadError(error) });
+    }
+  };
+
   const handleStartLiveRecording = async () => {
     setRecordingError("");
     setCameraErrorKind(null);
@@ -1111,6 +1254,9 @@ export default function PartnerOnboardingPage() {
       recordingStartedAtRef.current = Date.now();
       setRecordingSeconds(0);
       setIsRecordingLiveVideo(true);
+      uploadRequestIdsRef.current.liveVideo += 1;
+      setLiveVideo((current) => ({ ...current, upload: null }));
+      setLiveVideoUploadProgress({ status: "selected", error: "" });
 
       if (liveStreamVideoRef.current) {
         liveStreamVideoRef.current.srcObject = stream;
@@ -1143,6 +1289,8 @@ export default function PartnerOnboardingPage() {
         });
         setRecordingError("");
         setCameraErrorKind(null);
+        setLiveVideoUploadProgress({ status: "selected", error: "" });
+        void uploadLiveVideoFile(file);
       };
 
       recorder.start();
@@ -1161,6 +1309,7 @@ export default function PartnerOnboardingPage() {
 
   const handleRemoveLiveVideo = () => {
     stopLiveStream();
+    uploadRequestIdsRef.current.liveVideo += 1;
     setLiveVideo((current) => {
       if (current.objectUrl) URL.revokeObjectURL(current.objectUrl);
       return { file: null, upload: null, objectUrl: "" };
@@ -1168,6 +1317,7 @@ export default function PartnerOnboardingPage() {
     setRecordingSeconds(0);
     setRecordingError("");
     setCameraErrorKind(null);
+    setLiveVideoUploadProgress({ status: "pending", error: "" });
   };
 
   const handleCopyCurrentUrl = async () => {
@@ -1196,13 +1346,13 @@ export default function PartnerOnboardingPage() {
       setStep(firstValidationError.stepIndex);
       return;
     }
-    if (!requiredDocumentsSelected) {
+    if (!requiredDocumentsUploaded) {
       setErrors({ base: REQUIRED_DOCUMENTS_MESSAGE });
       setStep(5);
       return;
     }
-    if (!liveVideo.file && !hasLiveVideoArtifact(liveVideo.upload)) {
-      setErrors({ base: LIVE_VIDEO_REQUIRED_MESSAGE });
+    if (!liveVideoUploaded) {
+      setErrors({ base: "Please wait until your live verification video is uploaded." });
       setStep(6);
       return;
     }
@@ -1745,22 +1895,40 @@ export default function PartnerOnboardingPage() {
                     type="file"
                     accept="image/png,image/jpeg,image/webp,application/pdf"
                     onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      setSelfieFile(file ?? null);
-                      setKycUploads((current) => ({ ...current, selfie: null }));
+                      const file = event.target.files?.[0] ?? null;
+                      setSelfieFile(file);
                       setProfile((current) => ({ ...current, selfieFileName: "" }));
+                      if (!file) {
+                        uploadRequestIdsRef.current.selfie += 1;
+                        setKycUploads((current) => ({ ...current, selfie: null }));
+                        updateDocumentProgress("selfie", { status: "pending", error: "" });
+                        return;
+                      }
+                      updateDocumentProgress("selfie", { status: "selected", error: "" });
+                      void uploadDocumentFile(file, "selfie", "selfie", () => setSelfieFile(null));
                     }}
+                    disabled={kycUploadProgress.selfie.status === "uploading"}
                     className="mt-3 block w-full text-xs text-slate-600 file:mr-3 file:rounded-lg file:border file:border-slate-200 file:bg-white file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-slate-700"
                   />
                   <p className="mt-2 text-xs text-slate-600">
-                    {formatUploadSelectionStatus(selfieFile, kycUploads.selfie, profile.selfieFileName)}
+                    {formatUploadSelectionStatus(
+                      kycUploadProgress.selfie.status,
+                      selfieFile,
+                      kycUploads.selfie,
+                      profile.selfieFileName,
+                    )}
                   </p>
+                  {kycUploadProgress.selfie.error ? (
+                    <p className="mt-2 text-xs font-medium text-rose-600">{kycUploadProgress.selfie.error}</p>
+                  ) : null}
                   {selfieFile || hasUploadedArtifact(kycUploads.selfie) || profile.selfieFileName ? (
                     <button
                       type="button"
                       onClick={() => {
+                        uploadRequestIdsRef.current.selfie += 1;
                         setSelfieFile(null);
                         setKycUploads((current) => ({ ...current, selfie: null }));
+                        updateDocumentProgress("selfie", { status: "pending", error: "" });
                         setProfile((current) => ({ ...current, selfieFileName: "" }));
                       }}
                       className="mt-2 text-xs font-semibold text-rose-600"
@@ -1779,26 +1947,44 @@ export default function PartnerOnboardingPage() {
                     type="file"
                     accept="image/png,image/jpeg,image/webp,application/pdf"
                     onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      setAadhaarFrontFile(file ?? null);
-                      setKycUploads((current) => ({ ...current, aadhaarFront: null }));
+                      const file = event.target.files?.[0] ?? null;
+                      setAadhaarFrontFile(file);
                       setProfile((current) => ({
                         ...current,
                         aadhaarFrontFileName: "",
                         aadhaarFileName: "",
                       }));
+                      if (!file) {
+                        uploadRequestIdsRef.current.aadhaarFront += 1;
+                        setKycUploads((current) => ({ ...current, aadhaarFront: null }));
+                        updateDocumentProgress("aadhaarFront", { status: "pending", error: "" });
+                        return;
+                      }
+                      updateDocumentProgress("aadhaarFront", { status: "selected", error: "" });
+                      void uploadDocumentFile(file, "aadhaarFront", "aadhaar-front", () => setAadhaarFrontFile(null));
                     }}
+                    disabled={kycUploadProgress.aadhaarFront.status === "uploading"}
                     className="mt-3 block w-full text-xs text-slate-600 file:mr-3 file:rounded-lg file:border file:border-slate-200 file:bg-white file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-slate-700"
                   />
                   <p className="mt-2 text-xs text-slate-600">
-                    {formatUploadSelectionStatus(aadhaarFrontFile, kycUploads.aadhaarFront, profile.aadhaarFrontFileName)}
+                    {formatUploadSelectionStatus(
+                      kycUploadProgress.aadhaarFront.status,
+                      aadhaarFrontFile,
+                      kycUploads.aadhaarFront,
+                      profile.aadhaarFrontFileName,
+                    )}
                   </p>
+                  {kycUploadProgress.aadhaarFront.error ? (
+                    <p className="mt-2 text-xs font-medium text-rose-600">{kycUploadProgress.aadhaarFront.error}</p>
+                  ) : null}
                   {aadhaarFrontFile || hasUploadedArtifact(kycUploads.aadhaarFront) || profile.aadhaarFrontFileName ? (
                     <button
                       type="button"
                       onClick={() => {
+                        uploadRequestIdsRef.current.aadhaarFront += 1;
                         setAadhaarFrontFile(null);
                         setKycUploads((current) => ({ ...current, aadhaarFront: null }));
+                        updateDocumentProgress("aadhaarFront", { status: "pending", error: "" });
                         setProfile((current) => ({ ...current, aadhaarFrontFileName: "" }));
                       }}
                       className="mt-2 text-xs font-semibold text-rose-600"
@@ -1815,26 +2001,44 @@ export default function PartnerOnboardingPage() {
                     type="file"
                     accept="image/png,image/jpeg,image/webp,application/pdf"
                     onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      setAadhaarBackFile(file ?? null);
-                      setKycUploads((current) => ({ ...current, aadhaarBack: null }));
+                      const file = event.target.files?.[0] ?? null;
+                      setAadhaarBackFile(file);
                       setProfile((current) => ({
                         ...current,
                         aadhaarBackFileName: "",
                         aadhaarFileName: "",
                       }));
+                      if (!file) {
+                        uploadRequestIdsRef.current.aadhaarBack += 1;
+                        setKycUploads((current) => ({ ...current, aadhaarBack: null }));
+                        updateDocumentProgress("aadhaarBack", { status: "pending", error: "" });
+                        return;
+                      }
+                      updateDocumentProgress("aadhaarBack", { status: "selected", error: "" });
+                      void uploadDocumentFile(file, "aadhaarBack", "aadhaar-back", () => setAadhaarBackFile(null));
                     }}
+                    disabled={kycUploadProgress.aadhaarBack.status === "uploading"}
                     className="mt-3 block w-full text-xs text-slate-600 file:mr-3 file:rounded-lg file:border file:border-slate-200 file:bg-white file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-slate-700"
                   />
                   <p className="mt-2 text-xs text-slate-600">
-                    {formatUploadSelectionStatus(aadhaarBackFile, kycUploads.aadhaarBack, profile.aadhaarBackFileName)}
+                    {formatUploadSelectionStatus(
+                      kycUploadProgress.aadhaarBack.status,
+                      aadhaarBackFile,
+                      kycUploads.aadhaarBack,
+                      profile.aadhaarBackFileName,
+                    )}
                   </p>
+                  {kycUploadProgress.aadhaarBack.error ? (
+                    <p className="mt-2 text-xs font-medium text-rose-600">{kycUploadProgress.aadhaarBack.error}</p>
+                  ) : null}
                   {aadhaarBackFile || hasUploadedArtifact(kycUploads.aadhaarBack) || profile.aadhaarBackFileName ? (
                     <button
                       type="button"
                       onClick={() => {
+                        uploadRequestIdsRef.current.aadhaarBack += 1;
                         setAadhaarBackFile(null);
                         setKycUploads((current) => ({ ...current, aadhaarBack: null }));
+                        updateDocumentProgress("aadhaarBack", { status: "pending", error: "" });
                         setProfile((current) => ({ ...current, aadhaarBackFileName: "" }));
                       }}
                       className="mt-2 text-xs font-semibold text-rose-600"
@@ -1918,22 +2122,35 @@ export default function PartnerOnboardingPage() {
                   <p className="text-sm font-semibold text-slate-900">
                     {isRecordingLiveVideo
                       ? `Recording ${recordingSeconds}s`
-                      : hasLiveVideoArtifact(liveVideo.upload)
-                        ? "Selected"
-                      : liveVideo.file
-                        ? "Ready to upload"
-                        : isCameraEnabled
-                          ? "Camera enabled"
-                          : "Camera permission required"}
+                      : liveVideoUploadProgress.status === "uploading"
+                        ? "Recording saved. Uploading..."
+                        : liveVideoUploaded
+                          ? "Live video uploaded"
+                          : liveVideo.file
+                            ? "Recording saved. Uploading..."
+                            : isCameraEnabled
+                              ? "Camera enabled"
+                              : "Camera permission required"}
                   </p>
                   <p className="mt-1 text-xs text-slate-500">
-                    {hasLiveVideoArtifact(liveVideo.upload)
-                      ? "Your existing live verification video remains selected. Re-record only if you want to replace it."
+                    {liveVideoUploaded
+                      ? "Your live verification video is uploaded. Re-record only if you want to replace it."
                       : "Tap Enable Camera first. Your browser will ask for camera and microphone permission."}
                   </p>
                   <p className="mt-2 text-xs font-medium text-slate-600">
-                    {formatUploadSelectionStatus(liveVideo.file, liveVideo.upload, liveVideo.upload?.fileName)}
+                    {formatUploadSelectionStatus(
+                      liveVideoUploadProgress.status,
+                      liveVideo.file,
+                      liveVideo.upload,
+                      liveVideo.upload?.fileName,
+                    )}
                   </p>
+                  {liveVideoUploadProgress.status === "uploading" ? (
+                    <p className="mt-2 text-xs font-semibold text-[#0f766e]">Uploading live video...</p>
+                  ) : null}
+                  {liveVideoUploadProgress.error ? (
+                    <p className="mt-2 text-xs font-medium text-rose-600">{liveVideoUploadProgress.error}</p>
+                  ) : null}
                   {permissionStates.camera !== "unsupported" || permissionStates.microphone !== "unsupported" ? (
                     <p className="mt-2 text-xs font-medium text-slate-600">
                       Camera: {permissionStates.camera}. Microphone: {permissionStates.microphone}.
@@ -1946,7 +2163,7 @@ export default function PartnerOnboardingPage() {
                         onClick={() => {
                           void handleEnableCamera();
                         }}
-                        disabled={isEnablingCamera}
+                        disabled={isEnablingCamera || isLiveVideoUploadInProgress}
                         className="h-10 rounded-xl bg-[#0f766e] px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {isEnablingCamera
@@ -1964,7 +2181,8 @@ export default function PartnerOnboardingPage() {
                         onClick={() => {
                           void handleStartLiveRecording();
                         }}
-                        className="h-10 rounded-xl bg-[#0f766e] px-4 text-sm font-semibold text-white"
+                        disabled={isLiveVideoUploadInProgress}
+                        className="h-10 rounded-xl bg-[#0f766e] px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         Start Recording
                       </button>
@@ -2105,11 +2323,11 @@ export default function PartnerOnboardingPage() {
                 </label>
 
                 {errors.base ? <p className="text-xs text-rose-600">{errors.base}</p> : null}
-                {!liveVideo.file && !hasLiveVideoArtifact(liveVideo.upload) ? (
+                {!liveVideoUploaded ? (
                   <button
                     type="button"
                     onClick={() => {
-                      setErrors({ base: LIVE_VIDEO_REQUIRED_MESSAGE });
+                      setErrors({ base: "Please wait until your live verification video is uploaded." });
                       setStep(6);
                     }}
                     className="mt-2 inline-flex h-10 items-center rounded-xl border border-rose-200 px-4 text-sm font-semibold text-rose-700"
@@ -2147,7 +2365,10 @@ export default function PartnerOnboardingPage() {
               <button
                 type="button"
                 onClick={handleContinue}
-                disabled={step === 6 && !hasSelectedLiveVideo}
+                disabled={
+                  (step === 5 && (!requiredDocumentsUploaded || isDocumentUploadInProgress)) ||
+                  (step === 6 && (!liveVideoUploaded || isLiveVideoUploadInProgress))
+                }
                 className="inline-flex h-10 items-center gap-1 rounded-full bg-[#0f766e] px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Continue
