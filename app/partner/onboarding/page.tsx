@@ -138,7 +138,7 @@ const OTHER_PERMISSION_HELP_STEPS = [
 ];
 const LIVE_VIDEO_MIN_SECONDS = 10;
 const LIVE_VIDEO_MAX_SECONDS = 20;
-const QUALIFICATION_OPTIONS = ["10th Pass", "12th Pass", "Graduate", "Post Graduate", "Diploma", "Other"];
+const QUALIFICATION_OPTIONS = ["10th Pass", "12th Pass", "Graduate", "Other"];
 const LIVE_VIDEO_ALLOWED_MIME_TYPES = new Set([
   "video/webm",
   "video/mp4",
@@ -447,7 +447,7 @@ function mergeWithBackendProfile(
       current.communicationStyle,
       toOptionalStringArray(application.communicationStyle),
     ).slice(0, 1),
-    hobbies: mergeArrayIfEmpty(current.hobbies, toOptionalStringArray(application.hobbies)),
+    hobbies: mergeArrayIfEmpty(current.hobbies, toOptionalStringArray(application.hobbies)).slice(0, 5),
     aboutYourself: mergeIfEmpty(current.aboutYourself, toOptionalString(application.aboutYourself)),
     servicesOffered: mergeArrayIfEmpty(
       current.servicesOffered,
@@ -480,6 +480,7 @@ function toOnboardingProfile(source: PartnerProfile): OnboardingProfile {
     ...source,
     languagesKnown: source.languagesKnown.slice(0, 3),
     communicationStyle: source.communicationStyle.slice(0, 1),
+    hobbies: source.hobbies.slice(0, 5),
     servicesOffered: sanitizeServices(source.servicesOffered as string[]),
   };
 }
@@ -513,7 +514,7 @@ function toPartnerOnboardingPayload(
     qualification: profile.qualification.trim() || undefined,
     languagesKnown: profile.languagesKnown.slice(0, 3),
     communicationStyle: profile.communicationStyle.slice(0, 1),
-    hobbies: profile.hobbies,
+    hobbies: profile.hobbies.slice(0, 5),
     aboutYourself: profile.aboutYourself.trim(),
     servicesOffered: backendSupportedServices,
     chatPrice: CHAT_RATE_PER_MIN,
@@ -817,6 +818,9 @@ export default function PartnerOnboardingPage() {
   const liveVideoUploaded = hasLiveVideoArtifact(liveVideo.upload);
   const isLiveVideoUploadInProgress =
     liveVideoUploadProgress.status === "selected" || liveVideoUploadProgress.status === "uploading";
+  const recordingSecondsRemaining = Math.max(0, LIVE_VIDEO_MAX_SECONDS - recordingSeconds);
+  const isRecordingCountdownCritical =
+    isRecordingLiveVideo && recordingSecondsRemaining > 0 && recordingSecondsRemaining <= 5;
 
   const summaryRows = useMemo(
     () => [
@@ -873,7 +877,7 @@ export default function PartnerOnboardingPage() {
       if (profile.languagesKnown.length === 0) nextErrors.languagesKnown = "Select at least one language.";
       if (profile.languagesKnown.length > 3) nextErrors.languagesKnown = "Select no more than 3 languages.";
       if (profile.communicationStyle.length !== 1) nextErrors.communicationStyle = "Select one communication style.";
-      if (profile.hobbies.length === 0) nextErrors.hobbies = "Select at least one hobby.";
+      if (profile.hobbies.length !== 5) nextErrors.hobbies = "Select exactly 5 hobbies.";
     }
 
     if (stepIndex === 2) {
@@ -894,7 +898,7 @@ export default function PartnerOnboardingPage() {
       if (profile.age.trim() && !isValidPartnerAge(profile.age)) {
         nextErrors.age = "Age must be a number between 18 and 70.";
       }
-      if (profile.hobbies.length === 0) nextErrors.hobbies = "Select at least one hobby.";
+      if (profile.hobbies.length !== 5) nextErrors.hobbies = "Select exactly 5 hobbies.";
       if (!liveVideoUploaded) {
         nextErrors.base = "Please wait until your live verification video is uploaded.";
       }
@@ -1559,6 +1563,22 @@ export default function PartnerOnboardingPage() {
     setErrors((current) => ({ ...current, communicationStyle: undefined }));
   };
 
+  const handleHobbyToggle = (value: string) => {
+    const isSelected = profile.hobbies.includes(value);
+    if (!isSelected && profile.hobbies.length >= 5) {
+      setErrors((current) => ({
+        ...current,
+        hobbies: "You can select only 5 hobbies. Deselect one before choosing another.",
+      }));
+      return;
+    }
+    setProfile((current) => ({
+      ...current,
+      hobbies: toggleArrayValue(current.hobbies, value),
+    }));
+    setErrors((current) => ({ ...current, hobbies: undefined }));
+  };
+
   if (isEditMode === null || isHydratingExistingApplication) {
     return (
       <section className="flex min-h-screen items-center justify-center bg-[#fffdf8] px-4">
@@ -1691,12 +1711,8 @@ export default function PartnerOnboardingPage() {
               </div>
               <div>
                 <p className="mb-2 text-sm font-medium text-slate-700">Hobbies</p>
-                {renderChipGroup(partnerHobbyOptions, profile.hobbies, (value) =>
-                  setProfile((current) => ({
-                    ...current,
-                    hobbies: toggleArrayValue(current.hobbies, value),
-                  })),
-                )}
+                {renderChipGroup(partnerHobbyOptions, profile.hobbies, handleHobbyToggle)}
+                <p className="mt-2 text-xs text-slate-500">Select exactly 5 hobbies.</p>
                 {errors.hobbies ? <p className="mt-1 text-xs text-rose-600">{errors.hobbies}</p> : null}
               </div>
             </div>
@@ -1965,18 +1981,6 @@ export default function PartnerOnboardingPage() {
                 </p>
               </div>
 
-              <div className="rounded-xl border border-[#dceae5] bg-white p-4">
-                <p className="text-sm font-semibold text-slate-900">Read this script while recording</p>
-                <p className="mt-2 rounded-xl bg-slate-50 p-3 text-sm leading-6 text-slate-700">
-                  {liveVerificationScript}
-                </p>
-                <div className="mt-3 grid gap-2 text-xs text-slate-600 sm:grid-cols-3">
-                  <p><span className="font-semibold text-slate-800">Name:</span> {profile.fullName || "Missing"}</p>
-                  <p><span className="font-semibold text-slate-800">Age:</span> {profile.age || "Missing"}</p>
-                  <p><span className="font-semibold text-slate-800">Hobbies:</span> {profile.hobbies.join(", ") || "Missing"}</p>
-                </div>
-              </div>
-
               {browserEnvironment.isInAppBrowser ? (
                 <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
                   <p className="font-semibold">{IN_APP_BROWSER_WARNING}</p>
@@ -2024,9 +2028,13 @@ export default function PartnerOnboardingPage() {
 
                 <div className="rounded-xl border border-slate-200 p-4">
                   <div className="flex items-start justify-between gap-3">
-                    <p className="text-sm font-semibold text-slate-900">
+                    <p
+                      className={`font-semibold tabular-nums ${
+                        isRecordingCountdownCritical ? "text-lg text-rose-600" : "text-sm text-slate-900"
+                      }`}
+                    >
                       {isRecordingLiveVideo
-                        ? `Recording ${recordingSeconds}s · ${Math.max(0, LIVE_VIDEO_MAX_SECONDS - recordingSeconds)}s remaining`
+                        ? `Recording ${recordingSeconds}s · ${recordingSecondsRemaining}s remaining`
                         : liveVideoUploadProgress.status === "uploading"
                           ? "Recording saved. Uploading..."
                           : liveVideoUploaded
@@ -2168,6 +2176,18 @@ export default function PartnerOnboardingPage() {
                     </div>
                   ) : null}
                   {errors.base ? <p className="mt-3 text-xs font-medium text-rose-600">{errors.base}</p> : null}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-[#dceae5] bg-white p-4 sm:p-5">
+                <p className="text-base font-semibold text-slate-900">Read this script while recording</p>
+                <p className="mt-2 rounded-xl bg-slate-50 p-3 text-base leading-7 text-slate-700 sm:p-4">
+                  {liveVerificationScript}
+                </p>
+                <div className="mt-3 grid gap-2 text-sm text-slate-600 sm:grid-cols-3">
+                  <p><span className="font-semibold text-slate-800">Name:</span> {profile.fullName || "Missing"}</p>
+                  <p><span className="font-semibold text-slate-800">Age:</span> {profile.age || "Missing"}</p>
+                  <p><span className="font-semibold text-slate-800">Hobbies:</span> {profile.hobbies.join(", ") || "Missing"}</p>
                 </div>
               </div>
             </div>
