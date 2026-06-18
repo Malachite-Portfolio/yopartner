@@ -2001,36 +2001,37 @@ export default function PartnerOnboardingPage() {
                 </div>
               ) : null}
 
-              <div className="rounded-xl border border-[#dceae5] bg-[#f7fbf9] p-3 sm:p-4">
-                <p className="text-sm font-semibold text-slate-900">Read this script while recording</p>
-                <div className="mt-2 max-h-[132px] overflow-y-auto rounded-lg border border-[#dceae5] bg-white px-3 py-2 text-sm leading-6 text-slate-700">
-                  {liveVerificationScript}
-                </div>
-              </div>
-
               <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
                 <div className="rounded-xl border border-slate-200 bg-slate-950 p-3">
-                  {isCameraEnabled || isRecordingLiveVideo ? (
-                    <video
-                      ref={liveStreamVideoRef}
-                      autoPlay
-                      muted
-                      playsInline
-                      className="aspect-video w-full rounded-lg bg-black object-cover"
-                    />
-                  ) : liveVideo.objectUrl ? (
-                    <video
-                      src={liveVideo.objectUrl}
-                      controls
-                      controlsList="nodownload"
-                      playsInline
-                      className="aspect-video w-full rounded-lg bg-black object-cover"
-                    />
-                  ) : (
-                    <div className="flex aspect-video w-full items-center justify-center rounded-lg bg-slate-900 px-4 text-center text-sm text-white/70">
-                      Your recorded verification video preview will appear here.
+                  <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-black">
+                    {isCameraEnabled || isRecordingLiveVideo ? (
+                      <video
+                        ref={liveStreamVideoRef}
+                        autoPlay
+                        muted
+                        playsInline
+                        className="h-full w-full object-cover"
+                      />
+                    ) : liveVideo.objectUrl ? (
+                      <video
+                        src={liveVideo.objectUrl}
+                        controls
+                        controlsList="nodownload"
+                        playsInline
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-slate-900 px-4 pt-20 text-center text-sm text-white/70">
+                        Your recorded verification video preview will appear here.
+                      </div>
+                    )}
+                    <div className="absolute inset-x-2 top-2 z-10 max-h-[96px] overflow-hidden rounded-lg border border-white/15 bg-slate-950/80 px-3 py-2 text-white shadow-lg backdrop-blur-sm">
+                      <p className="text-xs font-semibold">Read while recording</p>
+                      <div className="mt-1 max-h-[60px] overflow-y-auto pr-1 text-[11px] leading-4 text-white/90">
+                        {liveVerificationScript}
+                      </div>
                     </div>
-                  )}
+                  </div>
                 </div>
 
                 <div className="rounded-xl border border-slate-200 p-4">
