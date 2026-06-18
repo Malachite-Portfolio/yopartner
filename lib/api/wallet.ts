@@ -76,9 +76,8 @@ export async function verifyRechargePayment(payload: Record<string, unknown>) {
 export type RazorpayOrderRequest = {
   amount: number;
   walletCredit: number;
-  gstAmount: number;
   bonusAmount: number;
-  planId?: string;
+  planId: string;
 };
 
 export type RazorpayOrderResponse = {
@@ -109,9 +108,8 @@ export type RazorpayVerifyRequest = {
   razorpay_signature: string;
   amount: number;
   walletCredit: number;
-  gstAmount: number;
   bonusAmount: number;
-  planId?: string;
+  planId: string;
 };
 
 export async function verifyRazorpayPayment(payload: RazorpayVerifyRequest) {

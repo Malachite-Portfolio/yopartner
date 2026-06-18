@@ -70,6 +70,13 @@ export type PartnerProfilePayload = {
   application?: Record<string, unknown> | null;
 };
 
+export type PartnerApplicationSubmitPayload = {
+  application: Record<string, unknown> | null;
+  companion?: Record<string, unknown> | null;
+  alreadyApproved?: boolean;
+  alreadySubmitted?: boolean;
+};
+
 export type PartnerEarningsPayload = {
   earnings: Record<string, unknown>[];
   payouts?: Record<string, unknown>[];
@@ -142,7 +149,7 @@ export async function submitPartnerApplication(payload: Record<string, unknown>,
         body: JSON.stringify(payload),
         cache: "no-store",
       });
-      return parsePartnerApiResponse<{ success: boolean; message?: string }>(response);
+      return parsePartnerApiResponse<PartnerApplicationSubmitPayload>(response);
     } catch {
       return {
         data: null,
@@ -153,7 +160,7 @@ export async function submitPartnerApplication(payload: Record<string, unknown>,
     }
   }
 
-  return apiRequest<{ success: boolean; message?: string }>("/api/partner/applications", {
+  return apiRequest<PartnerApplicationSubmitPayload>("/api/partner/applications", {
     method: "POST",
     body: JSON.stringify(payload),
   });

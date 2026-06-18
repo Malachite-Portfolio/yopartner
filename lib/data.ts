@@ -3,6 +3,8 @@
   label: string;
 };
 
+import { CHAT_RATE_PER_MESSAGE } from "@/lib/platformPricing";
+
 export type ProcessStep = {
   title: string;
   description: string;
@@ -436,7 +438,7 @@ export const faqs: FAQ[] = [
   {
     question: "How much does a session cost?",
     answer:
-      "YoPartner uses fixed platform prices by service: chat is ₹5/message, audio call is ₹18/min, video call is ₹24/min, and home visit is ₹2000/hour.",
+      `YoPartner uses fixed platform prices by service: chat is ₹${CHAT_RATE_PER_MESSAGE}/message, audio call is ₹18/min, video call is ₹24/min, and home visit is ₹2000/hour.`,
   },
   {
     question: "What if I am not satisfied with my session?",
@@ -484,7 +486,7 @@ export const connectCompanions: ConnectCompanion[] = [
       "https://images.unsplash.com/photo-1489980557514-251d61e3eeb6?auto=format&fit=crop&w=520&q=80",
       "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=520&q=80",
     ],
-    chatPrice: 10,
+    chatPrice: CHAT_RATE_PER_MESSAGE,
     voicePrice: 15,
     videoPrice: 20,
     visitPrice: 2000,
@@ -585,7 +587,7 @@ export const connectCompanions: ConnectCompanion[] = [
       "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=520&q=80",
       "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=520&q=80",
     ],
-    chatPrice: 10,
+    chatPrice: CHAT_RATE_PER_MESSAGE,
     voicePrice: 15,
     videoPrice: 20,
     visitPrice: 2000,
@@ -649,7 +651,7 @@ export const connectCompanions: ConnectCompanion[] = [
       "https://images.unsplash.com/photo-1456324504439-367cee3b3c32?auto=format&fit=crop&w=520&q=80",
       "https://images.unsplash.com/photo-1454923634634-bd1614719a7b?auto=format&fit=crop&w=520&q=80",
     ],
-    chatPrice: 8,
+    chatPrice: CHAT_RATE_PER_MESSAGE,
     voicePrice: 15,
     visitPrice: 1800,
     serviceAreas: ["India"],
@@ -699,7 +701,7 @@ export const connectCompanions: ConnectCompanion[] = [
       "https://images.unsplash.com/photo-1478145046317-39f10e56b5e9?auto=format&fit=crop&w=520&q=80",
       "https://images.unsplash.com/photo-1456327102063-fb5054efe647?auto=format&fit=crop&w=520&q=80",
     ],
-    chatPrice: 10,
+    chatPrice: CHAT_RATE_PER_MESSAGE,
     voicePrice: 15,
     videoPrice: 20,
     visitPrice: 1900,
@@ -750,7 +752,7 @@ export const connectCompanions: ConnectCompanion[] = [
       "https://images.unsplash.com/photo-1517864604815-6a2798562f95?auto=format&fit=crop&w=520&q=80",
       "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=520&q=80",
     ],
-    chatPrice: 8,
+    chatPrice: CHAT_RATE_PER_MESSAGE,
     voicePrice: 15,
     videoPrice: 20,
     visitPrice: 1900,
@@ -801,7 +803,7 @@ export const connectCompanions: ConnectCompanion[] = [
       "https://images.unsplash.com/photo-1450101499163-c8848c66ca85?auto=format&fit=crop&w=520&q=80",
       "https://images.unsplash.com/photo-1463453091185-61582044d556?auto=format&fit=crop&w=520&q=80",
     ],
-    chatPrice: 5,
+    chatPrice: CHAT_RATE_PER_MESSAGE,
     voicePrice: 10,
     videoPrice: 15,
     visitPrice: 2000,
@@ -852,7 +854,7 @@ export const connectCompanions: ConnectCompanion[] = [
       "https://images.unsplash.com/photo-1482961674540-0b0e8363a005?auto=format&fit=crop&w=520&q=80",
       "https://images.unsplash.com/photo-1475609471617-0ef53b59cff3?auto=format&fit=crop&w=520&q=80",
     ],
-    chatPrice: 10,
+    chatPrice: CHAT_RATE_PER_MESSAGE,
     voicePrice: 15,
     videoPrice: 20,
     visitPrice: 1900,
@@ -903,7 +905,7 @@ export const connectCompanions: ConnectCompanion[] = [
       "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=520&q=80",
       "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=520&q=80",
     ],
-    chatPrice: 10,
+    chatPrice: CHAT_RATE_PER_MESSAGE,
     voicePrice: 15,
     videoPrice: 20,
     visitPrice: 2100,
@@ -954,7 +956,7 @@ export const connectCompanions: ConnectCompanion[] = [
       "https://images.unsplash.com/photo-1478131143081-80f7f84ca84d?auto=format&fit=crop&w=520&q=80",
       "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=520&q=80",
     ],
-    chatPrice: 10,
+    chatPrice: CHAT_RATE_PER_MESSAGE,
     voicePrice: 15,
     videoPrice: 20,
     visitPrice: 2200,

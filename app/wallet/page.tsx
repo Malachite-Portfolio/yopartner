@@ -33,24 +33,21 @@ import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { getUserAuthState, getUserAuthTokenWithRestore } from "@/lib/auth/userAuth";
 import { WALLET_UPDATED_EVENT } from "@/lib/wallet";
 import { trackMetaPixel } from "@/lib/metaPixel";
+import { WALLET_PLANS } from "@/lib/platformPricing";
 
 type WalletTab = "overview" | "transactions" | "recharge";
 type ModalStep = "amount" | "checkout";
 
 type RechargePlan = {
   id: string;
-  rechargeAmount: number;
-  bonusPercent: number;
+  pay: number;
+  get: number;
 };
 
-const rechargePlans: RechargePlan[] = [
-  { id: "100", rechargeAmount: 100, bonusPercent: 5 },
-  { id: "200", rechargeAmount: 200, bonusPercent: 5 },
-  { id: "300", rechargeAmount: 300, bonusPercent: 5 },
-  { id: "400", rechargeAmount: 400, bonusPercent: 5 },
-  { id: "500", rechargeAmount: 500, bonusPercent: 10 },
-  { id: "2000", rechargeAmount: 2000, bonusPercent: 20 },
-];
+const rechargePlans: RechargePlan[] = WALLET_PLANS.map((plan) => ({
+  ...plan,
+  id: String(plan.pay),
+}));
 
 function RechargePlanCard({
   plan,
@@ -61,11 +58,6 @@ function RechargePlanCard({
   selected: boolean;
   onSelect: () => void;
 }) {
-  const bonus = Math.round((plan.rechargeAmount * plan.bonusPercent) / 100);
-  const gstAmount = Math.round(plan.rechargeAmount * 0.18);
-  const walletCredit = plan.rechargeAmount + bonus;
-  const payAmount = plan.rechargeAmount + gstAmount;
-
   return (
     <button
       type="button"
@@ -78,22 +70,16 @@ function RechargePlanCard({
     >
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="text-2xl font-semibold text-slate-900">{formatINR(plan.rechargeAmount)}</p>
-          <p className="mt-1 text-xs text-slate-500">Pay {formatINR(payAmount)} (incl. 18% GST)</p>
+          <p className="text-2xl font-semibold text-slate-900">Pay {formatINR(plan.pay)}</p>
         </div>
-        <div className="flex flex-col items-end gap-1.5">
-          <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
-            +{plan.bonusPercent}% Bonus
+        {selected && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2.5 py-1 text-[11px] font-semibold text-white">
+            <CheckCircle2 size={12} />
+            Selected
           </span>
-          {selected && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2.5 py-1 text-[11px] font-semibold text-white">
-              <CheckCircle2 size={12} />
-              Selected
-            </span>
-          )}
-        </div>
+        )}
       </div>
-      <p className="mt-3 text-sm font-medium text-slate-700">Get {formatINR(walletCredit)} in your wallet</p>
+      <p className="mt-3 text-sm font-medium text-slate-700">Get {formatINR(plan.get)} in your wallet</p>
     </button>
   );
 }
@@ -145,19 +131,14 @@ function TransactionList({ transactions }: { transactions: WalletTransaction[] }
   );
 }
 
-function buildRechargeSummary(plan: RechargePlan | null, customAmount: number) {
-  const rechargeAmount = plan ? plan.rechargeAmount : customAmount;
-  const bonusAmount = plan ? Math.round((plan.rechargeAmount * plan.bonusPercent) / 100) : 0;
-  const gstAmount = Math.round(rechargeAmount * 0.18);
-  const walletCredit = rechargeAmount + bonusAmount;
-  const payAmount = rechargeAmount + gstAmount;
+function buildRechargeSummary(plan: RechargePlan) {
+  const bonusAmount = plan.get - plan.pay;
   return {
-    planId: plan?.id,
-    rechargeAmount,
+    planId: plan.id,
+    rechargeAmount: plan.pay,
     bonusAmount,
-    gstAmount,
-    walletCredit,
-    payAmount,
+    walletCredit: plan.get,
+    payAmount: plan.pay,
   };
 }
 
@@ -231,7 +212,6 @@ export default function WalletPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalStep, setModalStep] = useState<ModalStep>("amount");
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
-  const [customAmount, setCustomAmount] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [rechargeError, setRechargeError] = useState("");
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
@@ -343,10 +323,8 @@ export default function WalletPage() {
     [selectedPlanId],
   );
 
-  const parsedCustom = Number(customAmount);
-  const validCustom = Number.isFinite(parsedCustom) && Number.isInteger(parsedCustom) && parsedCustom >= 1 && parsedCustom <= 50000;
-  const canProceed = Boolean(selectedPlan || validCustom);
-  const rechargeSummary = canProceed ? buildRechargeSummary(selectedPlan, validCustom ? parsedCustom : 0) : null;
+  const canProceed = Boolean(selectedPlan);
+  const rechargeSummary = selectedPlan ? buildRechargeSummary(selectedPlan) : null;
 
   const totalRecharged = transactions
     .filter((tx) => tx.type === "recharge")
@@ -365,19 +343,18 @@ export default function WalletPage() {
     setModalStep("amount");
     setIsProcessingPayment(false);
     setSelectedPlanId(null);
-    setCustomAmount("");
     setRechargeError("");
   };
 
   const moveToCheckoutStep = () => {
     if (!canProceed) {
-      setRechargeError("Select a recharge plan or enter a custom amount between ₹1 and ₹50,000.");
+      setRechargeError("Select a recharge plan.");
       return;
     }
-    if (!selectedPlan && validCustom && parsedCustom > 0) {
+    if (selectedPlan) {
       trackMetaPixel("AddPaymentInfo", {
         currency: "INR",
-        value: parsedCustom,
+        value: selectedPlan.pay,
       });
     }
     setModalStep("checkout");
@@ -391,7 +368,7 @@ export default function WalletPage() {
     }
 
     if (!rechargeSummary) {
-      setRechargeError("Select a recharge plan or enter a custom amount between ₹1 and ₹50,000.");
+      setRechargeError("Select a recharge plan.");
       return;
     }
 
@@ -409,7 +386,6 @@ export default function WalletPage() {
       const orderResponse = await createRazorpayOrder({
         amount: rechargeSummary.payAmount,
         walletCredit: rechargeSummary.walletCredit,
-        gstAmount: rechargeSummary.gstAmount,
         bonusAmount: rechargeSummary.bonusAmount,
         planId: rechargeSummary.planId,
       });
@@ -451,7 +427,6 @@ export default function WalletPage() {
               razorpay_signature: paymentPayload.razorpay_signature,
               amount: rechargeSummary.payAmount,
               walletCredit: rechargeSummary.walletCredit,
-              gstAmount: rechargeSummary.gstAmount,
               bonusAmount: rechargeSummary.bonusAmount,
               planId: rechargeSummary.planId,
             });
@@ -683,10 +658,9 @@ export default function WalletPage() {
                       onSelect={() => {
                         trackMetaPixel("AddPaymentInfo", {
                           currency: "INR",
-                          value: plan.rechargeAmount,
+                          value: plan.pay,
                         });
                         setSelectedPlanId(plan.id);
-                        setCustomAmount("");
                         setRechargeError("");
                         openModal();
                         setModalStep("checkout");
@@ -726,7 +700,7 @@ export default function WalletPage() {
               <>
                 <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
                   <p className="font-semibold">Pick a recharge plan</p>
-                  <p className="mt-1">Plans include bonus credits. Or enter a custom amount below.</p>
+                  <p className="mt-1">Choose one of the available wallet offers.</p>
                 </div>
 
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -738,32 +712,14 @@ export default function WalletPage() {
                       onSelect={() => {
                         trackMetaPixel("AddPaymentInfo", {
                           currency: "INR",
-                          value: plan.rechargeAmount,
+                          value: plan.pay,
                         });
                         setSelectedPlanId(plan.id);
-                        setCustomAmount("");
                         setRechargeError("");
                         setModalStep("checkout");
                       }}
                     />
                   ))}
-                </div>
-
-                <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4">
-                  <p className="text-base font-semibold text-slate-900">Or enter custom amount</p>
-                  <input
-                    type="number"
-                    min={1}
-                    max={50000}
-                    value={customAmount}
-                    onChange={(event) => {
-                      setCustomAmount(event.target.value);
-                      setSelectedPlanId(null);
-                      setRechargeError("");
-                    }}
-                    placeholder="₹ 1 – 50,000"
-                    className="mt-3 h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-[#2563EB]"
-                  />
                 </div>
 
                 <button
@@ -795,8 +751,7 @@ export default function WalletPage() {
                   <div className="mt-4 rounded-2xl bg-[linear-gradient(135deg,#0f766e_0%,#0b5f65_45%,#1d4ed8_100%)] p-4 text-white">
                     <p className="text-sm font-semibold">Payment Summary</p>
                     <div className="mt-3 space-y-1.5 text-sm text-white/90">
-                      <p className="flex items-center justify-between"><span>Recharge Amount</span><span>{formatINR(rechargeSummary.rechargeAmount)}</span></p>
-                      <p className="flex items-center justify-between"><span>GST (18%)</span><span>{formatINR(rechargeSummary.gstAmount)}</span></p>
+                      <p className="flex items-center justify-between"><span>Pay</span><span>{formatINR(rechargeSummary.rechargeAmount)}</span></p>
                       <p className="flex items-center justify-between"><span>Bonus</span><span>{formatINR(rechargeSummary.bonusAmount)}</span></p>
                       <p className="flex items-center justify-between font-semibold text-white"><span>Wallet Credit</span><span>{formatINR(rechargeSummary.walletCredit)}</span></p>
                       <p className="mt-2 border-t border-white/30 pt-2 flex items-center justify-between text-base font-semibold text-white"><span>You Pay</span><span>{formatINR(rechargeSummary.payAmount)}</span></p>

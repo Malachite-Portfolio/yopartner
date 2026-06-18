@@ -19,6 +19,7 @@ import {
 import type { ConnectCompanion, HomeVisitCompanion } from "@/lib/data";
 import type { PartnerEarningItem, PartnerProfile, PartnerBookingItem, PartnerSettings } from "@/lib/partnerData";
 import type { WalletTransaction } from "@/lib/wallet";
+import { CHAT_RATE_PER_MESSAGE } from "@/lib/platformPricing";
 
 export const CLIENT_DEMO_PHONE = "4455667788";
 export const CLIENT_DEMO_PHONE_E164 = "+914455667788";
@@ -133,7 +134,7 @@ export const demoHosts: ConnectCompanion[] = [
       "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=520&q=80",
       "https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?auto=format&fit=crop&w=520&q=80",
     ],
-    chatPrice: 10,
+    chatPrice: CHAT_RATE_PER_MESSAGE,
     voicePrice: 20,
     videoPrice: 40,
     visitPrice: 499,
@@ -177,7 +178,7 @@ export const demoHosts: ConnectCompanion[] = [
     galleryImages: [
       "https://images.unsplash.com/photo-1521119989659-a83eee488004?auto=format&fit=crop&w=520&q=80",
     ],
-    chatPrice: 12,
+    chatPrice: CHAT_RATE_PER_MESSAGE,
     voicePrice: 25,
     videoPrice: 45,
     visitPrice: 499,
@@ -221,7 +222,7 @@ export const demoHosts: ConnectCompanion[] = [
     galleryImages: [
       "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=520&q=80",
     ],
-    chatPrice: 10,
+    chatPrice: CHAT_RATE_PER_MESSAGE,
     voicePrice: 20,
     visitPrice: 0,
     serviceAreas: ["India"],
@@ -264,7 +265,7 @@ export const demoHosts: ConnectCompanion[] = [
     galleryImages: [
       "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=520&q=80",
     ],
-    chatPrice: 15,
+    chatPrice: CHAT_RATE_PER_MESSAGE,
     voicePrice: 30,
     videoPrice: 50,
     visitPrice: 0,
@@ -308,7 +309,7 @@ export const demoHosts: ConnectCompanion[] = [
     galleryImages: [
       "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=520&q=80",
     ],
-    chatPrice: 10,
+    chatPrice: CHAT_RATE_PER_MESSAGE,
     voicePrice: 22,
     visitPrice: 0,
     serviceAreas: ["India"],
@@ -409,7 +410,7 @@ export const clientDemoPartnerProfile: PartnerProfile = {
   aboutYourself:
     "I offer calm, respectful and strictly platonic sessions with active listening and supportive communication.",
   servicesOffered: ["Chat", "Audio Call", "Video Call", "Home Visit"],
-  chatPricePerMinute: "10",
+  chatPricePerMinute: String(CHAT_RATE_PER_MESSAGE),
   audioPricePerMinute: "20",
   videoPricePerMinute: "40",
   homeVisitPricePerSession: "499",

@@ -1,5 +1,7 @@
 export const ADMIN_LOGIN_KEY = "yopartner_admin_logged_in";
 
+import { CHAT_RATE_PER_MESSAGE } from "@/lib/platformPricing";
+
 export type AdminCompanionStatus = "Active" | "Pending" | "Suspended" | "Under Review";
 export type AdminApplicationStatus =
   | "Draft"
@@ -291,7 +293,7 @@ export const seedAdminCompanions: AdminCompanion[] = [
     category: "Communication & Emotional Support",
     languages: ["Hindi", "English", "Bengali"],
     services: ["Chat", "Audio Call", "Video Call", "Home Visit"],
-    chatPrice: 10,
+    chatPrice: CHAT_RATE_PER_MESSAGE,
     audioPrice: 15,
     videoPrice: 20,
     visitPrice: 2000,
@@ -313,7 +315,7 @@ export const seedAdminCompanions: AdminCompanion[] = [
     category: "Communication & Emotional Support",
     languages: ["English", "Hindi", "Marathi"],
     services: ["Chat", "Audio Call", "Video Call"],
-    chatPrice: 10,
+    chatPrice: CHAT_RATE_PER_MESSAGE,
     audioPrice: 15,
     videoPrice: 20,
     visitPrice: 1700,

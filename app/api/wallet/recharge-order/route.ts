@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createCode, notImplementedResponse, parseJsonBody } from "@/lib/server/http";
 import { getPrismaClient } from "@/lib/server/prisma";
 import { requireFirebaseUser } from "@/lib/server/auth";
+import { WALLET_PLANS } from "@/lib/platformPricing";
 
 export const runtime = "nodejs";
 
@@ -16,8 +17,9 @@ export async function POST(request: Request) {
 
   const body = await parseJsonBody<{ amount?: number }>(request);
   const amount = Number(body?.amount ?? 0);
-  if (!Number.isFinite(amount) || amount <= 0) {
-    return NextResponse.json({ error: "BAD_REQUEST", message: "Valid amount is required." }, { status: 400 });
+  const plan = WALLET_PLANS.find((item) => item.pay === amount);
+  if (!plan) {
+    return NextResponse.json({ error: "BAD_REQUEST", message: "Select a valid recharge plan." }, { status: 400 });
   }
 
   const orderId = createCode("ORD");
@@ -26,11 +28,11 @@ export async function POST(request: Request) {
       transactionId: createCode("TXN"),
       userId: auth.user.id,
       type: "Recharge",
-      amount,
+      amount: plan.get,
       status: "Pending",
       gateway: "Demo",
       orderId,
-      description: `Recharge order created for ₹${amount}`,
+      description: `Recharge order created for INR ${plan.pay}`,
     },
   });
 

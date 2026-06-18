@@ -1339,6 +1339,31 @@ export default function PartnerOnboardingPage() {
           setIsSubmitting(false);
           return;
         }
+        const submission = asRecord(response.data);
+        const submittedApplication = asRecord(submission.application);
+        const submittedCompanion = asRecord(submission.companion ?? submittedApplication.companion);
+        const applicationStatus = String(submittedApplication.status ?? "").toUpperCase();
+        const companionStatus = String(submittedCompanion.status ?? "").toUpperCase();
+        const verificationStatus = String(submittedCompanion.verificationStatus ?? "").toUpperCase();
+        const alreadyApproved =
+          submission.alreadyApproved === true ||
+          applicationStatus === "APPROVED" ||
+          (companionStatus === "ACTIVE" && verificationStatus === "VERIFIED");
+        if (alreadyApproved) {
+          saveLocalPartnerApprovalState({
+            applicationStatus: "APPROVED",
+            kycStatus: "VERIFIED",
+            verificationStatus: "VERIFIED",
+            companionStatus: "ACTIVE",
+            reviewStatus: "approved",
+          });
+          setPartnerOnboardingComplete(true);
+          setSubmitMessage("Your partner profile is already approved.");
+          const landing = await resolvePartnerLandingRoute();
+          setIsSubmitting(false);
+          router.replace(landing.route === "/partner/onboarding" ? "/partner/application-status" : landing.route);
+          return;
+        }
         const savedProfile: OnboardingProfile = {
           ...finalProfile,
           selfieFileName: nextUploads.selfie?.fileName || finalProfile.selfieFileName,

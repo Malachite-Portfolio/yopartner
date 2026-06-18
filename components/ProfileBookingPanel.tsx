@@ -325,7 +325,7 @@ export function ProfileBookingPanel({ companion, initialType }: ProfileBookingPa
               </p>
               {welcomeChatApplies ? (
                 <div className="mt-5 rounded-xl border border-fuchsia-200 bg-fuchsia-50 p-4 text-sm font-semibold text-fuchsia-800">
-                  Your first chat includes {welcomeChatBonus?.freeMinutes ?? 10} free minutes. Chat billing starts at ₹5/message after that.
+                  Your first chat includes {welcomeChatBonus?.freeMinutes ?? 10} free minutes. Chat billing starts at {formatINR(CHAT_RATE_PER_MESSAGE)}/message after that.
                 </div>
               ) : USE_PROFILE_CLIENT_WALLET_PRECHECK && !hasSufficientBalance ? (
                 <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4">

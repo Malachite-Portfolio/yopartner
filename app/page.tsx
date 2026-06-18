@@ -2,6 +2,7 @@ import { HeartHandshake, MessageCircleHeart, Quote, ShieldCheck, Sparkles } from
 import { Outfit } from "next/font/google";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { CHAT_RATE_PER_MESSAGE } from "@/lib/platformPricing";
 
 const outfit = Outfit({
   subsets: ["latin"],
@@ -81,7 +82,7 @@ export default function HomePage() {
             href="/connect-now"
             className="mt-[22rem] inline-flex min-h-12 items-center justify-center rounded-full bg-[#0969f4] px-7 py-3 text-base font-semibold !text-white shadow-[0_14px_26px_rgba(9,105,244,0.28)] transition hover:-translate-y-0.5 hover:bg-[#075bd2] focus:outline-none focus:ring-4 focus:ring-[#0969f4]/25 sm:mt-[22rem] sm:min-h-14 sm:px-10 sm:text-lg lg:mt-[30rem]"
           >
-            Talk Now – Starts at ₹5/message
+            Talk Now – Starts at ₹{CHAT_RATE_PER_MESSAGE}/message
           </Link>
         </div>
       </section>
