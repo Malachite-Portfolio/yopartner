@@ -44,10 +44,12 @@ function SessionCard({
   option,
   selected,
   onSelect,
+  disabled,
 }: {
   option: SessionOption;
   selected: boolean;
   onSelect: () => void;
+  disabled: boolean;
 }) {
   const Icon = option.icon;
 
@@ -55,11 +57,12 @@ function SessionCard({
     <button
       type="button"
       onClick={onSelect}
+      disabled={disabled}
       className={`flex min-h-[74px] items-center gap-3 rounded-xl border px-4 py-3 text-left transition ${
         selected
           ? "border-white bg-white text-[#201a2f]"
           : "border-white/10 bg-white/[0.07] text-white hover:border-white/25"
-      }`}
+      } disabled:cursor-not-allowed disabled:opacity-50`}
     >
       <Icon size={22} className={selected ? "text-[#201a2f]" : "text-white"} />
       <span>
@@ -74,6 +77,10 @@ function SessionCard({
 
 export function ProfileBookingPanel({ companion, initialType }: ProfileBookingPanelProps) {
   const router = useRouter();
+  const status = String(
+    companion.effectiveStatus ?? (companion.isBusy ? "BUSY" : companion.online ? "ONLINE" : "OFFLINE"),
+  ).toUpperCase();
+  const isOnline = status === "ONLINE";
   const options = useMemo<SessionOption[]>(() => {
     const base: SessionOption[] = [
       { type: "chat", label: "Chat", icon: MessageSquareText, unit: "/ message", price: companion.chatPrice > 0 ? CHAT_RATE_PER_MESSAGE : 0, badge: "CHAT" },
@@ -148,6 +155,7 @@ export function ProfileBookingPanel({ companion, initialType }: ProfileBookingPa
   }, [loggedIn]);
 
   const selectedOption = options.find((option) => option.type === selectedType) ?? options[0];
+  const isSelectedCallUnavailable = selectedOption?.type !== "chat" && !isOnline;
   const requiredAmount =
     selectedOption?.type === "chat"
       ? MIN_CHAT_WALLET_BALANCE
@@ -264,6 +272,7 @@ export function ProfileBookingPanel({ companion, initialType }: ProfileBookingPa
               key={option.type}
               option={option}
               selected={option.type === selectedType}
+              disabled={option.type !== "chat" && !isOnline}
               onSelect={() => {
                 setSelectedType(option.type);
                 setActionMessage("");
@@ -357,6 +366,11 @@ export function ProfileBookingPanel({ companion, initialType }: ProfileBookingPa
         </div>
 
         {actionMessage ? <p className="mt-4 rounded-xl bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">{actionMessage}</p> : null}
+        {status === "OFFLINE" && selectedOption?.type === "chat" ? (
+          <p className="mt-4 rounded-xl bg-slate-100 px-3 py-2 text-sm font-medium text-slate-700">
+            Host is offline, but you can leave a message.
+          </p>
+        ) : null}
         {showAddMoneyPrompt ? (
           <Link
             href="/wallet?addMoney=1"
@@ -368,12 +382,17 @@ export function ProfileBookingPanel({ companion, initialType }: ProfileBookingPa
 
         <button
           type="button"
-          disabled={USE_PROFILE_CLIENT_WALLET_PRECHECK && authChecked && loggedIn && !hasSufficientBalance}
+          disabled={
+            isSelectedCallUnavailable ||
+            (USE_PROFILE_CLIENT_WALLET_PRECHECK && authChecked && loggedIn && !hasSufficientBalance)
+          }
           onClick={handlePrimaryAction}
           className="mt-6 h-14 w-full rounded-xl bg-emerald-600 text-base font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-70"
         >
           {!authChecked
             ? "Checking..."
+            : isSelectedCallUnavailable
+              ? "Host Offline"
             : USE_PROFILE_CLIENT_WALLET_PRECHECK && loggedIn && !hasSufficientBalance
               ? "Insufficient Balance"
               : loggedIn

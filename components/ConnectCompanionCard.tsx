@@ -117,6 +117,7 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
   const videoPrice = hasVideo ? VIDEO_RATE_PER_MIN : undefined;
   const status = String(companion.effectiveStatus ?? (companion.isBusy ? "BUSY" : companion.online ? "ONLINE" : "OFFLINE")).toUpperCase();
   const isBusy = status === "BUSY";
+  const isOnline = status === "ONLINE";
   const profileUrl = `/connect-now/${companion.id}`;
   const rawMetaChips = [
     services.some((service) => service.includes("active listening") || service.includes("empathetic")) ? "Good listener" : null,
@@ -148,6 +149,11 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
     event.stopPropagation();
     if (isBusy) {
       setActionError("Partner is currently busy. Please try again shortly.");
+      setShowAddMoneyPrompt(false);
+      return;
+    }
+    if (serviceType !== "chat" && !isOnline) {
+      setActionError("Host is offline. Please try later.");
       setShowAddMoneyPrompt(false);
       return;
     }
@@ -317,7 +323,7 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
           icon="voice"
           price={voicePrice}
           tone="lavender"
-          disabled={isBusy || !hasAudio}
+          disabled={!isOnline || !hasAudio}
           onClick={(event) => {
             void createSessionAndRoute(event, "audio");
           }}
@@ -326,7 +332,7 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
           icon="video"
           price={videoPrice}
           tone="cream"
-          disabled={isBusy || !hasVideo}
+          disabled={!isOnline || !hasVideo}
           onClick={(event) => {
             if (!hasVideo) return;
             void createSessionAndRoute(event, "video");
@@ -335,6 +341,9 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
       </div>
 
       {isBusy ? <p className="mt-2 text-xs font-medium text-red-700">Currently busy in another session.</p> : null}
+      {status === "OFFLINE" && hasChat ? (
+        <p className="mt-2 text-xs font-medium text-slate-600">Host is offline, but you can leave a message.</p>
+      ) : null}
       {actionError ? <p className="mt-2 text-xs font-medium text-rose-600">{actionError}</p> : null}
       {showAddMoneyPrompt ? (
         <button
