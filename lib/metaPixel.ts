@@ -12,6 +12,11 @@ type MetaPixelAddToCartParams = {
   content_ids: string[];
 };
 
+type MetaPixelCompleteRegistrationParams = {
+  content_name: "user_profile_completion";
+  status: "completed";
+};
+
 export const META_PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID || "1944261929610186";
 
 declare global {
@@ -45,4 +50,8 @@ export function trackMetaPixel(eventName: string, params?: MetaPixelEventParams)
 export function trackAddToCart(params: MetaPixelAddToCartParams) {
   if (!Number.isFinite(params.value) || params.value <= 0 || params.content_ids.length === 0) return;
   trackMetaPixel("AddToCart", params);
+}
+
+export function trackCompleteRegistration(params: MetaPixelCompleteRegistrationParams) {
+  trackMetaPixel("CompleteRegistration", params);
 }
