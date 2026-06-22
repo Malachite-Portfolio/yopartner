@@ -18,7 +18,7 @@ import {
   VIDEO_RATE_PER_MIN,
 } from "@/lib/platformPricing";
 import { formatINR, getWalletBalance, subscribeWalletUpdates } from "@/lib/wallet";
-import { consumeTrackedHostProfileNavigation, trackMetaPixel } from "@/lib/metaPixel";
+import { trackMetaPixel } from "@/lib/metaPixel";
 
 type ProfileBookingPanelProps = {
   companion: ConnectCompanion;
@@ -104,8 +104,10 @@ export function ProfileBookingPanel({ companion, initialType }: ProfileBookingPa
   useEffect(() => {
     if (profileViewTrackedRef.current) return;
     profileViewTrackedRef.current = true;
-    if (consumeTrackedHostProfileNavigation(companion.id)) return;
-    trackMetaPixel("ViewContent", { content_name: "Host Interaction" });
+    trackMetaPixel("ViewContent", {
+      content_type: "partner_profile",
+      content_ids: [companion.id],
+    });
   }, [companion.id]);
 
   useEffect(() => {
@@ -168,7 +170,6 @@ export function ProfileBookingPanel({ companion, initialType }: ProfileBookingPa
 
   const handlePrimaryAction = () => {
     if (!selectedOption) return;
-    trackMetaPixel("ViewContent", { content_name: "Host Interaction" });
     setShowAddMoneyPrompt(false);
     if (!loggedIn) {
       router.push(`/login?returnUrl=${encodeURIComponent(returnPath)}`);
@@ -235,6 +236,11 @@ export function ProfileBookingPanel({ companion, initialType }: ProfileBookingPa
       }
 
       if (selectedType === "chat") {
+        trackMetaPixel("Contact", {
+          content_type: "chat",
+          value: CHAT_RATE_PER_MESSAGE,
+          currency: "INR",
+        });
         router.push(`/chat/${sessionId}?companionId=${encodeURIComponent(companion.id)}`);
         return;
       }

@@ -25,6 +25,7 @@ import {
 } from "@/lib/clientDemoData";
 import { IS_DEMO_MODE, IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { firebaseAuth } from "@/lib/firebase/client";
+import { trackMetaPixel } from "@/lib/metaPixel";
 import {
   getPartnerDraft,
   getPartnerPhone,
@@ -1473,6 +1474,7 @@ export default function PartnerOnboardingPage() {
           router.replace(landing.route === "/partner/onboarding" ? "/partner/application-status" : landing.route);
           return;
         }
+        trackMetaPixel("CompleteRegistration");
         const savedProfile: OnboardingProfile = {
           ...finalProfile,
           selfieFileName: nextUploads.selfie?.fileName || finalProfile.selfieFileName,

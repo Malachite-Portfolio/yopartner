@@ -10,7 +10,7 @@ import { requestAudioPermission, requestVideoPermission } from "@/lib/agora";
 import { formatINRPrice } from "@/lib/priceFormat";
 import { getUserAuthTokenWithRestore } from "@/lib/auth/userAuth";
 import { AUDIO_RATE_PER_MIN, CHAT_RATE_PER_MESSAGE, VIDEO_RATE_PER_MIN } from "@/lib/platformPricing";
-import { markTrackedHostProfileNavigation, trackMetaPixel } from "@/lib/metaPixel";
+import { trackMetaPixel } from "@/lib/metaPixel";
 import { VerifiedPartnerBadge } from "@/components/VerifiedPartnerBadge";
 
 type ConnectCompanionCardProps = {
@@ -132,13 +132,7 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
       ["verified", "approved", "cleared", "trained"].includes(item.status.toLowerCase()),
     );
 
-  const trackHostInteraction = () => {
-    trackMetaPixel("ViewContent", { content_name: "Host Interaction" });
-  };
-
   const openProfile = () => {
-    trackHostInteraction();
-    markTrackedHostProfileNavigation(companion.id);
     router.push(profileUrl);
   };
 
@@ -157,7 +151,6 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
       setShowAddMoneyPrompt(false);
       return;
     }
-    trackHostInteraction();
     setActionError("");
     setShowAddMoneyPrompt(false);
 
@@ -226,6 +219,11 @@ export function ConnectCompanionCard({ companion }: ConnectCompanionCardProps) {
     const sessionId = sessionResponse.data?.id;
     if (sessionId) {
       if (serviceType === "chat") {
+        trackMetaPixel("Contact", {
+          content_type: "chat",
+          value: CHAT_RATE_PER_MESSAGE,
+          currency: "INR",
+        });
         router.push(`/chat/${sessionId}?companionId=${encodeURIComponent(companion.id)}`);
         return;
       }

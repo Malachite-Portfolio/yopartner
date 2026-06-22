@@ -1,33 +1,22 @@
 "use client";
 
 import { useEffect } from "react";
-import { isCompanionProfilePath, trackMetaPixel } from "@/lib/metaPixel";
+import { usePathname } from "next/navigation";
+import { trackMetaPixel } from "@/lib/metaPixel";
 
 export function MetaPixelPageView() {
+  const pathname = usePathname();
+
   useEffect(() => {
-    const trackCurrentPath = () => {
-      const pathname = window.location.pathname;
-      if (window.__metaPixelLastPageViewPath === pathname) return;
-      window.__metaPixelLastPageViewPath = pathname;
-
-      if (!isCompanionProfilePath(pathname)) {
-        trackMetaPixel("PageView");
-      }
-    };
-
-    const schedulePageView = () => {
-      window.setTimeout(trackCurrentPath, 0);
-    };
-
-    const pathnameWatcher = window.setInterval(trackCurrentPath, 250);
-    window.addEventListener("popstate", schedulePageView);
-    trackCurrentPath();
-
-    return () => {
-      window.clearInterval(pathnameWatcher);
-      window.removeEventListener("popstate", schedulePageView);
-    };
-  }, []);
+    if (!pathname) return;
+    if (pathname === "/admin" || pathname.startsWith("/admin/")) {
+      window.__metaPixelLastPageViewPath = undefined;
+      return;
+    }
+    if (window.__metaPixelLastPageViewPath === pathname) return;
+    window.__metaPixelLastPageViewPath = pathname;
+    trackMetaPixel("PageView");
+  }, [pathname]);
 
   return null;
 }

@@ -1,12 +1,11 @@
-type MetaPixelEventParams = Record<string, string | number | boolean>;
+type MetaPixelEventParams = Record<string, string | number | boolean | string[] | number[]>;
 
 type MetaPixelEvent = {
   eventName: string;
   params?: MetaPixelEventParams;
 };
 
-const HOST_PROFILE_NAVIGATION_KEY = "yopartner_meta_host_profile_navigation";
-const META_PIXEL_ID = "1756224879086245";
+export const META_PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID || "1944261929610186";
 
 declare global {
   interface Window {
@@ -34,33 +33,4 @@ export function trackMetaPixel(eventName: string, params?: MetaPixelEventParams)
 
   window.__metaPixelPendingEvents ??= [];
   window.__metaPixelPendingEvents.push({ eventName, params });
-}
-
-export function isCompanionProfilePath(pathname: string) {
-  const segments = pathname.split("/").filter(Boolean);
-  return segments[0] === "connect-now" && segments.length > 1;
-}
-
-export function shouldTrackCompleteRegistration(wasProfileIncomplete: boolean, alreadyTracked: boolean) {
-  return wasProfileIncomplete && !alreadyTracked;
-}
-
-export function markTrackedHostProfileNavigation(hostId: string) {
-  if (typeof window === "undefined") return;
-  try {
-    window.sessionStorage.setItem(HOST_PROFILE_NAVIGATION_KEY, hostId);
-  } catch {
-    // Storage can be unavailable in private or restricted browser contexts.
-  }
-}
-
-export function consumeTrackedHostProfileNavigation(hostId: string) {
-  if (typeof window === "undefined") return false;
-  try {
-    const trackedHostId = window.sessionStorage.getItem(HOST_PROFILE_NAVIGATION_KEY);
-    window.sessionStorage.removeItem(HOST_PROFILE_NAVIGATION_KEY);
-    return trackedHostId === hostId;
-  } catch {
-    return false;
-  }
 }

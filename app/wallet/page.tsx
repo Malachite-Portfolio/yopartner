@@ -330,8 +330,11 @@ export default function WalletPage() {
     .filter((tx) => tx.type === "recharge")
     .reduce((sum, tx) => sum + Math.max(tx.amountAdded, 0), 0);
 
-  const openModal = () => {
-    trackMetaPixel("InitiateCheckout");
+  const openModal = (selectedAmount?: number) => {
+    trackMetaPixel(
+      "InitiateCheckout",
+      typeof selectedAmount === "number" ? { currency: "INR", value: selectedAmount } : undefined,
+    );
     setIsModalOpen(true);
     setModalStep("amount");
     setSuccessMessage("");
@@ -350,12 +353,6 @@ export default function WalletPage() {
     if (!canProceed) {
       setRechargeError("Select a recharge plan.");
       return;
-    }
-    if (selectedPlan) {
-      trackMetaPixel("AddPaymentInfo", {
-        currency: "INR",
-        value: selectedPlan.pay,
-      });
     }
     setModalStep("checkout");
     setRechargeError("");
@@ -546,7 +543,7 @@ export default function WalletPage() {
               </p>
               <button
                 type="button"
-                onClick={openModal}
+                onClick={() => openModal()}
                 className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-[#0f766e] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#115e59]"
               >
                 <Plus size={15} />
@@ -642,7 +639,7 @@ export default function WalletPage() {
                   <h3 className="text-xl font-semibold text-slate-900">Recharge plans</h3>
                   <button
                     type="button"
-                    onClick={openModal}
+                    onClick={() => openModal()}
                     className="inline-flex items-center gap-1 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700"
                   >
                     <Plus size={13} />
@@ -656,13 +653,9 @@ export default function WalletPage() {
                       plan={plan}
                       selected={selectedPlanId === plan.id}
                       onSelect={() => {
-                        trackMetaPixel("AddPaymentInfo", {
-                          currency: "INR",
-                          value: plan.pay,
-                        });
                         setSelectedPlanId(plan.id);
                         setRechargeError("");
-                        openModal();
+                        openModal(plan.pay);
                         setModalStep("checkout");
                       }}
                     />
@@ -710,7 +703,7 @@ export default function WalletPage() {
                       plan={plan}
                       selected={selectedPlanId === plan.id}
                       onSelect={() => {
-                        trackMetaPixel("AddPaymentInfo", {
+                        trackMetaPixel("InitiateCheckout", {
                           currency: "INR",
                           value: plan.pay,
                         });

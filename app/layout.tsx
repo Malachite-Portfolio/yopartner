@@ -5,6 +5,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { Footer } from "@/components/Footer";
 import { LuckyWheelLauncher } from "@/components/LuckyWheelLauncher";
 import { MetaPixelPageView } from "@/components/MetaPixelPageView";
+import { META_PIXEL_ID } from "@/lib/metaPixel";
 import "./globals.css";
 
 const manrope = Manrope({
@@ -101,10 +102,10 @@ export default function RootLayout({
             s.parentNode.insertBefore(t,s)}(window, document,'script',
             'https://connect.facebook.net/en_US/fbevents.js');
             fbq.disablePushState = true;
-            fbq('init', '1756224879086245');
+            fbq('init', '${META_PIXEL_ID}');
             (window.__metaPixelPendingEvents || []).forEach(function(event) {
               if (event.eventName === 'PageView') {
-                fbq('trackSingle', '1756224879086245', event.eventName, event.params);
+                fbq('trackSingle', '${META_PIXEL_ID}', event.eventName, event.params);
               } else {
                 fbq('track', event.eventName, event.params);
               }
