@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowDownLeft,
@@ -32,7 +32,7 @@ import {
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import { getUserAuthState, getUserAuthTokenWithRestore } from "@/lib/auth/userAuth";
 import { WALLET_UPDATED_EVENT } from "@/lib/wallet";
-import { trackMetaPixel } from "@/lib/metaPixel";
+import { trackAddToCart, trackMetaPixel } from "@/lib/metaPixel";
 import { WALLET_PLANS } from "@/lib/platformPricing";
 
 type WalletTab = "overview" | "transactions" | "recharge";
@@ -212,6 +212,7 @@ export default function WalletPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalStep, setModalStep] = useState<ModalStep>("amount");
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+  const lastTrackedPlanIdRef = useRef<string | null>(null);
   const [successMessage, setSuccessMessage] = useState("");
   const [rechargeError, setRechargeError] = useState("");
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
@@ -346,6 +347,21 @@ export default function WalletPage() {
     setModalStep("amount");
     setIsProcessingPayment(false);
     setSelectedPlanId(null);
+    lastTrackedPlanIdRef.current = null;
+    setRechargeError("");
+  };
+
+  const selectRechargePlan = (plan: RechargePlan) => {
+    if (lastTrackedPlanIdRef.current !== plan.id) {
+      trackAddToCart({
+        value: plan.pay,
+        currency: "INR",
+        content_type: "wallet_recharge",
+        content_ids: [String(plan.id || plan.pay)],
+      });
+      lastTrackedPlanIdRef.current = plan.id;
+    }
+    setSelectedPlanId(plan.id);
     setRechargeError("");
   };
 
@@ -653,8 +669,7 @@ export default function WalletPage() {
                       plan={plan}
                       selected={selectedPlanId === plan.id}
                       onSelect={() => {
-                        setSelectedPlanId(plan.id);
-                        setRechargeError("");
+                        selectRechargePlan(plan);
                         openModal(plan.pay);
                         setModalStep("checkout");
                       }}
@@ -703,12 +718,11 @@ export default function WalletPage() {
                       plan={plan}
                       selected={selectedPlanId === plan.id}
                       onSelect={() => {
+                        selectRechargePlan(plan);
                         trackMetaPixel("InitiateCheckout", {
                           currency: "INR",
                           value: plan.pay,
                         });
-                        setSelectedPlanId(plan.id);
-                        setRechargeError("");
                         setModalStep("checkout");
                       }}
                     />

@@ -5,6 +5,13 @@ type MetaPixelEvent = {
   params?: MetaPixelEventParams;
 };
 
+type MetaPixelAddToCartParams = {
+  value: number;
+  currency: "INR";
+  content_type: "wallet_recharge";
+  content_ids: string[];
+};
+
 export const META_PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID || "1944261929610186";
 
 declare global {
@@ -33,4 +40,9 @@ export function trackMetaPixel(eventName: string, params?: MetaPixelEventParams)
 
   window.__metaPixelPendingEvents ??= [];
   window.__metaPixelPendingEvents.push({ eventName, params });
+}
+
+export function trackAddToCart(params: MetaPixelAddToCartParams) {
+  if (!Number.isFinite(params.value) || params.value <= 0 || params.content_ids.length === 0) return;
+  trackMetaPixel("AddToCart", params);
 }
