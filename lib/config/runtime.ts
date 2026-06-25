@@ -10,9 +10,7 @@ export function getAppMode() {
   return IS_PRODUCTION_READY_MODE ? "production" : "demo";
 }
 
-export function isAgoraConfigured() {
-  return Boolean(
-    process.env.NEXT_PUBLIC_AGORA_APP_ID &&
-      process.env.NEXT_PUBLIC_AGORA_CHAT_APP_KEY,
-  );
+export function isCallProviderConfigured() {
+  return process.env.NEXT_PUBLIC_CALL_PROVIDER === "zegocloud" &&
+    Boolean(process.env.NEXT_PUBLIC_ZEGO_APP_ID);
 }

@@ -15,7 +15,7 @@ import {
   type SessionMessageRecord,
   type SessionRecord,
 } from "@/lib/api/sessions";
-import { requestAudioPermission, requestVideoPermission } from "@/lib/agora";
+import { requestAudioPermission, requestVideoPermission } from "@/lib/zego";
 import { playGiftSound } from "@/lib/chat/giftSound";
 import { getCatalogGiftByKey } from "@/lib/chat/giftCatalog";
 import type { CompanionRouteProfile } from "@/lib/companionRoutes";

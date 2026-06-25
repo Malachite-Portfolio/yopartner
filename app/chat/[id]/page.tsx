@@ -24,7 +24,7 @@ import {
   resolveCompanionRouteProfile,
   type CompanionRouteProfile,
 } from "@/lib/companionRoutes";
-import { requestAudioPermission, requestVideoPermission } from "@/lib/agora";
+import { requestAudioPermission, requestVideoPermission } from "@/lib/zego";
 import { playGiftSound } from "@/lib/chat/giftSound";
 import {
   CHAT_GIFT_CATALOG,

@@ -4,21 +4,21 @@ import { ArrowLeft, Camera, CameraOff, Mic, PhoneOff, RefreshCcw } from "lucide-
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import type {
-  IAgoraRTCClient,
-  IAgoraRTCRemoteUser,
-  ICameraVideoTrack,
-  IMicrophoneAudioTrack,
-  IRemoteAudioTrack,
-  IRemoteVideoTrack,
-} from "agora-rtc-sdk-ng";
+  ZegoRtcClient,
+  ZegoRemoteUser,
+  ZegoCameraVideoTrack,
+  ZegoMicrophoneAudioTrack,
+  ZegoRemoteAudioTrack,
+  ZegoRemoteVideoTrack,
+} from "@/lib/zego";
 import { EndSessionConfirmModal } from "@/components/session/EndSessionConfirmModal";
 import { PartnerGuard } from "@/components/partner/PartnerGuard";
 import { useSessionExitGuard } from "@/hooks/useSessionExitGuard";
-import { endSession, getSessionAgoraToken, getSessionById, markSessionMediaReady, type SessionRecord, type SessionStatus } from "@/lib/api/sessions";
-import { buildAgoraUid, createAgoraClient, normalizeChannelName, requestVideoPermission } from "@/lib/agora";
+import { endSession, getSessionZegoToken, getSessionById, markSessionMediaReady, type SessionRecord, type SessionStatus } from "@/lib/api/sessions";
+import { buildZegoUserId, createCameraVideoTrack, createMicrophoneAndCameraTracks, createZegoClient, getCameras, normalizeRoomId, requestVideoPermission } from "@/lib/zego";
 import { isActiveSessionStatus } from "@/lib/sessionStatus";
 
-const AGORA_APP_ID = process.env.NEXT_PUBLIC_AGORA_APP_ID?.trim() ?? "";
+const ZEGO_APP_ID = Number(process.env.NEXT_PUBLIC_ZEGO_APP_ID ?? 0);
 const TERMINAL_SESSION_STATUSES: SessionStatus[] = ["DECLINED", "CANCELLED", "ENDED", "EXPIRED", "COMPLETED", "FAILED", "FLAGGED"];
 
 function isTerminalStatus(status?: SessionStatus) {
@@ -66,11 +66,11 @@ export default function PartnerVideoCallPage() {
   const [joining, setJoining] = useState(false);
   const [remoteVideoReady, setRemoteVideoReady] = useState(false);
   const [remoteUserJoined, setRemoteUserJoined] = useState(false);
-  const clientRef = useRef<IAgoraRTCClient | null>(null);
-  const localAudioTrackRef = useRef<IMicrophoneAudioTrack | null>(null);
-  const localVideoTrackRef = useRef<ICameraVideoTrack | null>(null);
-  const remoteAudioTrackRef = useRef<IRemoteAudioTrack | null>(null);
-  const remoteVideoTrackRef = useRef<IRemoteVideoTrack | null>(null);
+  const clientRef = useRef<ZegoRtcClient | null>(null);
+  const localAudioTrackRef = useRef<ZegoMicrophoneAudioTrack | null>(null);
+  const localVideoTrackRef = useRef<ZegoCameraVideoTrack | null>(null);
+  const remoteAudioTrackRef = useRef<ZegoRemoteAudioTrack | null>(null);
+  const remoteVideoTrackRef = useRef<ZegoRemoteVideoTrack | null>(null);
   const localVideoContainerRef = useRef<HTMLDivElement | null>(null);
   const remoteVideoContainerRef = useRef<HTMLDivElement | null>(null);
   const remoteAudioElementRef = useRef<HTMLAudioElement | null>(null);
@@ -85,7 +85,7 @@ export default function PartnerVideoCallPage() {
     }
   }, [session]);
 
-  const cleanupAgora = useCallback(async () => {
+  const cleanupZego = useCallback(async () => {
     try {
       remoteAudioTrackRef.current?.stop();
       remoteVideoTrackRef.current?.stop();
@@ -119,9 +119,9 @@ export default function PartnerVideoCallPage() {
 
   useEffect(() => {
     return () => {
-      void cleanupAgora();
+      void cleanupZego();
     };
-  }, [cleanupAgora]);
+  }, [cleanupZego]);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -143,7 +143,7 @@ export default function PartnerVideoCallPage() {
       if (cancelled || !latest.data) return;
       setSession(latest.data);
       if (isTerminalStatus(latest.data.status)) {
-        await cleanupAgora();
+        await cleanupZego();
       }
     };
     const timer = window.setInterval(() => {
@@ -154,7 +154,7 @@ export default function PartnerVideoCallPage() {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [cleanupAgora, session?.id]);
+  }, [cleanupZego, session?.id]);
 
   useEffect(() => {
     if (session?.status !== "LIVE" && session?.status !== "ACCEPTED") return;
@@ -175,12 +175,12 @@ export default function PartnerVideoCallPage() {
   useEffect(() => {
     if (!isTerminalStatus(session?.status)) return;
     const timer = window.setTimeout(() => {
-      void cleanupAgora();
+      void cleanupZego();
     }, 0);
     return () => {
       window.clearTimeout(timer);
     };
-  }, [cleanupAgora, session?.status]);
+  }, [cleanupZego, session?.status]);
 
   const playRemoteAudio = useCallback(async () => {
     const remoteAudioTrack = remoteAudioTrackRef.current;
@@ -260,8 +260,7 @@ export default function PartnerVideoCallPage() {
 
     try {
       setCameraSwitchMessage("");
-      const AgoraRTC = await import("agora-rtc-sdk-ng");
-      const cameras = await AgoraRTC.default.getCameras();
+      const cameras = await getCameras();
       if (!cameras || cameras.length <= 1) {
         setCameraSwitchMessage("Camera switch is not available on this device.");
         return;
@@ -278,7 +277,7 @@ export default function PartnerVideoCallPage() {
         currentIndex >= 0 ? cameras[(currentIndex + 1) % cameras.length] : cameras[nextFront ? 0 : cameras.length - 1];
       const targetCamera = preferred ?? fallbackCamera;
 
-      const setDeviceTrack = currentTrack as ICameraVideoTrack & { setDevice?: (deviceId: string) => Promise<void> };
+      const setDeviceTrack = currentTrack as ZegoCameraVideoTrack & { setDevice?: (deviceId: string) => Promise<void> };
       if (typeof setDeviceTrack.setDevice === "function") {
         await setDeviceTrack.setDevice(targetCamera.deviceId);
         setFrontCamera(nextFront);
@@ -289,9 +288,7 @@ export default function PartnerVideoCallPage() {
       currentTrack.stop();
       currentTrack.close();
 
-      const replacementTrack = await AgoraRTC.default.createCameraVideoTrack({
-        cameraId: targetCamera.deviceId,
-      });
+      const replacementTrack = await createCameraVideoTrack(targetCamera.deviceId);
       localVideoTrackRef.current = replacementTrack;
       setLocalVideoReady(true);
       await replacementTrack.setEnabled(cameraOn);
@@ -305,7 +302,7 @@ export default function PartnerVideoCallPage() {
     }
   }, [cameraOn, frontCamera]);
 
-  const joinAgoraVideo = useCallback(async () => {
+  const joinZegoVideo = useCallback(async () => {
     if (!session || joining || joined) return;
     setJoining(true);
     setError("");
@@ -313,9 +310,9 @@ export default function PartnerVideoCallPage() {
       await requestVideoPermission();
       setNeedsPermissionAction(false);
 
-      const client = await createAgoraClient();
+      const client = await createZegoClient();
       clientRef.current = client;
-      const subscribeRemoteUser = async (user: IAgoraRTCRemoteUser, mediaType?: "audio" | "video") => {
+      const subscribeRemoteUser = async (user: ZegoRemoteUser, mediaType?: "audio" | "video") => {
         setRemoteUserJoined(true);
         const shouldSubscribeVideo = (!mediaType || mediaType === "video") && user.hasVideo;
         const shouldSubscribeAudio = (!mediaType || mediaType === "audio") && user.hasAudio;
@@ -324,7 +321,7 @@ export default function PartnerVideoCallPage() {
           try {
             await client.subscribe(user, "video");
           } catch {
-            // Repeated sweeps can hit an already-subscribed Agora track.
+            // Repeated sweeps can hit an already-subscribed ZEGOCLOUD track.
           }
           if (user.videoTrack && remoteVideoContainerRef.current) {
             try {
@@ -379,25 +376,24 @@ export default function PartnerVideoCallPage() {
         setRemoteVideoReady(false);
       });
 
-      const tokenResponse = await getSessionAgoraToken(session.id);
+      const tokenResponse = await getSessionZegoToken(session.id);
       if (tokenResponse.error || !tokenResponse.data?.token) {
         setError(tokenResponse.error?.message || "Could not prepare secure call token. Please retry.");
-        await cleanupAgora();
+        await cleanupZego();
         return;
       }
 
-      const appId = tokenResponse.data.appId || AGORA_APP_ID;
+      const appId = tokenResponse.data.appId || ZEGO_APP_ID;
       if (!appId) {
-        setError("Calling is not configured. Missing Agora App ID.");
-        await cleanupAgora();
+        setError("Calling is not configured. Missing ZEGOCLOUD App ID.");
+        await cleanupZego();
         return;
       }
-      const channelName = normalizeChannelName(session.id, tokenResponse.data?.channelName ?? session.channelName);
-      const uid = tokenResponse.data?.uid ?? buildAgoraUid(session.id, String(session.companion?.userId ?? "partner"));
-      await client.join(appId, channelName, tokenResponse.data.token, uid);
+      const channelName = tokenResponse.data.roomId || normalizeRoomId(session.id);
+      const uid = tokenResponse.data.userId || buildZegoUserId(session.id, String(session.companion?.userId ?? "partner"));
+      await client.join(appId, channelName, tokenResponse.data.token, String(uid), tokenResponse.data.userName);
 
-      const AgoraRTC = await import("agora-rtc-sdk-ng");
-      const [localAudioTrack, localVideoTrack] = await AgoraRTC.default.createMicrophoneAndCameraTracks();
+      const [localAudioTrack, localVideoTrack] = await createMicrophoneAndCameraTracks();
       localAudioTrackRef.current = localAudioTrack;
       localVideoTrackRef.current = localVideoTrack;
       setLocalAudioReady(true);
@@ -421,21 +417,21 @@ export default function PartnerVideoCallPage() {
       } else {
         setError(message);
       }
-      await cleanupAgora();
+      await cleanupZego();
     } finally {
       setJoining(false);
     }
-  }, [cleanupAgora, joined, joining, notifyMediaReady, playRemoteAudio, session]);
+  }, [cleanupZego, joined, joining, notifyMediaReady, playRemoteAudio, session]);
 
   useEffect(() => {
     if ((session?.status !== "LIVE" && session?.status !== "ACCEPTED") || joined || joining) return;
     const timer = window.setTimeout(() => {
-      void joinAgoraVideo();
+      void joinZegoVideo();
     }, 0);
     return () => {
       window.clearTimeout(timer);
     };
-  }, [joinAgoraVideo, joined, joining, session?.status]);
+  }, [joinZegoVideo, joined, joining, session?.status]);
 
   const maskedPhone = useMemo(
     () => String(session?.user?.phoneMasked ?? maskPhone(String(session?.user?.phoneNumber ?? ""))),
@@ -446,7 +442,7 @@ export default function PartnerVideoCallPage() {
   const handleConfirmEndSession = useCallback(async () => {
     if (!activeSessionId) return;
     const responsePromise = endSession(activeSessionId);
-    await cleanupAgora();
+    await cleanupZego();
     const response = await responsePromise;
     if (!response.data) {
       const message = response.error?.message || "Unable to end this session. Please try again.";
@@ -454,7 +450,7 @@ export default function PartnerVideoCallPage() {
       throw new Error(message);
     }
     setSession(response.data);
-  }, [activeSessionId, cleanupAgora]);
+  }, [activeSessionId, cleanupZego]);
 
   const navigateAfterExit = useCallback(() => {
     router.push("/partner/dashboard");
@@ -530,7 +526,7 @@ export default function PartnerVideoCallPage() {
             <button
               type="button"
               onClick={() => {
-                void joinAgoraVideo();
+                void joinZegoVideo();
               }}
               disabled={joining}
               className="mb-3 rounded-xl border border-white/25 bg-black/35 px-3 py-2 text-center text-xs text-cyan-100 disabled:opacity-70"
@@ -642,7 +638,7 @@ export default function PartnerVideoCallPage() {
                 onClick={async () => {
                   const nowIso = new Date().toISOString();
                   const endPromise = endSession(sessionId);
-                  await cleanupAgora();
+                  await cleanupZego();
                   setSession((current) => (current ? { ...current, status: "ENDED", endedAt: current.endedAt ?? nowIso } : current));
                   const response = await endPromise;
                   if (response.data) {

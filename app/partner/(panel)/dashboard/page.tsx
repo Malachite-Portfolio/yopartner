@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { IncomingRequestScreen } from "@/components/partner/IncomingRequestScreen";
 import { hasRingtoneUnlockPreference, unlockRingtoneAudio } from "@/hooks/useLoopingRingtone";
-import { requestAudioPermission, requestVideoPermission } from "@/lib/agora";
+import { requestAudioPermission, requestVideoPermission } from "@/lib/zego";
 import {
   acceptPartnerRequest,
   declinePartnerRequest,

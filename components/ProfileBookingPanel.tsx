@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { createSession } from "@/lib/api/sessions";
 import { getWelcomeChatBonus, type WelcomeChatBonusResponse } from "@/lib/api/users";
 import { getWallet } from "@/lib/api/wallet";
-import { requestAudioPermission, requestVideoPermission } from "@/lib/agora";
+import { requestAudioPermission, requestVideoPermission } from "@/lib/zego";
 import { getUserAuthTokenWithRestore, subscribeUserAuthState } from "@/lib/auth/userAuth";
 import { IS_PRODUCTION_READY_MODE } from "@/lib/config/runtime";
 import type { ConnectCompanion } from "@/lib/data";

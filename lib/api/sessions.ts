@@ -18,8 +18,6 @@ export type SessionRecord = {
   sessionCode?: string;
   channelName?: string;
   type?: "CHAT" | "AUDIO" | "VIDEO";
-  agoraToken?: string | null;
-  agoraUid?: string | number | null;
   companionId: string;
   userId?: string;
   serviceType?: "CHAT" | "AUDIO" | "VIDEO";
@@ -222,14 +220,19 @@ export async function sendSessionGift(sessionId: string, giftKey: GiftKey, quant
   };
 }
 
-export async function getSessionAgoraToken(sessionId: string) {
+export async function getSessionZegoToken(sessionId: string) {
   const result = await apiRequest<{
-    appId: string;
+    appId: number;
+    roomId: string;
+    callID: string;
+    userId: string;
+    userName: string;
     token: string;
-    channelName: string;
-    uid: number | string;
-    expiresAt?: number;
-  }>(`/api/sessions/${sessionId}/agora-token`);
+    expiresAt: number;
+  }>("/api/calls/zego-token", {
+    method: "POST",
+    body: JSON.stringify({ callSessionId: sessionId }),
+  });
   if (result.error) return { data: null, error: result.error };
   return { data: result.data ?? null, error: null };
 }

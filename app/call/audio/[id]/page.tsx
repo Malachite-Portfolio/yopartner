@@ -3,7 +3,7 @@
 import { ArrowLeft, Lock, Mic, PhoneOff, Volume2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import type { IAgoraRTCClient, IAgoraRTCRemoteUser, IMicrophoneAudioTrack, IRemoteAudioTrack } from "agora-rtc-sdk-ng";
+import type { ZegoRtcClient, ZegoRemoteUser, ZegoMicrophoneAudioTrack, ZegoRemoteAudioTrack } from "@/lib/zego";
 import { EndSessionConfirmModal } from "@/components/session/EndSessionConfirmModal";
 import { useLoopingRingtone } from "@/hooks/useLoopingRingtone";
 import { useSessionExitGuard } from "@/hooks/useSessionExitGuard";
@@ -11,19 +11,19 @@ import {
   cancelSession,
   createSession,
   endSession,
-  getSessionAgoraToken,
+  getSessionZegoToken,
   getSessionById,
   markSessionMediaReady,
   type SessionRecord,
   type SessionStatus,
 } from "@/lib/api/sessions";
 import { resolveCompanionRouteProfile, type CompanionRouteProfile } from "@/lib/companionRoutes";
-import { buildAgoraUid, createAgoraClient, normalizeChannelName, requestAudioPermission } from "@/lib/agora";
+import { buildZegoUserId, createMicrophoneAudioTrack, createZegoClient, normalizeRoomId, requestAudioPermission } from "@/lib/zego";
 import { getUserAuthTokenWithRestore } from "@/lib/auth/userAuth";
 import { isActiveSessionStatus } from "@/lib/sessionStatus";
 import { VerifiedPartnerBadge } from "@/components/VerifiedPartnerBadge";
 
-const AGORA_APP_ID = process.env.NEXT_PUBLIC_AGORA_APP_ID?.trim() ?? "";
+const ZEGO_APP_ID = Number(process.env.NEXT_PUBLIC_ZEGO_APP_ID ?? 0);
 const TERMINAL_SESSION_STATUSES: SessionStatus[] = ["DECLINED", "CANCELLED", "ENDED", "EXPIRED", "COMPLETED", "FAILED", "FLAGGED"];
 const FREE_CALL_TIME_OVER_MESSAGE = "Your free call time is over. Please add money to continue.";
 const SESSION_TIME_OVER_MESSAGE = "Your available balance is over. Please add money to continue.";
@@ -101,15 +101,15 @@ export default function AudioCallPage() {
 
   const [debugChannelName, setDebugChannelName] = useState("");
   const [debugTokenFetched, setDebugTokenFetched] = useState(false);
-  const [debugAgoraUid, setDebugAgoraUid] = useState<string | number | null>(null);
+  const [debugZegoUserId, setDebugZegoUserId] = useState<string | number | null>(null);
   const [debugRemoteUserUids, setDebugRemoteUserUids] = useState<string[]>([]);
   const [debugAudioPublishEvents, setDebugAudioPublishEvents] = useState(0);
   const [debugRemoteAudioSubscribed, setDebugRemoteAudioSubscribed] = useState(false);
   const [debugLocalMicCreated, setDebugLocalMicCreated] = useState(false);
 
-  const clientRef = useRef<IAgoraRTCClient | null>(null);
-  const localAudioTrackRef = useRef<IMicrophoneAudioTrack | null>(null);
-  const remoteAudioTrackRef = useRef<IRemoteAudioTrack | null>(null);
+  const clientRef = useRef<ZegoRtcClient | null>(null);
+  const localAudioTrackRef = useRef<ZegoMicrophoneAudioTrack | null>(null);
+  const remoteAudioTrackRef = useRef<ZegoRemoteAudioTrack | null>(null);
   const remoteAudioElementRef = useRef<HTMLAudioElement | null>(null);
   const autoEndedRewardRef = useRef(false);
 
@@ -141,7 +141,7 @@ export default function AudioCallPage() {
       ? "Your balance is almost over. Add money to continue."
       : "";
 
-  const syncRemoteUsersDebug = useCallback((client: IAgoraRTCClient) => {
+  const syncRemoteUsersDebug = useCallback((client: ZegoRtcClient) => {
     setRemoteUserCount(client.remoteUsers.length);
     setDebugRemoteUserUids(client.remoteUsers.map((user) => String(user.uid ?? "unknown")));
   }, []);
@@ -205,7 +205,7 @@ export default function AudioCallPage() {
     }
   }, [session]);
 
-  const cleanupAgora = useCallback(async () => {
+  const cleanupZego = useCallback(async () => {
     try {
       remoteAudioTrackRef.current?.stop();
     } catch {
@@ -262,14 +262,14 @@ export default function AudioCallPage() {
 
     setDebugTokenFetched(false);
     setDebugChannelName("");
-    setDebugAgoraUid(null);
+    setDebugZegoUserId(null);
   }, []);
 
   useEffect(() => {
     return () => {
-      void cleanupAgora();
+      void cleanupZego();
     };
-  }, [cleanupAgora]);
+  }, [cleanupZego]);
 
   useEffect(() => {
     if (!routeId) return;
@@ -348,7 +348,7 @@ export default function AudioCallPage() {
       if (cancelled || !latest.data) return;
       setSession(latest.data);
       if (isTerminalStatus(latest.data.status)) {
-        await cleanupAgora();
+        await cleanupZego();
       }
     };
 
@@ -361,7 +361,7 @@ export default function AudioCallPage() {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [cleanupAgora, session?.id]);
+  }, [cleanupZego, session?.id]);
 
   useEffect(() => {
     if (!isActive) return;
@@ -482,7 +482,7 @@ export default function AudioCallPage() {
   );
 
   const subscribeRemoteAudioUser = useCallback(
-    async (client: IAgoraRTCClient, user: IAgoraRTCRemoteUser) => {
+    async (client: ZegoRtcClient, user: ZegoRemoteUser) => {
       if (!user.hasAudio && !user.audioTrack) return;
 
       await client.subscribe(user, "audio");
@@ -503,7 +503,7 @@ export default function AudioCallPage() {
     [notifyMediaReady, replayRemoteAudio],
   );
 
-  const joinAgoraAudio = useCallback(async () => {
+  const joinZegoAudio = useCallback(async () => {
     if (!session || !companion || joining || joined || !isActive) return;
 
     setJoining(true);
@@ -514,7 +514,7 @@ export default function AudioCallPage() {
       await refreshAudioOutputDevices();
       setNeedsPermissionAction(false);
 
-      const client = await createAgoraClient();
+      const client = await createZegoClient();
       clientRef.current = client;
 
       client.on("user-joined", (user) => {
@@ -551,33 +551,32 @@ export default function AudioCallPage() {
         setAudioPlaybackReady(false);
       });
 
-      const tokenResponse = await getSessionAgoraToken(session.id);
+      const tokenResponse = await getSessionZegoToken(session.id);
       if (tokenResponse.error || !tokenResponse.data?.token) {
         setError(tokenResponse.error?.message || "Could not prepare secure call token. Please retry.");
-        await cleanupAgora();
+        await cleanupZego();
         return;
       }
 
       setDebugTokenFetched(true);
 
-      const appId = tokenResponse.data.appId || AGORA_APP_ID;
+      const appId = tokenResponse.data.appId || ZEGO_APP_ID;
       if (!appId) {
-        setError("Calling is not configured. Missing Agora App ID.");
-        await cleanupAgora();
+        setError("Calling is not configured. Missing ZEGOCLOUD App ID.");
+        await cleanupZego();
         return;
       }
 
-      const channelName = normalizeChannelName(session.id, tokenResponse.data.channelName ?? session.channelName);
-      const uid = tokenResponse.data.uid ?? buildAgoraUid(session.id, session.userId ?? "user");
+      const channelName = tokenResponse.data.roomId || normalizeRoomId(session.id);
+      const uid = tokenResponse.data.userId || buildZegoUserId(session.id, session.userId ?? "user");
       setDebugChannelName(channelName);
-      setDebugAgoraUid(uid);
+      setDebugZegoUserId(uid);
 
-      await client.join(appId, channelName, tokenResponse.data.token, uid);
+      await client.join(appId, channelName, tokenResponse.data.token, String(uid), tokenResponse.data.userName);
       setJoined(true);
       syncRemoteUsersDebug(client);
 
-      const AgoraRTC = await import("agora-rtc-sdk-ng");
-      const localAudioTrack = await AgoraRTC.default.createMicrophoneAudioTrack();
+      const localAudioTrack = await createMicrophoneAudioTrack();
       localAudioTrackRef.current = localAudioTrack;
       setDebugLocalMicCreated(true);
       setLocalAudioReady(true);
@@ -597,21 +596,21 @@ export default function AudioCallPage() {
       } else {
         setError(message);
       }
-      await cleanupAgora();
+      await cleanupZego();
     } finally {
       setJoining(false);
     }
-  }, [cleanupAgora, companion, isActive, joined, joining, notifyMediaReady, refreshAudioOutputDevices, session, subscribeRemoteAudioUser, syncRemoteUsersDebug]);
+  }, [cleanupZego, companion, isActive, joined, joining, notifyMediaReady, refreshAudioOutputDevices, session, subscribeRemoteAudioUser, syncRemoteUsersDebug]);
 
   useEffect(() => {
     if (!isActive || joined || joining) return;
     const timer = window.setTimeout(() => {
-      void joinAgoraAudio();
+      void joinZegoAudio();
     }, 0);
     return () => {
       window.clearTimeout(timer);
     };
-  }, [isActive, joinAgoraAudio, joined, joining]);
+  }, [isActive, joinZegoAudio, joined, joining]);
 
   const toggleMute = useCallback(async () => {
     const track = localAudioTrackRef.current;
@@ -660,7 +659,7 @@ export default function AudioCallPage() {
     } else {
       const nowIso = new Date().toISOString();
       const endPromise = endSession(session.id);
-      await cleanupAgora();
+      await cleanupZego();
       setSession((current) => (current ? { ...current, status: "ENDED", endedAt: current.endedAt ?? nowIso } : current));
       response = await endPromise;
     }
@@ -679,7 +678,7 @@ export default function AudioCallPage() {
     setIsCancelling(true);
     try {
       const responsePromise = endSession(session.id);
-      await cleanupAgora();
+      await cleanupZego();
       const response = await responsePromise;
       if (!response.data) {
         const message = response.error?.message || "Unable to end this session. Please try again.";
@@ -690,7 +689,7 @@ export default function AudioCallPage() {
     } finally {
       setIsCancelling(false);
     }
-  }, [cleanupAgora, isCancelling, session?.id]);
+  }, [cleanupZego, isCancelling, session?.id]);
 
   useEffect(() => {
     const maxAllowedSeconds =
@@ -707,7 +706,7 @@ export default function AudioCallPage() {
     void (async () => {
       try {
         const responsePromise = endSession(session.id);
-        await cleanupAgora();
+        await cleanupZego();
         const response = await responsePromise;
         if (response.data) {
           setSession(response.data);
@@ -719,7 +718,7 @@ export default function AudioCallPage() {
       }
     })();
   }, [
-    cleanupAgora,
+    cleanupZego,
     elapsedSeconds,
     isActive,
     isCancelling,
@@ -845,7 +844,7 @@ export default function AudioCallPage() {
           <button
             type="button"
             onClick={() => {
-              void joinAgoraAudio();
+              void joinZegoAudio();
             }}
             disabled={joining}
             className="mt-4 rounded-xl border border-[#b7dfd7] bg-white/80 px-3 py-2 text-xs text-[#0f766e] disabled:opacity-70"
@@ -955,8 +954,8 @@ export default function AudioCallPage() {
             <p>userType: user</p>
             <p>session status: {session.status}</p>
             <p>token fetched: {String(debugTokenFetched)}</p>
-            <p>agora joined: {String(joined)}</p>
-            <p>agora uid: {debugAgoraUid ?? "-"}</p>
+            <p>zego joined: {String(joined)}</p>
+            <p>zego uid: {debugZegoUserId ?? "-"}</p>
             <p>local mic created: {String(debugLocalMicCreated)}</p>
             <p>local mic published: {String(localAudioPublished)}</p>
             <p>remote user count: {remoteUserCount}</p>

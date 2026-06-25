@@ -6,7 +6,7 @@ import { useState } from "react";
 import { createSession } from "@/lib/api/sessions";
 import { getWallet } from "@/lib/api/wallet";
 import type { ConnectCompanion } from "@/lib/data";
-import { requestAudioPermission, requestVideoPermission } from "@/lib/agora";
+import { requestAudioPermission, requestVideoPermission } from "@/lib/zego";
 import { formatINRPrice } from "@/lib/priceFormat";
 import { getUserAuthTokenWithRestore } from "@/lib/auth/userAuth";
 import { AUDIO_RATE_PER_MIN, CHAT_RATE_PER_MESSAGE, VIDEO_RATE_PER_MIN } from "@/lib/platformPricing";
